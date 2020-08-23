@@ -67,7 +67,12 @@ Judy1First(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
   #endif // _NEXT_QPA || _NEXT_QP
   #ifdef NEXT_FROM_WRAPPER
     if (wr_nType((Word_t)PArray) == T_LIST) {
-        int nPos = SearchList(qy, /*nBLR*/ nBL, *pwKey);
+      #ifndef _NEXT_QPA
+      #ifdef REMOTE_LNX
+        Word_t* pwLnX = NULL;
+      #endif // REMOTE_LNX
+      #endif // !_NEXT_QPA
+        int nPos = SearchList(qya, /*nBLR*/ nBL, *pwKey);
         if (nPos < 0) {
             int nPopCnt = gnListPopCnt(qy, /*nBLR*/ nBL);
             if ((nPos ^= -1) >= nPopCnt) {
@@ -212,7 +217,12 @@ Judy1Next(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
   #endif // _NEXT_QPA || _NEXT_QP
   #ifdef NEXT_FROM_WRAPPER
     if (wr_nType((Word_t)PArray) == T_LIST) {
-        int nPos = SearchList(qy, /*nBLR*/ nBL, wKey);
+      #ifndef _NEXT_QPA
+      #ifdef REMOTE_LNX
+        Word_t* pwLnX = NULL;
+      #endif // REMOTE_LNX
+      #endif // !_NEXT_QPA
+        int nPos = SearchList(qya, /*nBLR*/ nBL, wKey);
         if (nPos < 0) {
             int nPopCnt = gnListPopCnt(qy, /*nBLR*/ nBL);
             if ((nPos ^= -1) >= nPopCnt) {

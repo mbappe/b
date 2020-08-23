@@ -6051,9 +6051,9 @@ SearchEmbeddedX(qpa, Word_t wKey)
   #if (cnBitsInD1 <= 8) || defined(USE_XX_SW_ONLY_AT_DL2)
 
 static int
-SearchList8(qp, int nBLR, Word_t wKey)
+SearchList8(qpa, int nBLR, Word_t wKey)
 {
-    qv; (void)nBLR;
+    qva; (void)nBLR;
 
     assert(nBL <= 8);
     // sizeof(__m128i) == 16 bytes
@@ -6092,9 +6092,9 @@ SearchList8(qp, int nBLR, Word_t wKey)
 }
 
 static int
-ListHasKey8(qp, int nBLR, Word_t wKey)
+ListHasKey8(qpa, int nBLR, Word_t wKey)
 {
-    qv; (void)nBLR;
+    qva; (void)nBLR;
 
 // HasKey128 assumes the list of keys starts at a 128-bit aligned address.
 // SearchList8 makes no such assumption.
@@ -6103,7 +6103,7 @@ ListHasKey8(qp, int nBLR, Word_t wKey)
 #if !defined(PP_IN_LINK) || (cnDummiesInList == 0)
 #if !defined(POP_WORD_IN_LINK) || (cnDummiesInList == 0)
 #if defined(OLD_LISTS)
-    return SearchList8(qy, nBLR, wKey) >= 0;
+    return SearchList8(qya, nBLR, wKey) >= 0;
 #endif // defined(OLD_LISTS)
 #endif // !defined(POP_WORD_IN_LINK) || (cnDummiesInList == 0)
 #endif // !defined(PP_IN_LINK) || (cnDummiesInList == 0)
@@ -6162,7 +6162,7 @@ ListHasKey8(qp, int nBLR, Word_t wKey)
 #endif // defined(PSPLIT_PARALLEL)
 #endif // defined(PSPLIT_SEARCH_8)
 
-    return SearchList8(qy, nBLR, wKey) >= 0;
+    return SearchList8(qya, nBLR, wKey) >= 0;
 }
 
   #endif // (cnBitsInD1 <= 8) || defined(USE_XX_SW_ONLY_AT_DL2)
@@ -6179,9 +6179,9 @@ ListHasKey8(qp, int nBLR, Word_t wKey)
 // And even Insert and Remove don't need to know where the key is if it is
 // in the list (until we start thinking about JudyL).
 static int
-SearchList16(qp, int nBLR, Word_t wKey)
+SearchList16(qpa, int nBLR, Word_t wKey)
 {
-    qv; (void)nBLR;
+    qva; (void)nBLR;
 
     assert(nBLR >   8);
     assert(nBLR <= 16);
@@ -6317,9 +6317,9 @@ ListHasKey16Ua(Word_t *pwRoot, Word_t *pwr, Word_t wKey, int nBL)
 //
 //   8 < nBL <= 16, nPopCnt <= 6
 static int
-ListHasKey1696(qp, int nBLR, Word_t wKey)
+ListHasKey1696(qpa, int nBLR, Word_t wKey)
 {
-    qv; (void)nBLR;
+    qva; (void)nBLR;
 
     assert(nBL >   8);
     assert(nBL <= 16);
@@ -6371,9 +6371,9 @@ ListHasKey1696(qp, int nBLR, Word_t wKey)
 #endif // PSPLIT_PARALLEL
 
 static int
-ListHasKey16(qp, int nBLR, Word_t wKey)
+ListHasKey16(qpa, int nBLR, Word_t wKey)
 {
-    qv; (void)nBLR;
+    qva; (void)nBLR;
 
     assert(nBLR >   8);
     assert(nBLR <= 16);
@@ -6435,9 +6435,9 @@ ListHasKey16(qp, int nBLR, Word_t wKey)
 // And even Insert and Remove don't need to know where the key is if it is
 // in the list (until we start thinking about JudyL).
 static int
-SearchList32(qp, int nBLR, Word_t wKey)
+SearchList32(qpa, int nBLR, Word_t wKey)
 {
-    qv;
+    qva;
     assert(nBLR >  16);
     assert(nBLR <= 32);
     int nPopCnt = gnListPopCnt(qy, nBLR);
@@ -6478,9 +6478,9 @@ SearchList32(qp, int nBLR, Word_t wKey)
 }
 
 static int
-ListHasKey32(qp, int nBLR, Word_t wKey)
+ListHasKey32(qpa, int nBLR, Word_t wKey)
 {
-    qv; (void)nBLR;
+    qva; (void)nBLR;
 
     assert(nBLR >  16);
     assert(nBLR <= 32);
@@ -6566,9 +6566,9 @@ ListHasKey32(qp, int nBLR, Word_t wKey)
 // And even Insert and Remove don't need to know where the key is if it is
 // in the list (until we start thinking about JudyL).
 static int
-SearchListWord(qp, int nBLR, Word_t wKey)
+SearchListWord(qpa, int nBLR, Word_t wKey)
 {
-    qv;
+    qva;
     int nPopCnt = gnListPopCnt(qy, nBLR);
     Word_t* pwKeys = ls_pwKeysX(pwr, nBLR, nPopCnt);
 #if defined(LIST_END_MARKERS)
@@ -6740,9 +6740,9 @@ BinaryHasKeyWord(Word_t *pwKeys, Word_t wKey, int nBL, int nPopCnt)
 #if !defined(B_JUDYL) || defined(HASKEY_FOR_JUDYL_LOOKUP)
 
 static int
-ListHasKeyWord(qp, int nBLR, Word_t wKey)
+ListHasKeyWord(qpa, int nBLR, Word_t wKey)
 {
-    qv; (void)nBLR;
+    qva; (void)nBLR;
 
     int nPopCnt = gnListPopCnt(qy, nBLR);
   #if defined(SEARCH_FROM_WRAPPER)
@@ -6785,7 +6785,7 @@ ListHasKeyWord(qp, int nBLR, Word_t wKey)
       #endif // !defined(NO_BINARY_SEARCH_WORD) && ...
   #endif // (cnBitsPerWord > 32)
     {
-        nPos = SearchListWord(qy, nBLR, wKey);
+        nPos = SearchListWord(qya, nBLR, wKey);
     }
     DBGX(printf("LHKW: returning %d\n", nPos >= 0));
     return nPos >= 0;
@@ -6872,31 +6872,31 @@ Word_t cnMagic[] = {
 // Remove needs to know where the key is if it is in the list as does
 // Lookup for JudyL. See ListHasKey and LocateKeyInList.
 static int
-SearchList(qp, int nBLR, Word_t wKey)
+SearchList(qpa, int nBLR, Word_t wKey)
 {
-    qv;
+    qva;
   #if defined(COMPRESSED_LISTS)
       #if (cnBitsInD1 <= 8) || defined(USE_XX_SW_ONLY_AT_DL2)
       // There is no need for a key size that is equal to or smaller than
       // whatever size yields a bitmap that will fit in a link.
     if (nBLR <= 8) {
-        return SearchList8(qy, nBLR, wKey);
+        return SearchList8(qya, nBLR, wKey);
     }
       #endif // (cnBitsInD1 <= 8) || defined(USE_XX_SW_ONLY_AT_DL2)
     assert(nBLR > 8);
       #if (cnBitsInD1 <= 16)
     if (nBLR <= 16) {
-        return SearchList16(qy, nBLR, wKey);
+        return SearchList16(qya, nBLR, wKey);
     }
       #endif // defined(cnBitsInD1 <= 16)
     assert(nBLR > 16);
       #if (cnBitsInD1 <= 32) && (cnBitsPerWord > 32)
     if (nBLR <= 32) {
-        return SearchList32(qy, nBLR, wKey);
+        return SearchList32(qya, nBLR, wKey);
     }
       #endif // (cnBitsInD1 <= 32) && (cnBitsPerWord > 32)
   #endif // defined(COMPRESSED_LISTS)
-    return SearchListWord(qy, nBLR, wKey);
+    return SearchListWord(qya, nBLR, wKey);
 }
 
 #if cnBitsPerWord > 32
@@ -7308,12 +7308,12 @@ LocateGeKey256(__m256i *pxBucket, Word_t wKey, int nBL)
 }
 #endif // PSPLIT_PARALLEL || PARALLEL_SEARCH_WORD
 
-static int LocateKeyInList(qp, int nBLR, Word_t wKey);
+static int LocateKeyInList(qpa, int nBLR, Word_t wKey);
 
 static inline int
-LocateGeKeyInList(qp, int nBLR, Word_t* pwKey)
+LocateGeKeyInList(qpa, int nBLR, Word_t* pwKey)
 {
-    qv;
+    qva;
     Word_t wKey = *pwKey;
   #ifdef LOCATE_GE_USING_EQ_M1
     int nPos;
@@ -7381,7 +7381,7 @@ LocateGeKeyInList(qp, int nBLR, Word_t* pwKey)
       #endif // cnBitsPerWord > 32
         {
             nPopCnt = gnListPopCnt(qy, nBLR);
-            nPos = LocateKeyInList(qy, nBLR, wKey - 1);
+            nPos = LocateKeyInList(qya, nBLR, wKey - 1);
             if (nPos >= 0) {
                 // found key equal to wKey - 1
                 if (++nPos >= nPopCnt) {
@@ -7444,11 +7444,11 @@ LocateGeKeyInList(qp, int nBLR, Word_t* pwKey)
                   }
           #endif // PARALLEL_128
           #endif // PARALLEL_SEARCH_WORD
-                    nPos = ~SearchList(qy, nBLR, wKey - 1);
+                    nPos = ~SearchList(qya, nBLR, wKey - 1);
                     assert(nPos < nPopCnt);
                 }
       #else // LOCATE_GE_AFTER_LOCATE_EQ && PARALLEL_128
-                nPos = ~SearchList(qy, nBLR, wKey - 1);
+                nPos = ~SearchList(qya, nBLR, wKey - 1);
                 assert(nPos < nPopCnt);
       #endif // LOCATE_GE_AFTER_LOCATE_EQ && PARALLEL_128 else
                 assert(nPos < nPopCnt);
@@ -7458,7 +7458,7 @@ LocateGeKeyInList(qp, int nBLR, Word_t* pwKey)
     }
   #else // LOCATE_GE_USING_EQ_M1
     int nPopCnt = gnListPopCnt(qy, nBLR);
-    int nPos = SearchList(qy, nBLR, wKey);
+    int nPos = SearchList(qya, nBLR, wKey);
     if (nPos < 0) {
         if ((nPos ^= -1) >= nPopCnt) {
             return ~nPos;
@@ -7495,23 +7495,23 @@ LocateGeKeyInList(qp, int nBLR, Word_t* pwKey)
 // ListHasKey is the list search function called by Judy1Lookup.
 // It may also be used for Time -LV experiments by JudyLLookup.
 static int
-ListHasKey(qp, int nBLR, Word_t wKey)
+ListHasKey(qpa, int nBLR, Word_t wKey)
 {
-    qv;
+    qva;
   #if defined(COMPRESSED_LISTS)
       #if (cnBitsInD1 <= 8) || defined(USE_XX_SW_ONLY_AT_DL2)
-    if (nBLR <= 8) { return ListHasKey8(qy, nBLR, wKey); }
+    if (nBLR <= 8) { return ListHasKey8(qya, nBLR, wKey); }
       #endif // (cnBitsInD1 <= 8) || defined(USE_XX_SW_ONLY_AT_DL2)
       #if (cnBitsInD1 <= 16)
-    if (nBLR <= 16) { return ListHasKey16(qy, nBLR, wKey); }
+    if (nBLR <= 16) { return ListHasKey16(qya, nBLR, wKey); }
       #endif // (cnBitsInD1 <= 16)
       #if (cnBitsPerWord > 32)
           #if (cnBitsInD1 <= 32)
-    if (nBLR <= 32) { return ListHasKey32(qy, nBLR, wKey); }
+    if (nBLR <= 32) { return ListHasKey32(qya, nBLR, wKey); }
           #endif // (cnBitsInD1 <= 32)
       #endif // (cnBitsPerWord > 32)
   #endif // defined(COMPRESSED_LISTS)
-    return ListHasKeyWord(qy, nBLR, wKey);
+    return ListHasKeyWord(qya, nBLR, wKey);
 }
 
 #endif // !defined(B_JUDYL) || defined(HASKEY_FOR_JUDYL_LOOKUP)
@@ -7524,7 +7524,7 @@ ListHasKey(qp, int nBLR, Word_t wKey)
 static int
 LocateKey(qp, int nBLR, Word_t wKey)
 {
-    return SearchList(qy, nBLR, wKey);
+    return SearchList(qya, nBLR, wKey);
 }
 
 // Locate the slot in the sorted list where the key should be.
@@ -7533,7 +7533,7 @@ LocateKey(qp, int nBLR, Word_t wKey)
 static int
 LocateHole(qp, int nBLR, Word_t wKey)
 {
-    return ~SearchList(qy, nBLR, wKey);
+    return ~SearchList(qya, nBLR, wKey);
 }
 #endif
 
@@ -7892,9 +7892,9 @@ BmSwIndex(qp, Word_t wDigit,
 
   #if (cnBitsInD1 <= 8) || defined(USE_XX_SW_ONLY_AT_DL2)
 static int
-LocateKeyInList8(qp, int nBLR, Word_t wKey)
+LocateKeyInList8(qpa, int nBLR, Word_t wKey)
 {
-    qv; (void)nBLR;
+    qva; (void)nBLR;
 
 // LocateKey128 assumes the list of keys starts at a 128-bit aligned address.
 // SearchList8 makes no such assumption.
@@ -7903,7 +7903,7 @@ LocateKeyInList8(qp, int nBLR, Word_t wKey)
 #if !defined(POP_WORD_IN_LINK) || (cnDummiesInList == 0)
 #if defined(OLD_LISTS)
     #define _LKIL8_DONE
-    return SearchList8(qy, nBLR, wKey);
+    return SearchList8(qya, nBLR, wKey);
 #endif // defined(OLD_LISTS)
 #endif // !defined(POP_WORD_IN_LINK) || (cnDummiesInList == 0)
 #endif // !defined(PP_IN_LINK) || (cnDummiesInList == 0)
@@ -8015,15 +8015,15 @@ LocateKeyInList8(qp, int nBLR, Word_t wKey)
 #endif // defined(PSPLIT_SEARCH_8)
 
   #ifndef _LKIL8_DONE
-    return SearchList8(qy, nBLR, wKey);
+    return SearchList8(qya, nBLR, wKey);
   #endif // #ifndef _LKIL8_DONE
 }
   #endif // (cnBitsInD1 <= 8) || defined(USE_XX_SW_ONLY_AT_DL2)
 
 static int
-LocateKeyInList16(qp, int nBLR, Word_t wKey)
+LocateKeyInList16(qpa, int nBLR, Word_t wKey)
 {
-    qv; (void)nBLR;
+    qva; (void)nBLR;
 
     assert(nBLR >   8);
     assert(nBLR <= 16);
@@ -8078,9 +8078,9 @@ LocateKeyInList16(qp, int nBLR, Word_t wKey)
 #if (cnBitsPerWord > 32)
 
 static int
-LocateKeyInList32(qp, int nBLR, Word_t wKey)
+LocateKeyInList32(qpa, int nBLR, Word_t wKey)
 {
-    qv; (void)nBLR;
+    qva; (void)nBLR;
 
     assert(nBLR >  16);
     assert(nBLR <= 32);
@@ -8129,9 +8129,9 @@ LocateKeyInList32(qp, int nBLR, Word_t wKey)
 #endif // defined(COMPRESSED_LISTS)
 
 static int
-LocateKeyInListWord(qp, int nBLR, Word_t wKey)
+LocateKeyInListWord(qpa, int nBLR, Word_t wKey)
 {
-    qv; (void)nBLR;
+    qva; (void)nBLR;
 
     int nPos;
     int nPopCnt = gnListPopCnt(qy, nBLR);
@@ -8171,7 +8171,7 @@ LocateKeyInListWord(qp, int nBLR, Word_t wKey)
   #endif // defined(PSPLIT_SEARCH_WORD)
   #if !defined(SEARCH_FROM_WRAPPER) || !defined(LOOKUP)
     {
-        nPos = SearchListWord(qy, nBLR, wKey);
+        nPos = SearchListWord(qya, nBLR, wKey);
     }
   #endif // !SEARCH_FROM_WRAPPER || !LOOKUP
     DBGX(printf("LKILW: returning %d\n", nPos));
@@ -8183,27 +8183,27 @@ LocateKeyInListWord(qp, int nBLR, Word_t wKey)
 // If not return a negative number that gives no indication
 // of where in the list wKey belongs.
 static int
-LocateKeyInList(qp, int nBLR, Word_t wKey)
+LocateKeyInList(qpa, int nBLR, Word_t wKey)
 {
-    qv;
+    qva;
   #if defined(COMPRESSED_LISTS)
       #if (cnBitsInD1 <= 8) || defined(USE_XX_SW_ONLY_AT_DL2)
     if (nBLR <= 8) {
-        return LocateKeyInList8(qy, nBLR, wKey);
+        return LocateKeyInList8(qya, nBLR, wKey);
     }
       #endif // (cnBitsInD1 <= 8) || defined(USE_XX_SW_ONLY_AT_DL2)
       #if (cnBitsInD1 <= 16)
     if (nBLR <= 16) {
-        return LocateKeyInList16(qy, nBLR, wKey);
+        return LocateKeyInList16(qya, nBLR, wKey);
     }
       #endif // (cnBitsInD1 <= 16)
       #if (cnBitsInD1 <= 32) && (cnBitsPerWord > 32)
     if (nBLR <= 32) {
-        return LocateKeyInList32(qy, nBLR, wKey);
+        return LocateKeyInList32(qya, nBLR, wKey);
     }
       #endif // (cnBitsInD1 <= 32) && (cnBitsPerWord > 32)
   #endif // defined(COMPRESSED_LISTS)
-    return LocateKeyInListWord(qy, nBLR, wKey);
+    return LocateKeyInListWord(qya, nBLR, wKey);
 }
 
 #ifdef XX_LISTS

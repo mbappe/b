@@ -804,16 +804,16 @@ AugTypeBitsInv(int nAugTypeBits)
 #endif // LOOKUP elif B_JUDYL else
 
 #if defined(LOOKUP_NO_LIST_SEARCH) && defined(LOOKUP)
-  #define SEARCH_LIST(_suffix, qy, _nBLR, _wKey)  0
+  #define SEARCH_LIST(_suffix, qya, _nBLR, _wKey)  0
 #elif defined(_USE_HAS_KEY) // LOOKUP_NO_LIST_SEARCH && LOOKUP
-  #define SEARCH_LIST(_suffix, qy, _nBLR, _wKey) \
-    -!ListHasKey##_suffix(qy, nBLR, wKey)
+  #define SEARCH_LIST(_suffix, qya, _nBLR, _wKey) \
+    -!ListHasKey##_suffix(qya, nBLR, wKey)
 #elif defined(_USE_LOCATE_KEY) // no-search elif _USE_HAS_KEY
-  #define SEARCH_LIST(_suffix, qy, _nBLR, _wKey) \
-    LocateKeyInList##_suffix(qy, nBLR, wKey)
+  #define SEARCH_LIST(_suffix, qya, _nBLR, _wKey) \
+    LocateKeyInList##_suffix(qya, nBLR, wKey)
 #else // no-search elif _USE_HAS_KEY elif _USE_LOCATE_KEY
-  #define SEARCH_LIST(_suffix, qy, _nBLR, _wKey) \
-    SearchList##_suffix(qy, nBLR, wKey)
+  #define SEARCH_LIST(_suffix, qya, _nBLR, _wKey) \
+    SearchList##_suffix(qya, nBLR, wKey)
 #endif // no-search elif _USE_HAS_KEY elif _USE_LOCATE_KEY else
 
 IF_LOOKUP(static BJL(Word_t*)BJ1(Status_t) Lookup(Word_t wRootArg,
@@ -2561,7 +2561,7 @@ t_list112: // nDL == 8
       #endif // cnBitsLeftAtDl3 >= 24
         if (WROOT_IS_NULL(T_LIST, wRoot)
             || (PREFIX_CHECK_AT_LEAF(qy, wKey) != Success)
-            || ((nPos = SEARCH_LIST(Word, qy, nBLR, wKey)) < 0))
+            || ((nPos = SEARCH_LIST(Word, qya, nBLR, wKey)) < 0))
         {
             goto break_from_main_switch;
         }
@@ -2581,7 +2581,7 @@ t_list96: // nDL == 7
         nBLR = nBL = AugTypeBitsInv(96);
         if (WROOT_IS_NULL(T_LIST, wRoot)
             || (PREFIX_CHECK_AT_LEAF(qy, wKey) != Success)
-            || ((nPos = SEARCH_LIST(Word, qy, nBLR, wKey)) < 0))
+            || ((nPos = SEARCH_LIST(Word, qya, nBLR, wKey)) < 0))
         {
             goto break_from_main_switch;
         }
@@ -2601,7 +2601,7 @@ t_list80: // nDL == 6
         nBLR = nBL = AugTypeBitsInv(80);
         if (WROOT_IS_NULL(T_LIST, wRoot)
             || (PREFIX_CHECK_AT_LEAF(qy, wKey) != Success)
-            || ((nPos = SEARCH_LIST(Word, qy, nBLR, wKey)) < 0))
+            || ((nPos = SEARCH_LIST(Word, qya, nBLR, wKey)) < 0))
         {
             goto break_from_main_switch;
         }
@@ -2634,7 +2634,7 @@ t_list48: // nBL > 32
       #endif // BL_SPECIFIC_LIST
         if (WROOT_IS_NULL(T_LIST, wRoot)
             || (PREFIX_CHECK_AT_LEAF(qy, wKey) != Success)
-            || ((nPos = SEARCH_LIST(Word, qy, nBLR, wKey)) < 0))
+            || ((nPos = SEARCH_LIST(Word, qya, nBLR, wKey)) < 0))
         {
             goto break_from_main_switch;
         }
@@ -2654,9 +2654,9 @@ t_list48: // nDL == 4
         if (WROOT_IS_NULL(T_LIST, wRoot)
             || (PREFIX_CHECK_AT_LEAF(qy, wKey) != Success)
               #if defined(AUGMENT_TYPE_8) && cnBitsLeftAtDl3 > 24
-            || ((nPos = SEARCH_LIST(Word, qy, nBLR, wKey)) < 0)
+            || ((nPos = SEARCH_LIST(Word, qya, nBLR, wKey)) < 0)
               #else // AUGMENT_TYPE_8 && cnBitsLeftAtDl3 > 24
-            || ((nPos = SEARCH_LIST(32, qy, nBLR, wKey)) < 0)
+            || ((nPos = SEARCH_LIST(32, qya, nBLR, wKey)) < 0)
               #endif // else AUGMENT_TYPE_8 && cnBitsLeftAtDl3 > 24
             )
         {
@@ -2692,7 +2692,7 @@ t_list16: // nDL == 2
       #endif // BL_SPECIFIC_LIST
         if (WROOT_IS_NULL(T_LIST, wRoot)
             || (PREFIX_CHECK_AT_LEAF(qy, wKey) != Success)
-            || ((nPos = SEARCH_LIST(32, qy, nBLR, wKey)) < 0))
+            || ((nPos = SEARCH_LIST(32, qya, nBLR, wKey)) < 0))
         {
             goto break_from_main_switch;
         }
@@ -2738,9 +2738,9 @@ t_list: // nDL == 1
         if (WROOT_IS_NULL(T_LIST, wRoot)
             || (PREFIX_CHECK_AT_LEAF(qy, wKey) != Success)
                   #if defined(BL_SPECIFIC_LIST) && cnBitsLeftAtDl2 > 16
-            || ((nPos = SEARCH_LIST(32, qy, nBLR, wKey)) < 0)
+            || ((nPos = SEARCH_LIST(32, qya, nBLR, wKey)) < 0)
                   #else // BL_SPECIFIC_LIST && cnBitsLeftAtDl2 > 16
-            || ((nPos = SEARCH_LIST(16, qy, nBLR, wKey)) < 0)
+            || ((nPos = SEARCH_LIST(16, qya, nBLR, wKey)) < 0)
                   #endif // BL_SPECIFIC_LIST && cnBitsLeftAtDl2 > 16 else
             )
         {
@@ -2825,26 +2825,26 @@ t_list:
       #ifdef LOOKUP
           #if defined(AUGMENT_TYPE) && !defined(AUGMENT_TYPE_NOT)
               #if defined(AUGMENT_TYPE_8) && cnBitsInD1 > 8
-        if ((nPos = SEARCH_LIST(16, qy, nBLR, wKey)) >= 0)
+        if ((nPos = SEARCH_LIST(16, qya, nBLR, wKey)) >= 0)
               #else // AUGMENT_TYPE_8 && cnBitsInD1 > 8
                   #if defined(B_JUDYL) && !defined(PACK_L1_VALUES)
-        if ((nPos = -!ListHasKey8(qy, nBLR, wKey)) >= 0)
+        if ((nPos = -!ListHasKey8(qya, nBLR, wKey)) >= 0)
                   #else // B_JUDYL && !PACK_L1_VALUES
-        if ((nPos = SEARCH_LIST(8, qy, nBLR, wKey)) >= 0)
+        if ((nPos = SEARCH_LIST(8, qya, nBLR, wKey)) >= 0)
                   #endif // B_JUDYL && !PACK_L1_VALUES else
               #endif // AUGMENT_TYPE_8 && cnBitsInD1 > 8 else
           #else // AUGMENT_TYPE && !AUGMENT_TYPE_NOT
         if ((nPos =
               #if defined(B_JUDYL) && !defined(PACK_L1_VALUES)
                 ((cnBitsInD1 <= 8) && (nBL == cnBitsInD1))
-                        ? -!ListHasKey8(qy, nBLR, wKey) :
+                        ? -!ListHasKey8(qya, nBLR, wKey) :
               #endif // B_JUDYL && !PACK_L1_VALUES
-                    SEARCH_LIST(, qy, nBLR, wKey)) >= 0)
+                    SEARCH_LIST(, qya, nBLR, wKey)) >= 0)
           #endif // AUGMENT_TYPE && !AUGMENT_TYPE_NOT else
       #elif defined(NEXT)
-        if ((nPos = LocateGeKeyInList(qy, nBLR, &wKey)) >= 0)
+        if ((nPos = LocateGeKeyInList(qya, nBLR, &wKey)) >= 0)
       #else // LOOKUP elif NEXT
-        if ((nPos = SearchList(qy, nBLR, wKey)) >= 0)
+        if ((nPos = SearchList(qya, nBLR, wKey)) >= 0)
       #endif // LOOKUP elif NEXT else
         {
             SMETRICS_POP(j__SearchPopulation += gnListPopCnt(qy, nBLR));
@@ -2932,9 +2932,9 @@ t_list_ua:
       #if !defined(LOOKUP) || !defined(LOOKUP_NO_LIST_SEARCH)
             if (1
           #if defined(LOOKUP) && !defined(B_JUDYL)
-                && ListHasKey(qy, nBLR, wKey)
+                && ListHasKey(qya, nBLR, wKey)
           #else // LOOKUP && !B_JUDYL
-                && ((nPos = SearchList(qy, nBLR, wKey)) >= 0)
+                && ((nPos = SearchList(qya, nBLR, wKey)) >= 0)
           #endif // LOOKUP && !B_JUDYL else
                 )
       #endif // !LOOKUP || !LOOKUP_NO_LIST_SEARCH
@@ -3020,23 +3020,23 @@ t_xx_list:
               #if defined(B_JUDYL)
                   #if defined(HASKEY_FOR_JUDYL_LOOKUP)
                 // HASKEY_FOR_JUDYL_LOOKUP is for analysis only.
-                && ((nPos = -!ListHasKey(qy, nBLR, wKey)) >= 0)
+                && ((nPos = -!ListHasKey(qya, nBLR, wKey)) >= 0)
                   #elif defined(SEARCH_FOR_JUDYL_LOOKUP)
-                && ((nPos = SearchList(qy, nBLR, wKey)) >= 0)
+                && ((nPos = SearchList(qya, nBLR, wKey)) >= 0)
                   #else // defined(HASKEY_FOR_JUDYL_LOOKUP) elif ...
-                && ((nPos = LocateKeyInList(qy, nBLR, wKey)) >= 0)
+                && ((nPos = LocateKeyInList(qya, nBLR, wKey)) >= 0)
                   #endif // defined(HASKEY_FOR_JUDYL_LOOKUP)
               #else // defined(B_JUDYL)
                   #if defined(SEARCH_FOR_JUDY1_LOOKUP)
-                && (SearchList(qy, nBLR, wKey) >= 0)
+                && (SearchList(qya, nBLR, wKey) >= 0)
                   #elif defined(LOCATEKEY_FOR_JUDY1_LOOKUP)
-                && (LocateKeyInList(qy, nBLR, wKey) >= 0)
+                && (LocateKeyInList(qya, nBLR, wKey) >= 0)
                   #else // defined(SEARCH_FOR_JUDY1_LOOKUP) elif ...
-                && ListHasKey(qy, nBLR, wKey)
+                && ListHasKey(qya, nBLR, wKey)
                   #endif // defined(SEARCH_FOR_JUDY1_LOOKUP) elif ...
               #endif // defined(B_JUDYL)
           #else // defined(LOOKUP)
-                && ((nPos = SearchList(qy, nBLR, wKey)) >= 0)
+                && ((nPos = SearchList(qya, nBLR, wKey)) >= 0)
           #endif // defined(LOOKUP)
                 )
       #endif // ! defined(LOOKUP) !! ! defined(LOOKUP_NO_LIST_SEARCH)
@@ -4897,11 +4897,14 @@ Judy1Test(Pcvoid_t pcvRoot, Word_t wKey, PJError_t PJError)
       // PWR_xListPopCount is valid only at the top for PP_IN_LINK.
       // The first word in the list is used for pop count at the top.
         SMETRICS_GET(++j__GetCalls);
+      #ifdef REMOTE_LNX
+        Word_t* pwLnX = NULL;
+      #endif // REMOTE_LNX
       #if defined(B_JUDYL)
-        int nPos = SearchListWord(qy, nBL, wKey);
+        int nPos = SearchListWord(qya, nBL, wKey);
         return (nPos >= 0) ? (PPvoid_t)&gpwValues(qy)[~nPos] : NULL;
       #else // defined(B_JUDYL)
-        return ListHasKeyWord(qy, nBL, wKey);
+        return ListHasKeyWord(qya, nBL, wKey);
       #endif // #else defined(B_JUDYL)
     }
   #endif // defined(SEARCH_FROM_WRAPPER)
@@ -5040,7 +5043,7 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
       #endif // (cnBitsPerWord == 64)
             ))
     {
-        int nPos = ~SearchListWord(qy, nBLR, wKey);
+        int nPos = ~SearchListWord(qya, nBLR, wKey);
         if (nPos >= 0) {
             Word_t *pwKeys = ls_pwKeys(pwr, cnBitsPerWord);
             assert(ls_pwKeysX(pwr, cnBitsPerWord, nPopCnt) == pwKeys);

@@ -7420,7 +7420,7 @@ InsertAtFullXxList(qpa, Word_t wKey, int nPopCnt, int nPos,
         && tp_bIsList(wr_nType(pLn->ln_wRoot)))
     {
         nBLR = gnListBLR(qy);
-        nPos = ~SearchList(qy, nBLR, wKey);
+        nPos = ~SearchList(qya, nBLR, wKey);
     } else {
         nPos = -1;
     }
@@ -8851,7 +8851,7 @@ wRootNull:;
         // easier for Insert.  We'll change it back later if it makes sense.
         if (nPopCnt != 0) {
             wRoot = InflateEmbeddedList(qya, wKey);
-            nPos = ~SearchList(qy, /*nBLR*/ nBL, wKey);
+            nPos = ~SearchList(qya, /*nBLR*/ nBL, wKey);
         } else {
             nPos = 0;
         }
@@ -13156,7 +13156,7 @@ NextGuts(qpa, Word_t *pwKey, Word_t wSkip, int bPrev, int bEmpty
         assert(wRoot != WROOT_NULL);
         //A(0);
         nBLR = gnListBLR(qy);
-        int nPos = SearchList(qy, nBLR, *pwKey);
+        int nPos = SearchList(qya, nBLR, *pwKey);
         if (bPrev) {
             //A(0);
             if (nPos < 0) {
@@ -14351,7 +14351,7 @@ NextEmptyGuts(qpa, Word_t *pwKey, int bPrev)
         int nPos;
 // Using LocateKeyInList here instead of SearchList breaks
 // -DDEBUG -DUSE_XX_SW -DUSE_XX_SW_ONLY_AT_DL2. I don't know why yet.
-        if ((pwr == NULL) || ((nPos = SearchList(qy, nBLR, *pwKey)) < 0))
+        if ((pwr == NULL) || ((nPos = SearchList(qya, nBLR, *pwKey)) < 0))
         {
             //printf("key is not in list\n");
             return Success;
