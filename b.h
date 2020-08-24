@@ -644,8 +644,17 @@ typedef Word_t Bucket_t;
 #endif // #ifndef cnListPopCntMaxIncr
 
 // Default cnListPopCntMax64 is 256.
+// DSplit 8-bit pop subexpanses can't handle 256.
 #ifndef cnListPopCntMax64
+    #ifdef DS_8_WAY
+  #define cnListPopCntMax64  255
+    #elif defined(DS_16_WAY) // DS_8_WAY
   #define cnListPopCntMax64  256
+    #elif defined(DSPLIT_16) // DS_8_WAY elif DS_16_WAY
+  #define cnListPopCntMax64  256
+    #else // defined(DSPLIT_16) // DS_8_WAY elif DS_16_WAY elif DSPLIT_16
+  #define cnListPopCntMax64  256
+    #endif // defined(DSPLIT_16) // DS_8_WAY elif DS_16_WAY elif DSPLIT_16 else
 #endif // #ifndef cnListPopCntMax64
 
 // Default cnListPopCntMax[n] is cnListPopCntMax[n+4] + cnListPopCntMaxIncr.
@@ -1674,6 +1683,9 @@ static inline void set_pwr_pwr_nType(Word_t *pwRoot, Word_t *pwr, int nType) {
   #define cnBitsCnt  8
 #endif // cnBitsCnt
 #define cnLsbCnt  (cnBitsPerWord - cnBitsCnt)
+
+#define cnBitsCnt1  8
+#define cnLsbCnt1  cnBitsVirtAddr
 
 // (cnBitsLvlM1, cnLsbLvlM1) is the level of the node pointed to.
 #ifndef cnBitsLvlM1
@@ -3397,7 +3409,7 @@ BmIndex(qpa, int nBLR, Word_t wKey)
     Word_t wSums = *(Word_t*)((BmLeaf_t*)pwr)->bmlf_au8Cnts; // accumulator
                   #endif // BMLF_CNTS_IN_LNX else
                   #ifndef BMLF_CNTS_CUM
-    wSums *= 0x1010101001010100;
+    wSums *= 0x1010101001010100; // works for both 32 and 64
                   #endif // !BMLF_CNTS_CUM
     int nIndex = ((uint8_t*)&wSums)[nBmWordNum];
               #endif // BMLF_POP_COUNT_8 elif BMLF_POP_COUNT_1 else
@@ -4132,7 +4144,7 @@ Word_t*
 #else // B_JUDYL
 Status_t
 #endif // B_JUDYL
-InsertAtBitmap(qp, Word_t wKey);
+InsertAtBitmap(qpa, Word_t wKey);
 #endif
 
 //Word_t FreeArrayGuts(Word_t *pwRoot,
@@ -4147,6 +4159,7 @@ Word_t *NewList(Word_t wPopCnt, int nBL);
 int OldList(Word_t *pwList, int nPopCnt, int nBLR, int nType);
 
 #if defined(DEBUG)
+void DumpX(qpa, Word_t wKey);
 void Dump(Word_t *pwRoot, Word_t wPrefix, int nBL);
 #endif // defined(DEBUG)
 
@@ -4447,6 +4460,230 @@ Psplit(int nPopCnt, int nBL, int nShift, Word_t wKey)
     // key * pop / expanse
     return ((wKey & NZ_MSK(nBL)) >> nShift) * nPopCnt >> (nBL - nShift);
 }
+
+#ifdef DSPLIT_16
+// DSplit is for Distribution Split.
+static int
+DSplit16(qpa, int nPopCnt, uint16_t sKey)
+{
+    qva;
+    assert((((Word_t)pLn & ((sizeof(Word_t) * 2) - 1)) == 0)
+       || sizeof(Link_t) == sizeof(Word_t));
+    (void)nPopCnt;
+    // number of Subxanse bits that are set
+      #ifdef DS_8_WAY
+    int nSubx = sKey >> 13;
+    int nSubxPop = ((uint8_t*)pwLnX)[nSubx];
+    Word_t wSubxOffsets = *pwLnX * 0x0101010101010100;
+    int nSubxOff = ((uint8_t*)&wSubxOffsets)[nSubx];
+    int nSplit = nSubxOff + ((sKey & 0x1fff) * nSubxPop >> 13);
+      #elif defined(DS_16_WAY) // DS_8_WAY
+    int nSubx = sKey >> 12;
+    int nSubxPop = GetBits(*pwLnX, 4, nSubx * 4);
+    Word_t wSubxSums0
+           =  (*pwLnX & 0x0f0f0f0f0f0f0f0f)       * 0x0101010101010100;
+    Word_t wSubxSums1
+           = ((*pwLnX & 0x00f0f0f0f0f0f0f0) >> 4) * 0x0101010101010100;
+    int nSubxOff = ((uint8_t*)&wSubxSums0)[(nSubx | 1) / 2]
+                 + ((uint8_t*)&wSubxSums1)[ nSubx      / 2];
+    if (nSubxOff == nPopCnt) {
+        return
+          #ifndef DS_EARLY_OUT_CHECK
+            nPopCnt
+          #endif // !DS_EARLY_OUT_CHECK
+            -1;
+    }
+    int nSplit = nSubxOff + ((sKey & 0x0fff) * nSubxPop >> 12);
+      #elif defined(DS_4_WAY_A) // DS_8_WAY
+    // *pwLnX[n] == first virtual key in partition n+1
+    int nPartNum = 0; // accumulator; number of partition this sKey is in
+    int nStartKey = 0; // accumulator; first key in the partition
+    for (; nPartNum < 3; ++nPartNum) {
+        if (sKey < ((uint16_t*)pwLnX)[nPartNum]) {
+            // found the partition
+            break;
+        }
+        // advance to the next partition
+        nStartKey = ((uint16_t*)pwLnX)[nPartNum];
+    }
+    int nStartX4 = nPartNum * nPopCnt; // 4 times # of keys to start of part
+    int nExpanse = ((uint16_t*)pwLnX)[nPartNum] + 1 - nStartKey;
+    // fraction of expanse * 4 times # keys in expanse
+    int nOffsetX4 = (sKey - nStartKey) * nPopCnt / nExpanse;
+    int nSplit = (nStartX4 + nOffsetX4) / 4;
+      #elif defined(DS_8_WAY_A) // DS_8_WAY
+    // ((uint8_t*)pwLnX)[nPart] == first key in partition nPart
+    int nNextStartKey;
+    int nStartKey = 0;
+    int nPart = 0;
+    for (; nPart < 7; ++nPart) {
+        nNextStartKey = ((uint8_t*)pwLnX)[nPart + 1];
+        if ((sKey >> 8) < nNextStartKey) {
+            break;
+        }
+        nStartKey = nNextStartKey;
+        nNextStartKey = 0x100;
+    }
+    int nStart = nPart * nPopCnt / 8;
+    int nPartPopCnt = (nPart + 1) * nPopCnt / 8 - nStart;
+    int nExpanse = nNextStartKey - nStartKey;
+    // fraction of expanse * 8 times # keys in expanse
+    int nOffset = (nExpanse == 0) ? 0 : ((sKey >> 8) - nStartKey) * nPartPopCnt / nExpanse;
+    int nSplit = nStart + nOffset;
+      #elif defined(DS_16_WAY_A) // DS_8_WAY
+    // *pwLnX[n] == first virtual key in partition n+1
+    int nPartNum = 0; // accumulator; number of partition this sKey is in
+    int nStartKey = 0; // accumulator; first key in the partition
+    for (; nPartNum < 15; ++nPartNum) {
+        if ((sKey >> 12) < GetBits(*pwLnX, 4, 4 * nPartNum)) {
+            // found the partition
+            break;
+        }
+        // advance to the next partition
+        nStartKey = GetBits(*pwLnX, 4, 4 * nPartNum);
+    }
+    int nStartX16 = nPartNum * nPopCnt; // 16 times # of keys to start of part
+    int nExpanse = GetBits(*pwLnX, 4, 4 * nPartNum) + 1 - nStartKey;
+    // fraction of expanse * 16 times # keys in expanse
+    int nOffsetX16 = (sKey - (nStartKey << 12)) * nPopCnt / (nExpanse << 12);
+    int nSplit = (nStartX16 + nOffsetX16) / 16;
+      #else // DS_8_WAY elif DS_16_WAY
+    // Here we are doing 64 subexpanses with 1-bit for each.
+    // Number of subexpanse bits set before the subexpanse bit for this key.
+    int nSubx = sKey >> 10;
+    int nSubxIdx = PopCount64(*pwLnX & NBPW_MSK(nSubx));
+    // nSubxCnt is the total number of populated subexpanses.
+    int nSubxCnt = PopCount64(*pwLnX);
+          #ifdef DS_SAVE_DIV
+    // Here we are doing 64-way and have nMagic saved in link.
+    // The code in the ifdef 0 is done during insert/remove.
+              #if 0
+    // pwLnX points at the 2nd word of the link (2nd word of the JP).
+    // The 2nd word may be adjacent to the 1st word. Or it may be remote.
+    // It depends on how the library was built.
+    // Set each bit in *pwLnX if the corresponding Subexpanse has any
+    // keys in it.
+    *pwLnX = 0; // 2nd word of link
+    for (int xx = 0; xx < nPopCnt; ++xx) {
+        *pwLnX |= (Word_t)1 << (psKeys[xx] >> 10);
+    }
+    // Count the number of Subexpanses that have keys.
+    int nSubxCnt = PopCount64(*pwLnX);
+    // nMagic / 128 == nSubxCnt rounded up to a power of 2 / nSubxCnt
+    // nMagic = 128 * nSubxCnt rounded up to a power of 2 / nSubxCnt
+    // nMagic allows us to shift in Dsplit rather than dividing by nSubxCnt.
+    int nMagic
+        = 128 * (1 << (63 - __builtin_clzll((nSubxCnt << 1) - 1))) / nSubxCnt;
+    // Range of nMagic is (128 - 248); max is with nSubxCnt == 33; min occurs
+    // with nSubxCnt equal to any power of 2.
+    // Save nMagic in the 1st word of the link (1st word of the JP).
+    SetBits(pwRoot, cnBitsCnt1, cnLsbCnt1, nMagic);
+              #endif // 0
+    int nMagic = GetBits(wRoot, cnBitsCnt1, cnLsbCnt1);
+    // Figure out how much to shift.
+    int nShift = 70 - __builtin_clzll((nSubxCnt << 1) - 1);
+    // Is there a faster way to handle the case where we search for a key
+    // beyond any of the populated subexpanses?
+    // Faster than this conditional branch plus the corresponding one in
+    // DS_EARLY_OUT in DSPLIT_SEARCH_GUTS?
+    // Would it be better to simply bring nSplit back into range and let
+    // DSPLIT_SEARCH_GUTS go through the motions?
+    // DS_NO_CHECK sets the last subexpanse bit even if there is no
+    // population instead of setting the bit corresponding to the last
+    // subexpanse that actually is populated.
+              #ifndef DS_NO_CHECK
+    if (nSubxIdx == nSubxCnt) {
+        return
+                  #ifndef DS_EARLY_OUT_CHECK
+            nPopCnt
+                  #endif // !DS_EARLY_OUT_CHECK
+            -1;
+    }
+              #endif // !DS_NO_CHECK
+              #ifdef DS_ONE_DIV
+    int nSplit
+        = ((nSubxIdx << 10) + (sKey & MSK(10))) * nMagic * nPopCnt
+            >> nShift >> 10;
+              #else // DS_ONE_DIV
+    // first key in partition for the Subexpanse
+    int nSplit = nSubxIdx * nMagic * nPopCnt >> nShift;
+    // add how far into the partition should we look
+    nSplit += (sKey & MSK(10)) * nMagic * nPopCnt >> nShift >> 10;
+              #endif // else DS_ONE_DIV
+          #else // DS_SAVE_DIV
+    // Here we are doing 64-way and do not have nMagic saved in link.
+              #ifdef DS_ONE_DIV
+    // first key in partition for the Subexpanse
+    // plus how far into the partition should we look
+    int nSplit
+        = ((nSubxIdx << 10) + (sKey & MSK(10))) * nPopCnt / nSubxCnt >> 10;
+              #else // DS_ONE_DIV
+    // first key in partition for the Subexpanse
+    int nSplit = nSubxIdx * nPopCnt / nSubxCnt;
+    // add how far into the partition should we look
+    nSplit += (sKey & MSK(10)) * nPopCnt / nSubxCnt >> 10;
+              #endif // DS_ONE_DIV else
+          #endif // DS_SAVE_DIV else
+      #endif // DS_8_WAY elif DS_16_WAY else
+    //printf("Psplit %d\n", Psplit(nPopCnt, nBL, /*nShift*/ 0, sKey));
+    assert(nSplit >= 0);
+      #ifdef DEBUG
+    if (nSplit >= nPopCnt) {
+        printf("\n");
+        printf("nPopCnt %d sKey 0x%x\n", nPopCnt, sKey);
+          #ifndef DS_4_WAY_A
+          #ifndef DS_8_WAY_A
+          #ifndef DS_16_WAY_A
+        printf("nSubx %d\n", nSubx);
+          #endif // !DS_16_WAY_A
+          #endif // !DS_8_WAY_A
+          #endif // !DS_4_WAY_A
+        printf("*pwLnX 0x%zx\n", *pwLnX);
+          #if defined(DS_8_WAY) || defined(DS_16_WAY)
+              #ifdef DS_8_WAY
+        printf("wSubxOffsets 0x%zx\n", wSubxOffsets);
+              #else // DS_8_WAY
+        printf("wSubxSums0 0x%zx\n", wSubxSums0);
+        printf("wSubxSums1 0x%zx\n", wSubxSums1);
+              #endif // DS_8_WAY else
+        printf("nSubxOff %d\n", nSubxOff);
+          #else // DS_8_WAY) || DS_16_WAY
+              #ifndef DS_4_WAY_A
+              #ifndef DS_8_WAY_A
+              #ifndef DS_16_WAY_A
+        printf("nSubxIdx %d\n", nSubxIdx);
+        printf("nSubxCnt %d\n", nSubxCnt);
+              #ifdef DS_SAVE_DIV
+        printf("nMagic %d\n", nMagic);
+        printf("nShift %d\n", nShift);
+        printf("DS_ONE_DIV nSplit %zd\n",
+               ((nSubxIdx << 10) + (sKey & MSK(10)))
+                   * (uint8_t)(nPopCnt / nSubxCnt)
+                       >> 10);
+        printf("!DS_ONE_DIV nSplit %zd\n",
+               (nSubxIdx * nMagic * nPopCnt >> nShift)
+                   + ((sKey & MSK(10)) * nMagic * nPopCnt >> nShift >> 10));
+              #else // DS_SAVE_DIV
+        printf("DS_ONE_DIV nSplit %zd\n",
+               ((nSubxIdx << 10) + (sKey & MSK(10))) * nPopCnt / nSubxCnt
+                   >> 10);
+        printf("!DS_ONE_DIV nSplit %zd\n",
+               nSubxIdx * nPopCnt / nSubxCnt
+                   + ((sKey & MSK(10)) * nPopCnt / nSubxCnt >> 10));
+              #endif // DS_SAVE_DIV else
+              #endif // !DS_16_WAY_A
+              #endif // !DS_8_WAY_A
+              #endif // !DS_4_WAY_A
+          #endif // DS_8_WAY) || DS_16_WAY else
+        printf("nSplit %d\n", nSplit);
+        printf("Psplit nSplit %d\n", Psplit(nPopCnt, nBL, /*nShift*/ 0, sKey));
+        DumpX(qya, sKey);
+    }
+      #endif // DEBUG
+    assert(nSplit < nPopCnt);
+    return nSplit;
+}
+#endif // DSPLIT_16
 
 // This is a non-parallel psplit search that calculates a descriptive _nPos.
 // It has to work for small nBL in case of no COMPRESSED_LISTS.
@@ -4920,8 +5157,8 @@ PsplitSearchByKey8(qp, uint8_t *pcKeys, int nPopCnt, uint8_t cKey, int nPos)
 
 // PSPLIT parallel search a bucket-aligned list of keys to see if a
 // key exists in the list.
-// _FUNC determines if the position of the key if it exists or slot where it
-// would be if does not exist is determined.
+// _FUNC determines whether or not the position of the key if it exists, or
+// the slot where it would be if does not exist, is determined.
 // It returns a non-negative number if the key is in the list and a
 // negative number if it is not.
 // A bucket is a Word_t or an __m128i or whatever else we decide to pass
@@ -4938,16 +5175,16 @@ PsplitSearchByKey8(qp, uint8_t *pcKeys, int nPopCnt, uint8_t cKey, int nPos)
 { \
     _b_t *pb = (_b_t *)(_pxKeys); /* bucket pointer */ \
     /* _pxKeys must be aligned on a bucket boundary */ \
-    assert(((Word_t)(_pxKeys) & MSK(LOG(cnBytesListKeysAlign))) == 0); \
+    assert(((Word_t)(_pxKeys) & (cnBytesListKeysAlign - 1)) == 0); \
     SMETRICS_POP(j__SearchPopulation += (_nPopCnt)); \
-    /* nSplit is the key chosen by Psplit */ \
+    /* nSplit is the key number */ \
     int nSplit = Psplit((_nPopCnt), (_nBL), (_xShift), (_xKey)); \
     BJL(char* pcPrefetch = (char*)&gpwValues(qy)[~nSplit]; (void)pcPrefetch); \
     BJL(_PF_LK(PREFETCH(pcPrefetch))); \
     BJL(_PF_LK_NX(PREFETCH(pcPrefetch - 64))); \
     BJL(_PF_LK_PV(PREFETCH(pcPrefetch + 64))); \
     int nKeysPerBucket = sizeof(_b_t) / sizeof(_x_t); \
-    /* nSplitB is the number of the bucket chosen by Psplit */ \
+    /* nSplitB is the bucket number */ \
     int nSplitB = nSplit / nKeysPerBucket; \
     assert((int)((nSplit * sizeof(_x_t)) >> LOG(sizeof(_b_t))) == nSplitB); \
     if ((_nPos = BUCKET_##_FUNC(&pb[nSplitB], (_xKey), sizeof(_x_t) * 8)) \
@@ -5008,12 +5245,91 @@ PsplitSearchByKey8(qp, uint8_t *pcKeys, int nPopCnt, uint8_t cKey, int nPos)
                        (_pwKeys), (_nPopCnt), (_wKey), _nPos); \
 }
 
+#ifdef DS_EARLY_OUT_CHECK
+  #define DS_EARLY_OUT(nSplit)  (nSplit < 0)
+#else // DS_EARLY_OUT_CHECK
+  #define DS_EARLY_OUT(nSplit)  0
+#endif // DS_8_WAY elif DS_EARLY_OUT_CHECK else
+
+// DSPLIT_SEARCH_GUTS uses qya for Dsplit16 and qy for prefetch but neither
+// is in the parameter list. Shame on us.
+#define DSPLIT_SEARCH_GUTS(_FUNC, _b_t, _x_t, _nBL, /*nPsplitShift*/ _xShift, \
+                           _pxKeys, _nPopCnt, _xKey, _nPos) \
+{ \
+    _b_t *pb = (_b_t *)(_pxKeys); /* bucket pointer */ \
+    /* _pxKeys must be aligned on a bucket boundary */ \
+    assert(((Word_t)(_pxKeys) & (cnBytesListKeysAlign - 1)) == 0); \
+    SMETRICS_POP(j__SearchPopulation += (_nPopCnt)); \
+    /* nSplit is the key number */ \
+    int nSplit = DSplit16(qya, (_nPopCnt), (_xKey)); \
+    if (DS_EARLY_OUT(nSplit)) { \
+        (_nPos) = -1; \
+    } else { \
+    BJL(char* pcPrefetch = (char*)&gpwValues(qy)[~nSplit]; (void)pcPrefetch); \
+    BJL(_PF_LK(PREFETCH(pcPrefetch))); \
+    BJL(_PF_LK_NX(PREFETCH(pcPrefetch - 64))); \
+    BJL(_PF_LK_PV(PREFETCH(pcPrefetch + 64))); \
+    int nKeysPerBucket = sizeof(_b_t) / sizeof(_x_t); \
+    /* nSplitB is the bucket number */ \
+    int nSplitB = nSplit / nKeysPerBucket; \
+    assert((int)((nSplit * sizeof(_x_t)) >> LOG(sizeof(_b_t))) == nSplitB); \
+    if ((_nPos = BUCKET_##_FUNC(&pb[nSplitB], (_xKey), sizeof(_x_t) * 8)) \
+        >= 0) \
+    { \
+        /* add the number of keys in the buckets before nSplitB */ \
+        _nPos += nSplitB * nKeysPerBucket; /* not needed for has_key */ \
+        SMETRICS_HIT(++j__DirectHits); \
+    } else { \
+        nSplit = nSplitB * nKeysPerBucket; \
+        /* now we have the value of a key in the list */ \
+        if ((_xKey) > (_pxKeys)[nSplit]) { \
+            if ((_xKey) < (_pxKeys)[nSplit + nKeysPerBucket - 1]) { \
+                _nPos = ~nSplit; /* bucket that would contain wKey */ \
+            } else if (nSplitB == (int)(((_nPopCnt) - 1) / nKeysPerBucket)) { \
+                /* we searched the last bucket and the key is not there */ \
+                _nPos = ~(nSplit + nKeysPerBucket); \
+            } else { \
+                /* parallel search the tail of the list */ \
+                /* we are doing a search of the bucket after the original */ \
+                /* nSplitB even though we know it won't find the key if */ \
+                /* (_xKey) <= pxKeys[nSplit+sizeof(_b_t)/sizeof(_x_t)-1] */ \
+                /* but we'd have to be willing to do the test */ \
+                /* ++nSplitB; */ \
+                _nPos = nSplit + nKeysPerBucket; \
+                P_SEARCH_F(_FUNC, _b_t, _xKey, (_pxKeys), (_nPopCnt), _nPos); \
+                SMETRICS_NHIT(++j__GetCallsP); \
+            } \
+        } else { \
+            if (nSplitB == 0) { \
+                /* we searched the first bucket and the key is not there */ \
+                _nPos = ~nSplit; /* this is where to insert */ \
+            /* this test is not necessary unless we want accurate ~_nPos */ \
+            } else if ((_xKey) > (_pxKeys)[nSplit - 1]) { \
+                _nPos = ~nSplit; /* this is where to insert */ \
+            } else { \
+                /* parallel search the head of the list */ \
+                _nPos = nSplit - nKeysPerBucket; \
+                P_SEARCH_B(_FUNC, _b_t, (_xKey), (_pxKeys), _nPos); \
+                SMETRICS_NHIT(++j__GetCallsM); \
+            } \
+        } \
+    } \
+    } /* DSPLIT_EARLY_OUT */ \
+}
+
+#define DSPLIT_LOCATEKEY(_b_t, _x_t, _nBL, _pxKeys, _nPopCnt, _xKey, _nPos) \
+{ \
+    assert((_nBL) <= cnBitsPerWord); \
+    DSPLIT_SEARCH_GUTS(LOCATE_KEY, _b_t, _x_t, (_nBL), /* nPsplitShift */ 0, \
+                       (_pxKeys), (_nPopCnt), (_xKey), (_nPos)); \
+}
+
 #define LOCATE_GE_KEY_GUTS(_b_t, _x_t, _nBL, /*nPsplitShift*/ _xShift, \
                            _pxKeys, _nPopCnt, _xKey, _nPos) \
 { \
     _b_t *pb = (_b_t *)(_pxKeys); /* bucket pointer */ \
     /* _pxKeys must be aligned on a bucket boundary */ \
-    assert(((Word_t)(_pxKeys) & MSK(LOG(cnBytesListKeysAlign))) == 0); \
+    assert(((Word_t)(_pxKeys) & (cnBytesListKeysAlign - 1)) == 0); \
     SMETRICS_POP(j__SearchPopulation += (_nPopCnt)); \
     /* nSplit is the key chosen by Psplit */ \
     int nSplit = Psplit((_nPopCnt), (_nBL), (_xShift), (_xKey)); \
@@ -8047,7 +8363,11 @@ LocateKeyInList16(qpa, int nBLR, Word_t wKey)
       #ifdef PSPLIT_PARALLEL
           #if defined(BL_SPECIFIC_PSPLIT_SEARCH)
     if (nBLR == 16) {
+              #ifdef DSPLIT_16
+        DSPLIT_LOCATEKEY(Bucket_t, uint16_t, 16, psKeys, nPopCnt, sKey, nPos);
+              #else // DSPLIT_16
         PSPLIT_LOCATEKEY(Bucket_t, uint16_t, 16, psKeys, nPopCnt, sKey, nPos);
+              #endif // else DSPLIT_16
     } else
           #endif // defined(BL_SPECIFIC_PSPLIT_SEARCH)
     {

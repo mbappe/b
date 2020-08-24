@@ -4153,6 +4153,142 @@ lastDigit:;
     return nPopCntMax;
 }
 
+static void
+UpdateDist(qpa, int nPopCnt)
+{
+    qva;
+    (void)nPopCnt;
+  #ifdef DSPLIT_16
+    uint16_t* psKeys = ls_psKeysNATX(pwr, nPopCnt);
+      #ifdef DS_8_WAY
+    int nn = 0;
+    // for each subexpanse
+    for (uint16_t xx = 0; xx < 8; ++xx) {
+        // cnt keys in subexpanse
+        int cnt = 0;
+        while ((nn < nPopCnt) && ((psKeys[nn] >> 13) == xx)) {
+            ++cnt;
+            ++nn;
+        }
+        ((uint8_t*)pwLnX)[xx] = cnt;
+    }
+      #elif defined(DS_16_WAY) // DS_8_WAY
+    *pwLnX = 0;
+    int nn = 0;
+    // for each subexpanse
+    for (uint16_t xx = 0; xx < 16; ++xx) {
+        // cnt keys in subexpanse
+        int cnt = 0;
+        while ((nn < nPopCnt) && ((psKeys[nn] >> 12) == xx)) {
+            ++nn;
+            if (++cnt == 15) {
+                break;
+            }
+        }
+        SetBits(pwLnX, /*nBits*/ 4, /*nLsb*/ xx * 4, cnt);
+        assert(PopCount64(*pwLnX) <= nPopCnt);
+    }
+      #elif defined(DS_4_WAY_A)
+    // pwLnx[n] == first virtual key in partition n+1
+    *pwLnX = (Word_t)0xffff << 48;
+    int nKeyNumX4 = nPopCnt;
+    for (int xx = 1; xx < 4; ++xx) {
+        int nKey0 = psKeys[ nKeyNumX4 / 4];
+        int nKey1 = psKeys[(nKeyNumX4 + 3) / 4];
+        ((uint16_t*)pwLnX)[xx - 1]
+            = nKey0 + (nKey1 - nKey0) * (nKeyNumX4 % 4) / 4;
+        nKeyNumX4 += nPopCnt;
+    }
+      #elif defined(DS_8_WAY_A)
+    // pwLnx[nPart] == first key in partition nPart
+    for (int nPart = 0; nPart < 8; ++nPart) {
+        ((uint8_t*)pwLnX)[nPart] = psKeys[nPart * nPopCnt / 8] >> 8;
+    }
+// nPopCnt: 1; 0, 0, 0, 0, 0, 0, 0, 0
+// nPopCnt: 2; 0, 0, 0, 0, 1, 1, 1, 1
+// nPopCnt: 3; 0, 0, 0, 1, 1, 1, 2, 2
+// nPopCnt: 4; 0, 0, 1, 1, 2, 2, 3, 3
+      #elif defined(DS_8_WAY_B)
+    // pwLnx[nPart] == last key in partition nPart
+    for (int nPart = 0; nPart < 8; ++nPart) {
+        ((uint8_t*)pwLnX)[nPart]
+            = psKeys[((nPart + 1) * nPopCnt + 7) / 8 - 1] >> 8;
+// nPopCnt: 1; 0, 0, 0, 0, 0, 0, 0, 0
+// nPopCnt: 2; 0, 0, 0, 0, 1, 1, 1, 1
+// nPopCnt: 3; 0, 0, 1, 1, 1, 2, 2, 2
+// nPopCnt: 4; 0, 0, 1, 1, 2, 2, 3, 3
+    }
+      #elif defined(DS_16_WAY_A)
+    // pwLnx[n] == first virtual key in partition n+1
+    *pwLnX = (Word_t)0xf << 60;
+    int nKeyNumX16 = nPopCnt;
+    for (int xx = 1; xx < 16; ++xx) {
+        int nKey0 = psKeys[ nKeyNumX16 / 16];
+        int nKey1 = psKeys[(nKeyNumX16 + 15) / 16];
+        SetBits(pwLnX, 4, (xx - 1) * 4,
+            (nKey0 + (nKey1 - nKey0) * (nKeyNumX16 % 16) / 16) >> 12);
+        nKeyNumX16 += nPopCnt;
+    }
+//printf("UpdateDist nPopCnt %d *pwLnX 0x%zx\n", nPopCnt, *pwLnX);
+      #else // DS_8_WAY elif DS_16_WAY
+          #ifdef DS_AVG
+    // average subexpanse population
+    // It is not possible for all subexp pops to be greater than avg.
+    // It is not possible for all subexp pops to be less than avg.
+    // It is possible that no subexp pop is less than avg.
+    // It is possible that no subexp pop is greater than avg.
+    // It is possible that all subexp pops are equal avg.
+    // It is possible that all subexp pops are equal or less than avg.
+    // It is possible that all subexp pops are equal or greater than avg.
+    int nAvg = nPopCnt / 64;
+    *pwLnX = -(Word_t)1;
+    int nn = 0;
+    // for each subexpanse
+    for (uint16_t xx = 0; xx < 64; ++xx) {
+        // cnt keys in subexpanse
+        int cnt = 0;
+        while ((nn < nPopCnt) && (psKeys[nn] >> 10) == xx) {
+            ++cnt;
+            ++nn;
+        }
+        // if subexp pop > average, set bit
+        if (cnt <= nAvg) {
+            *pwLnX &= ~((Word_t)1 << xx);
+        }
+    }
+          #else // DS_AVG
+    // pwLnX points at the 2nd word of the link (2nd word of the JP).
+    // The 2nd word may be adjacent to the 1st word. Or it may be remote.
+    // It depends on how the library was built.
+    // Set each bit in *pwLnX if the corresponding Subxanse has any
+    // keys in it.
+    *pwLnX = 0; // 2nd word of link
+    for (int xx = 0; xx < nPopCnt; ++xx) {
+        *pwLnX |= (Word_t)1 << (psKeys[xx] >> 10);
+    }
+              #ifdef DS_NO_CHECK
+    // Set the last bit instead of the bit that corresponds to the last
+    // populated subexpanse so we don't have to check for out of bounds
+    // to avoid a crash during lookup.
+    *pwLnX &= ~((Word_t)1 << (psKeys[nPopCnt - 1] >> 10));
+    *pwLnX |= (Word_t)1 << 63;
+              #endif // DS_NO_CHECK
+          #endif // DS_AVG else
+          #ifdef DS_SAVE_DIV
+    // Count the number of Subexpanses that have keys.
+    int nSubxCnt = PopCount64(*pwLnX);
+    // nMagic / 128 == nSubxCnt rounded up to a power of 2 / nSubxCnt
+    // nMagic = 128 * nSubxCnt rounded up to a power of 2 / nSubxCnt
+    // nMagic allows us to shift in Dsplit rather than dividing by nSubxCnt.
+    int nMagic
+        = 128 * (1 << (63 - __builtin_clzll((nSubxCnt << 1) - 1))) / nSubxCnt;
+    // Save nMagic in the 1st word of the link (1st word of the JP).
+    SetBits(pwRoot, cnBitsCnt1, cnLsbCnt1, nMagic);
+          #endif // DS_SAVE_DIV
+      #endif // DS_8_WAY elif DS_16_WAY else
+  #endif // DSPLIT_16
+}
+
 // Insert each key from pwRootOld into qpa. Then free pwRootOld.
 // wKey contains the common prefix.
 // pwRootOld is a link to non-empty external list.
@@ -4771,6 +4907,9 @@ lastDigit32:;
                         COPY(psKeysLoop, &piKeys[nnStart], nPopCntLoop);
                         PAD(psKeysLoop, nPopCntLoop);
       // BUG: What about UA_PARALLEL_128?
+                        if (nBLLoop == 16) {
+                            UpdateDist(qyax(Loop), nPopCntLoop);
+                        }
                     } else {
                         uint32_t *piKeysLoop
                             = ls_piKeysX(pwrLoop, nBLLoop, nPopCntLoop);
@@ -4971,6 +5110,9 @@ lastDigit:;
   #endif // UA_PARALLEL_128
                             {
                                 PAD(psKeysLoop, nPopCntLoop);
+                                if (nBLLoop == 16) {
+                                    UpdateDist(qyax(Loop), nPopCntLoop);
+                                }
                             }
                         }
           #if (cnBitsPerWord > 32)
@@ -5819,6 +5961,9 @@ lastDigit32:;
                             COPY(psKeysLoop, &piKeys[nnStart], nPopCntLoop);
                             PAD(psKeysLoop, nPopCntLoop);
                         }
+                        if (nBLLoop == 16) {
+                            UpdateDist(qyax(Loop), nPopCntLoop);
+                        }
                     } else {
                         uint32_t *piKeysLoop
                             = ls_piKeysX(pwrLoop, nBLLoop, nPopCntLoop);
@@ -6073,7 +6218,12 @@ lastDigit:;
                                     UA_PAD(psKeysLoop, nPopCntLoop);
                                 } else
   #endif // UA_PARALLEL_128
-                                { PAD(psKeysLoop, nPopCntLoop); }
+                                {
+                                    PAD(psKeysLoop, nPopCntLoop);
+                                    if (nBLLoop == 16) {
+                                        UpdateDist(qyax(Loop), nPopCntLoop);
+                                    }
+                                }
                             }
                         }
           #if (cnBitsPerWord > 32)
@@ -8431,6 +8581,10 @@ copyWithInsert16:
                 BJL(pwValue =)
                     CopyWithInsert16(qy, ls_psKeysNATX(pwrOld, wPopCnt),
                                      wPopCnt, (uint16_t)wKey, nPos);
+                if (nBLR == 16) {
+                    // BUG: there is probably a faster way to do this.
+                    UpdateDist(qya, wPopCnt + 1);
+                }
 #if (cnBitsPerWord > 32)
             } else if (nBLR <= 32) {
                 goto copyWithInsert32;
@@ -9016,6 +9170,10 @@ InflateList(qpa, Word_t wKey, int nPopCnt)
     pLn->ln_wRoot = wRootNew;
     snListBLR(qy, nBL);
     Set_xListPopCnt(&pLn->ln_wRoot, nBL, nPopCnt);
+    if (nBL == 16) {
+        // BUG: there is probably a faster way to do this.
+        UpdateDist(qya, nPopCnt);
+    }
 
     return wRootNew; // wRootNew is installed
 }
@@ -10175,14 +10333,21 @@ embeddedKeys:;
     assert(tp_bIsList(wr_nType(wRoot)));
 #if defined(EMBED_KEYS)
     // Embed the list if it fits.
+    if (1
   #ifdef XX_LISTS
-    if (wr_nType(wRoot) != T_XX_LIST)
+        && (wr_nType(wRoot) != T_XX_LIST)
   #endif // XX_LISTS
-    if ((int)wPopCnt <= EmbeddedListPopCntMax(nBL) + 1) {
+        && ((int)wPopCnt <= EmbeddedListPopCntMax(nBL) + 1))
+    {
         assert(nBLR == nBL);
         DeflateExternalList(qya, wPopCnt - 1);
-    }
+    } else
 #endif // defined(EMBED_KEYS)
+    {
+        if (nBL == 16) {
+            UpdateDist(qya, wPopCnt - 1);
+        }
+    }
 
     return Success;
 
@@ -10772,6 +10937,78 @@ Initialize(void)
 #else //         MASK_NBLR
     printf("# No MASK_NBLR\n");
 #endif //        MASK_NBLR else
+
+#ifdef           DSPLIT_16
+    printf("#    DSPLIT_16\n");
+#else //         DSPLIT_16
+    printf("# No DSPLIT_16\n");
+#endif // #else  DSPLIT_16
+
+#ifdef           DS_4_WAY
+    printf("#    DS_4_WAY\n");
+#else //         DS_4_WAY
+    printf("# No DS_4_WAY\n");
+#endif // #else  DS_4_WAY
+
+#ifdef           DS_4_WAY_A
+    printf("#    DS_4_WAY_A\n");
+#else //         DS_4_WAY_A
+    printf("# No DS_4_WAY_A\n");
+#endif // #else  DS_4_WAY_A
+
+#ifdef           DS_8_WAY
+    printf("#    DS_8_WAY\n");
+#else //         DS_8_WAY
+    printf("# No DS_8_WAY\n");
+#endif // #else  DS_8_WAY
+
+#ifdef           DS_8_WAY_A
+    printf("#    DS_8_WAY_A\n");
+#else //         DS_8_WAY_A
+    printf("# No DS_8_WAY_A\n");
+#endif // #else  DS_8_WAY_A
+
+#ifdef           DS_16_WAY
+    printf("#    DS_16_WAY\n");
+#else //         DS_16_WAY
+    printf("# No DS_16_WAY\n");
+#endif // #else  DS_16_WAY
+
+#ifdef           DS_16_WAY_A
+    printf("#    DS_16_WAY_A\n");
+#else //         DS_16_WAY_A
+    printf("# No DS_16_WAY_A\n");
+#endif // #else  DS_16_WAY_A
+
+#ifdef           DS_AVG
+    printf("#    DS_AVG\n");
+#else //         DS_AVG
+    printf("# No DS_AVG\n");
+#endif // #else  DS_AVG
+
+#ifdef           DS_ONE_DIV
+    printf("#    DS_ONE_DIV\n");
+#else //         DS_ONE_DIV
+    printf("# No DS_ONE_DIV\n");
+#endif // #else  DS_ONE_DIV
+
+#ifdef           DS_SAVE_DIV
+    printf("#    DS_SAVE_DIV\n");
+#else //         DS_SAVE_DIV
+    printf("# No DS_SAVE_DIV\n");
+#endif // #else  DS_SAVE_DIV
+
+#ifdef           DS_NO_CHECK
+    printf("#    DS_NO_CHECK\n");
+#else //         DS_NO_CHECK
+    printf("# No DS_NO_CHECK\n");
+#endif // #else  DS_NO_CHECK
+
+#ifdef           DS_EARLY_OUT_CHECK
+    printf("#    DS_EARLY_OUT_CHECK\n");
+#else //         DS_EARLY_OUT_CHECK
+    printf("# No DS_EARLY_OUT_CHECK\n");
+#endif // #else  DS_EARLY_OUT_CHECK
 
 #ifdef           CACHE_ALIGN_L1
     printf("#    CACHE_ALIGN_L1\n");

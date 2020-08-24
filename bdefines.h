@@ -356,6 +356,70 @@
 #endif // EMBED_KEYS
 #endif // B_JUDYL
 
+#ifndef B_JUDYL
+#undef DSPLIT_16
+#undef DS_4_WAY
+#undef DS_4_WAY_A
+#undef DS_8_WAY
+#undef DS_8_WAY_A
+#undef DS_16_WAY
+#undef DS_16_WAY_A
+#undef DS_AVG
+#undef DS_ONE_DIV
+#undef DS_SAVE_DIV
+#undef DS_NO_CHECK
+#undef DS_EARLY_OUT_CHECK
+#endif // B_JUDYL
+
+// DSPLIT_16 without DS_16_WAY* or DS_8_WAY* or DS_4_WAY* yields 64-way.
+// Without DS_SAVE_[DIV|POP] yields magic method.
+// There is no way to get ONE_DIV or 2-divide methods with a calculated pop.
+#ifdef DS_4_WAY
+  #define _DSPLIT_16
+#endif // DS_4_WAY
+#ifdef DS_4_WAY_A
+  #define _DSPLIT_16
+#endif // DS_4_WAY_A
+#ifdef DS_8_WAY
+  #define _DSPLIT_16
+#endif // DS_8_WAY
+#ifdef DS_8_WAY_A
+  #define _DSPLIT_16
+#endif // DS_8_WAY_A
+#ifdef DS_16_WAY
+  #define _DSPLIT_16
+#endif // DS_16_WAY
+#ifdef DS_16_WAY_A
+  #define _DSPLIT_16
+#endif // DS_16_WAY_A
+
+#ifdef DS_EARLY_OUT_CHECK
+  #define _DSPLIT_16
+  #ifdef DS_AVG
+    #error DS_EARLY_OUT_CHECK is not compatible with DS_AVG
+  #endif // DS_AVG
+#endif // DS_EARLY_OUT_CHECK
+
+#ifdef DS_AVG
+  #define _DSPLIT_16
+#endif // DS_AVG
+#ifdef DS_SAVE_DIV
+  #define _DSPLIT_16
+#endif // DS_SAVE_DIV
+#ifdef DS_ONE_DIV
+  #define _DSPLIT_16
+#endif // DS_ONE_DIV
+
+#ifdef _DSPLIT_16
+  #undef  DSPLIT_16
+  #define DSPLIT_16
+#endif // _DSPLIT_16
+
+#ifdef DSPLIT_16
+  #undef _LNX
+  #define _LNX
+#endif // DSPLIT_16
+
 #ifdef DOUBLE_DOWN
   #undef  XX_LISTS
   #define XX_LISTS
