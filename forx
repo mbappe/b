@@ -177,13 +177,7 @@ function doit
         PACK=-DNO_COMPRESSED_LISTS
     fi
 
-    if [ $deref = "nodr" ]
-    then
-        DR="-DLOOKUP_NO_LIST_DEREF -DLOOKUP_NO_BITMAP_DEREF"
-    elif [ $deref = "nolsdr" ]
-    then
-        DR="-DLOOKUP_NO_LIST_DEREF"
-    elif [ $deref = "nobmdr" ]
+    if [ $deref = "nobmdr" ]
     then
         DR="-DLOOKUP_NO_BITMAP_DEREF"
     elif [ $deref = "nolssearch" ]

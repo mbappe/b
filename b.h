@@ -6360,7 +6360,6 @@ SearchEmbeddedX(qpa, Word_t wKey)
 #endif // EMBED_KEYS
 
 #if ! defined(ONE_DEREF_AT_LIST) || ! defined(LOOKUP)
-#if ! defined(LOOKUP_NO_LIST_DEREF) || ! defined(LOOKUP)
 #if ! defined(LOOKUP_NO_LIST_SEARCH) || ! defined(LOOKUP)
 
 #if defined(COMPRESSED_LISTS)
@@ -6842,7 +6841,6 @@ ListHasKey32(qpa, int nBLR, Word_t wKey)
 #endif // defined(COMPRESSED_LISTS) && (cnBitsPerWord > 32) && ...
 
 #endif // ! defined(LOOKUP_NO_LIST_SEARCH) || ! defined(LOOKUP)
-#endif // ! defined(LOOKUP_NO_LIST_DEREF) || ! defined(LOOKUP)
 #endif // ! defined(ONE_DEREF_AT_LIST) || ! defined(LOOKUP)
 
 //
@@ -7176,7 +7174,6 @@ Word_t cnMagic[] = {
 #endif  // TBD
 
 #if ! defined(ONE_DEREF_AT_LIST) || ! defined(LOOKUP)
-#if ! defined(LOOKUP_NO_LIST_DEREF) || ! defined(LOOKUP)
 #if ! defined(LOOKUP_NO_LIST_SEARCH) || ! defined(LOOKUP)
 
 // Find wKey (the undecoded bits) in the list.
@@ -7854,12 +7851,10 @@ LocateHole(qp, int nBLR, Word_t wKey)
 #endif
 
 #endif // ! defined(LOOKUP_NO_LIST_SEARCH) || ! defined(LOOKUP)
-#endif // ! defined(LOOKUP_NO_LIST_DEREF) || ! defined(LOOKUP)
 #endif // ! defined(ONE_DEREF_AT_LIST) || ! defined(LOOKUP)
 
 #endif // (cwListPopCntMax != 0)
 
-#if ! defined(LOOKUP_NO_LIST_DEREF) || ! defined(LOOKUP)
 #if defined(EMBED_KEYS) \
       && (   (defined(EMBEDDED_KEYS_PARALLEL_FOR_LOOKUP) && defined(LOOKUP)) \
           || (defined(EMBEDDED_KEYS_PARALLEL_FOR_INSERT) && !defined(LOOKUP)))
@@ -8016,7 +8011,6 @@ EmbeddedListHasKey(Word_t wRoot, Word_t wKey, int nBL)
 }
 
 #endif // defined(EMBED_KEYS) ...
-#endif // ! defined(LOOKUP_NO_LIST_DEREF)
 
 static Word_t
 ls_pxKeyX(Word_t *pwr, int nBL, int nPopCnt, int ii)

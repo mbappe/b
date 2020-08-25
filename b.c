@@ -11929,12 +11929,6 @@ Initialize(void)
     printf("# No PREFIX_WORD_IN_BITMAP_LEAF\n");
 #endif // defined(PREFIX_WORD_IN_BITMAP_LEAF)
 
-#if defined(LOOKUP_NO_LIST_DEREF)
-    printf("#    LOOKUP_NO_LIST_DEREF\n");
-#else // defined(LOOKUP_NO_LIST_DEREF)
-    printf("# No LOOKUP_NO_LIST_DEREF\n");
-#endif // defined(LOOKUP_NO_LIST_DEREF)
-
 #if defined(LOOKUP_NO_LIST_SEARCH)
     printf("#    LOOKUP_NO_LIST_SEARCH\n");
 #else // defined(LOOKUP_NO_LIST_SEARCH)

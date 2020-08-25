@@ -3966,32 +3966,30 @@ t_embedded_keys:
         }
       #endif // defined(COUNT)
 
-      #if ! defined(LOOKUP) || ! defined(LOOKUP_NO_LIST_DEREF)
-
-          #if defined(LOOKUP) && defined(LOOKUP_NO_LIST_SEARCH)
+      #if defined(LOOKUP) && defined(LOOKUP_NO_LIST_SEARCH)
         return wRoot ? Success : Failure;
-          #endif // defined(LOOKUP) && defined(LOOKUP_NO_LIST_SEARCH)
+      #endif // defined(LOOKUP) && defined(LOOKUP_NO_LIST_SEARCH)
 
-          #ifdef COMPRESSED_LISTS
-          #ifdef SKIP_PREFIX_CHECK
-          #ifdef LOOKUP
+      #ifdef COMPRESSED_LISTS
+      #ifdef SKIP_PREFIX_CHECK
+      #ifdef LOOKUP
         if (PrefixCheckAtLeaf(qy, wKey
-              #ifndef ALWAYS_CHECK_PREFIX_AT_LEAF
+          #ifndef ALWAYS_CHECK_PREFIX_AT_LEAF
                 , bNeedPrefixCheck
-              #endif // ALWAYS_CHECK_PREFIX_AT_LEAF
-              #ifdef SAVE_PREFIX_TEST_RESULT
+          #endif // ALWAYS_CHECK_PREFIX_AT_LEAF
+          #ifdef SAVE_PREFIX_TEST_RESULT
                 , wPrefixMismatch
-              #else // SAVE_PREFIX_TEST_RESULT
+          #else // SAVE_PREFIX_TEST_RESULT
                 , pwrUp
-              #endif // SAVE_PREFIX_TEST_RESULT
-              #ifdef SAVE_PREFIX
+          #endif // SAVE_PREFIX_TEST_RESULT
+          #ifdef SAVE_PREFIX
                 , pLnPrefix, pwrPrefix, nBLRPrefix
-              #endif // SAVE_PREFIX
+          #endif // SAVE_PREFIX
                   ) // end call to PrefixCheckAtLeaf
             == Success)
-          #endif // LOOKUP
-          #endif // SKIP_PREFIX_CHECK
-          #endif // COMPRESSED_LISTS
+      #endif // LOOKUP
+      #endif // SKIP_PREFIX_CHECK
+      #endif // COMPRESSED_LISTS
         {
 
       #ifdef LOOKUP
@@ -4287,7 +4285,6 @@ foundIt:
               #endif // INSERT
           #endif // !NEXT || !B_JUDYL
 
-      #endif // LOOKUP && LOOKUP_NO_LIST_DEREF else
       #if !defined(NEXT) || !defined(B_JUDYL)
           #if defined(B_JUDYL) && (defined(INSERT) || defined(LOOKUP))
         return pwLnX;
