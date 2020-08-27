@@ -290,15 +290,15 @@
 #ifndef XX_LISTS
 #ifdef COMPRESSED_LISTS
   #if cnBitsInD1 == 8 && cnBitsInD2 == 8 && cnBitsInD3 == 8
-  #ifndef    NO_AUGMENT_TYPE
+  #ifndef    NO_AUGMENT_TYPE_8
     #undef      AUGMENT_TYPE_8
     #define     AUGMENT_TYPE_8
-  #endif // !NO_AUGMENT_TYPE
+  #endif // !NO_AUGMENT_TYPE_8
   #endif // cnBitsInD1 == 8 && cnBitsInD2 == 8 && cnBitsInD3 == 8
   #ifndef AUGMENT_TYPE_8
-  #ifndef NO_AUGMENT_TYPE
+  #ifndef NO_AUGMENT_TYPE_8
 #pragma message("Warning: no default AUGMENT_TYPE_8 without all 8-bit digits.")
-  #endif // !NO_AUGMENT_TYPE
+  #endif // !NO_AUGMENT_TYPE_8
   #endif // !AUGMENT_TYPE_8
 #endif // COMPRESSED_LISTS
 #endif // !XX_LISTS
@@ -382,6 +382,8 @@
 #endif // DS_4_WAY_A
 #ifdef DS_8_WAY
   #define _DSPLIT_16
+  #undef  DS_EARLY_OUT_CHECK
+  #define DS_EARLY_OUT_CHECK
 #endif // DS_8_WAY
 #ifdef DS_8_WAY_A
   #define _DSPLIT_16

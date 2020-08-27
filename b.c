@@ -10855,11 +10855,11 @@ Initialize(void)
     printf("# No AUGMENT_TYPE\n");
 #endif //        AUGMENT_TYPE else
 
-#ifdef           NO_AUGMENT_TYPE
-    printf("#    NO_AUGMENT_TYPE\n");
-#else //         NO_AUGMENT_TYPE
-    printf("# No NO_AUGMENT_TYPE\n");
-#endif //        NO_AUGMENT_TYPE else
+#ifdef           NO_AUGMENT_TYPE_8
+    printf("#    NO_AUGMENT_TYPE_8\n");
+#else //         NO_AUGMENT_TYPE_8
+    printf("# No NO_AUGMENT_TYPE_8\n");
+#endif //        NO_AUGMENT_TYPE_8 else
 
 #ifdef           AUGMENT_TYPE_8
     printf("#    AUGMENT_TYPE_8\n");

@@ -4476,7 +4476,9 @@ DSplit16(qpa, int nPopCnt, uint16_t sKey)
     int nSubxPop = ((uint8_t*)pwLnX)[nSubx];
     Word_t wSubxOffsets = *pwLnX * 0x0101010101010100;
     int nSubxOff = ((uint8_t*)&wSubxOffsets)[nSubx];
-    int nSplit = nSubxOff + ((sKey & 0x1fff) * nSubxPop >> 13);
+    int nSplit
+        = (nSubxPop == 0) ? ~nSubxOff
+                          : nSubxOff + ((sKey & 0x1fff) * nSubxPop >> 13);
       #elif defined(DS_16_WAY) // DS_8_WAY
     int nSubx = sKey >> 12;
     int nSubxPop = GetBits(*pwLnX, 4, nSubx * 4);
@@ -4626,7 +4628,6 @@ DSplit16(qpa, int nPopCnt, uint16_t sKey)
           #endif // DS_SAVE_DIV else
       #endif // DS_8_WAY elif DS_16_WAY else
     //printf("Psplit %d\n", Psplit(nPopCnt, nBL, /*nShift*/ 0, sKey));
-    assert(nSplit >= 0);
       #ifdef DEBUG
     if (nSplit >= nPopCnt) {
         printf("\n");
@@ -5263,7 +5264,7 @@ PsplitSearchByKey8(qp, uint8_t *pcKeys, int nPopCnt, uint8_t cKey, int nPos)
     /* nSplit is the key number */ \
     int nSplit = DSplit16(qya, (_nPopCnt), (_xKey)); \
     if (DS_EARLY_OUT(nSplit)) { \
-        (_nPos) = -1; \
+        (_nPos) = nSplit; \
     } else { \
     BJL(char* pcPrefetch = (char*)&gpwValues(qy)[~nSplit]; (void)pcPrefetch); \
     BJL(_PF_LK(PREFETCH(pcPrefetch))); \

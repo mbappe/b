@@ -617,6 +617,18 @@ AugTypeBitsInv(int nAugTypeBits)
   #endif // cnBitsInD1 <= 8 || !AUG_TYPE || AUG_TYPE_8_PLUS_4 || !LOOKUP
 #endif // (cwListPopCntMax != 0)
 
+#ifdef EMBED_KEYS
+#ifdef AUGMENT_TYPE_8
+#ifndef AUGMENT_TYPE_8_PLUS_4
+#ifdef LOOKUP
+#ifndef B_JUDYL
+    #define _AUG_TYPE_8_EK
+#endif // !B_JUDYL
+#endif // LOOKUP
+#endif // !AUGMENT_TYPE_8_PLUS_4
+#endif // AUGMENT_TYPE_8
+#endif // EMBED_KEYS
+
 #ifdef JUMP_TABLE
 
   #ifdef SEPARATE_T_NULL
@@ -719,6 +731,9 @@ AugTypeBitsInv(int nAugTypeBits)
   #endif // else RETYPE_FULL_BM_SW && !USE_BM_IN_NON_BM_SW
 
   #ifdef EMBED_KEYS
+      #ifdef _AUG_TYPE_8_EK
+    #define t_embedded_keys  t_ek_0
+      #endif // _AUG_TYPE_8_EK
     #define EK_COMMA(_label)  (_label),
   #else // EMBED_KEYS
     #define EK_COMMA(_label)
@@ -781,7 +796,7 @@ AugTypeBitsInv(int nAugTypeBits)
 #endif // JUMP_TABLE
 
 #define WROOT_IS_NULL(_nType, _wRoot) \
-        ((wr_nType(WROOT_NULL) == (_nType)) && ((_wRoot) == WROOT_NULL))
+      ((wr_nType(WROOT_NULL) == (_nType)) && ((_wRoot) == WROOT_NULL))
 
 #ifndef LOOKUP
   #define _USE_SEARCH_LIST
@@ -1087,6 +1102,15 @@ fastAgain:;
             [112 + T_SWITCH] = &&t_sw_plus_112,
           #endif // AUG_TYPE_8_SW_NEXT
       #endif // LOOKUP elif NEXT
+      #ifdef _AUG_TYPE_8_EK
+            [T_EMBEDDED_KEYS +  16] = &&t_ek_16,
+            [T_EMBEDDED_KEYS +  32] = &&t_ek_32,
+            [T_EMBEDDED_KEYS +  48] = &&t_ek_48,
+            [T_EMBEDDED_KEYS +  64] = &&t_ek_64,
+            [T_EMBEDDED_KEYS +  80] = &&t_ek_80,
+            [T_EMBEDDED_KEYS +  96] = &&t_ek_96,
+            [T_EMBEDDED_KEYS + 112] = &&t_ek_112,
+      #endif // _AUG_TYPE_8_EK
       #ifdef EK_XV
       #if defined(AUG_TYPE_8_NEXT_EK_XV) && defined(NEXT)
             [T_EK_XV +   0] = &&t_ek_xv_plus_0,
@@ -1414,9 +1438,20 @@ fastAgain:;
   #endif // UNPACK_BM_VALUES
 
   #if defined(EMBED_KEYS)
+      #ifdef _AUG_TYPE_8_EK
+    case T_EMBEDDED_KEYS + 112: goto t_ek_112;
+    case T_EMBEDDED_KEYS +  96: goto t_ek_96;
+    case T_EMBEDDED_KEYS +  80: goto t_ek_80;
+    case T_EMBEDDED_KEYS +  64: goto t_ek_64;
+    case T_EMBEDDED_KEYS +  48: goto t_ek_48;
+    case T_EMBEDDED_KEYS +  32: goto t_ek_32;
+    case T_EMBEDDED_KEYS +  16: goto t_ek_16;
+    case T_EMBEDDED_KEYS +   0: goto t_ek_0;
+      #else // _AUG_TYPE_8_EK
     CASES_AUG_TYPE(T_EMBEDDED_KEYS)
     case T_EMBEDDED_KEYS:
         goto t_embedded_keys;
+      #endif // _AUG_TYPE_8_EK else
   #endif // EMBED_KEYS
 
   #ifdef EK_XV
@@ -3904,6 +3939,90 @@ t_unpacked_bm:
   #endif // UNPACK_BM_VALUES
 
   #ifdef EMBED_KEYS
+
+      #ifdef HANDLE_BLOWOUTS
+    // We haven't written the insert code to create blow-outs for
+    // NO_TYPE_IN_XX_SW yet.
+          #ifdef NO_TYPE_IN_XX_SW
+    // A blowout has the high bit set and the high bit of the next key
+    // slot clear. Type field can be anything other than T_EMBEDED_KEYS.
+    // 44 pointer bits can be anything.
+    // High bit must be set.
+    // nBL is never less than 7 so next six high bits are always usable.
+    // And 8 of the next 9 high bits are usable, but exactly which ones
+    // depends on nBL.
+    #define BLOWOUT_CHECK(_nBL) \
+        ((wRoot & BLOWOUT_MASK(_nBL)) == (ZERO_POP_MAGIC & ~cnMallocMask))
+          #else // NO_TYPE_IN_XX_SW
+    #define BLOWOUT_CHECK(_nBL)  (wr_nType(wRoot) != T_EMBEDDED_KEYS)
+          #endif // NO_TYPE_IN_XX_SW
+      #else // HANDLE_BLOWOUTS
+    #define BLOWOUT_CHECK(_nBL) (0)
+      #endif // HANDLE_BLOWOUTS else
+
+      #if defined(LOOKUP) && defined(ZERO_POP_CHECK_BEFORE_GOTO)
+    #define ZERO_CHECK  (0)
+      #else // LOOKUP && ZERO_POP_CHECK_BEFORE_GOTO
+    #define ZERO_CHECK  (wRoot == WROOT_NULL)
+      #endif // LOOKUP && ZERO_POP_CHECK_BEFORE_GOTO else
+
+      #if defined(NO_TYPE_IN_XX_SW) || defined(HANDLE_DL2_IN_EMBEDDED_KEYS)
+    #define HANDLE_DL2(_nBL) \
+        if ((_nBL) < nDL_to_nBL(2)) { \
+            if (ZERO_CHECK) { goto break_from_main_switch; } \
+            if (BLOWOUT_CHECK(_nBL)) { goto again; } \
+        }
+      #else // NO_TYPE_IN_XX_SW || HANDLE_DL2_IN_EMBEDDED_KEYS
+    #define HANDLE_DL2(_nBL)
+      #endif // NO_TYPE_IN_XX_SW || HANDLE_DL2_IN_EMBEDDED_KEYS
+
+      #ifdef _AUG_TYPE_8_EK
+
+          #ifdef LOOKUP_NO_LIST_SEARCH
+    #error
+          #endif // LOOKUP_NO_LIST_SEARCH
+          #ifdef SKIP_PREFIX_CHECK
+    #error
+          #endif // SKIP_PREFIX_CHECK
+          #ifndef EMBEDDED_KEYS_PARALLEL_FOR_LOOKUP
+    #error
+          #endif // !EMBEDDED_KEYS_PARALLEL_FOR_LOOKUP
+
+          #ifdef SMETRICS_EK
+    #define SMETRICS_EK_GUTS(_nBL, _wRoot) \
+        SMETRICS_GET(++j__GetCalls); SMETRICS_HIT(++j__DirectHits); \
+        SMETRICS_POP(j__SearchPopulation \
+                         += BJL(1)BJ1(wr_nPopCnt((_wRoot), (_nBL))))
+          #else // SMETRICS_EK
+    #define SMETRICS_EK_GUTS(_nBL, _wRoot)  SMETRICS_GETN(++j__GetCallsNot)
+          #endif // SMETRICS_EK else
+
+          #ifdef NO_TYPE_IN_XX_SW
+    #define EK_WROOT_IS_NULL(_wRoot)  ((_wRoot) == WROOT_NULL)
+          #else // NO_TYPE_IN_XX_SW
+    #define EK_WROOT_IS_NULL(_wRoot)  WROOT_IS_NULL(T_EMBEDDED_KEYS, (_wRoot))
+          #endif // NO_TYPE_IN_XX_SW else
+
+    #define T_EK_X(_nBL, _wRoot, _pwLnX, _wKey) \
+        SMETRICS_EK_GUTS((_nBL), (_wRoot)); \
+        if (EK_WROOT_IS_NULL((_wRoot))) { goto break_from_main_switch; } \
+        HANDLE_DL2((_nBL)); \
+        if (EmbeddedListHasKey((_wRoot), (_wKey), (_nBL))) { \
+            return BJL(pwLnX)BJ1(KeyFound); \
+        } \
+        goto break_from_main_switch
+
+t_ek_112: assert(0);
+t_ek_96:  T_EK_X(56, wRoot, pwLnX, wKey);
+t_ek_80:  T_EK_X(48, wRoot, pwLnX, wKey);
+t_ek_64:  T_EK_X(40, wRoot, pwLnX, wKey);
+t_ek_48:  T_EK_X(32, wRoot, pwLnX, wKey);
+t_ek_32:  T_EK_X(24, wRoot, pwLnX, wKey);
+t_ek_16:  T_EK_X(16, wRoot, pwLnX, wKey);
+t_ek_0:   T_EK_X( 8, wRoot, pwLnX, wKey);
+
+      #else // _AUG_TYPE_8_EK
+
 t_embedded_keys:
     {
         DBGX(printf("T_EMBEDDED_KEYS %d nBL %d\n", T_EMBEDDED_KEYS, nBL));
@@ -4007,42 +4126,6 @@ t_embedded_keys:
       #endif // LOOKUP elif NEXT && !B_JUDYL elif !NEXT
 
           #ifdef _PARALLEL_EK
-
-#if defined(HANDLE_BLOWOUTS)
-    // We haven't written the insert code to create blow-outs for
-    // NO_TYPE_IN_XX_SW yet.
-  #if defined(NO_TYPE_IN_XX_SW)
-    // A blowout has the high bit set and the high bit of the next key
-    // slot clear. Type field can be anything other than T_EMBEDED_KEYS.
-    // 44 pointer bits can be anything.
-    // High bit must be set.
-    // nBL is never less than 7 so next six high bits are always usable.
-    // And 8 of the next 9 high bits are usable, but exactly which ones
-    // depends on nBL.
-    #define BLOWOUT_CHECK(_nBL) \
-        ((wRoot & BLOWOUT_MASK(_nBL)) == (ZERO_POP_MAGIC & ~cnMallocMask))
-  #else // defined(NO_TYPE_IN_XX_SW)
-    #define BLOWOUT_CHECK(_nBL)  (wr_nType(wRoot) != T_EMBEDDED_KEYS)
-  #endif // defined(NO_TYPE_IN_XX_SW)
-#else // defined(HANDLE_BLOWOUTS)
-    #define BLOWOUT_CHECK(_nBL) (0)
-#endif // defined(HANDLE_BLOWOUTS)
-
-#if defined(LOOKUP) && defined(ZERO_POP_CHECK_BEFORE_GOTO)
-    #define ZERO_CHECK  (0)
-#else // defined(LOOKUP) && defined(ZERO_POP_CHECK_BEFORE_GOTO)
-    #define ZERO_CHECK  (wRoot == WROOT_NULL)
-#endif // defined(LOOKUP) && defined(ZERO_POP_CHECK_BEFORE_GOTO)
-
-#if defined(NO_TYPE_IN_XX_SW) || defined(HANDLE_DL2_IN_EMBEDDED_KEYS)
-    #define HANDLE_DL2(_nBL) \
-        if ((_nBL) < nDL_to_nBL(2)) { \
-            if (ZERO_CHECK) { goto break2; } \
-            if (BLOWOUT_CHECK(_nBL)) { goto again; } \
-        }
-#else // defined(NO_TYPE_IN_XX_SW) || defined(HANDLE_DL2_IN_EMBEDDED_KEYS)
-    #define HANDLE_DL2(_nBL)
-#endif // defined(NO_TYPE_IN_XX_SW) || defined(HANDLE_DL2_IN_EMBEDDED_KEYS)
 
 #define CASE_BLX(_nBL) \
         case (_nBL): \
@@ -4293,6 +4376,8 @@ foundIt:
           #endif // B_JUDYL && (INSERT || LOOKUP)
       #endif // !NEXT || !B_JUDYL
     } // end of t_embedded_keys
+
+      #endif // _AUG_TYPE_8_EK else
   #endif // EMBED_KEYS
 
   #ifdef EK_XV

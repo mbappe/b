@@ -18,11 +18,34 @@ CC=$CCA
 WFLAGSA=$WFLAGSA_A
 export CC WFLAGSA
 
+# How do we tell if AVX2 is supported by the cpu?
+# On Linux: grep avx2 /etc/cpuinfo
+# On Mac: sysctl -a | grep machdep.cpu.leaf7_features | grep AVX2
+# On Windows: ?
+if [ `uname` = Linux ]
+then
+    # echo Linux
+    if grep avx2 /etc/cpuinfo
+    then
+        MAVX2=-mavx2
+    fi
+else # [ `uname` = Linux ]
+    # echo Not Linux
+    if sysctl -a | grep AVX2
+    then
+        MAVX2=-mavx2
+    fi
+fi # [ `uname` = Linux ] else
+
 make clean default && ${REGRESS}
 if [ $? != 0 ]; then echo "non-zero exit"; exit 1; fi
 
 : \
 && DEFINES="-DDEBUG" make clean default \
+&& ${REGRESS} \
+&& DEFINES="-DDS_8_WAY -DDEBUG" make clean default \
+&& ${REGRESS} \
+&& DEFINES="-DDS_16_WAY -DDEBUG" make clean default \
 && ${REGRESS} \
 && DEFINES="-DOLD_HK_128 -DDEBUG" make clean default \
 && ${REGRESS} \
@@ -34,9 +57,9 @@ if [ $? != 0 ]; then echo "non-zero exit"; exit 1; fi
 && ${REGRESS} \
 && DEFINES="-DNO_LOCATE_GE_KEY_X -DDEBUG" make clean default \
 && ${REGRESS} \
-&& CC_MFLAGS=-mavx2 DEFINES="-DPARALLEL_256 -DDEBUG" make clean default \
+&& CC_MFLAGS=$MAVX2 DEFINES="-DPARALLEL_256 -DDEBUG" make clean default \
 && ${REGRESS} \
-&& MALLOC_ALIGNMENT=32 CC_MFLAGS=-mavx2 DEFINES="-DPARALLEL_256 -DDEBUG" \
+&& MALLOC_ALIGNMENT=32 CC_MFLAGS=$MAVX2 DEFINES="-DPARALLEL_256 -DDEBUG" \
     make clean default \
 && ${REGRESS} \
 && DEFINES="-DDEBUG_ALL -DFULL_DUMP" make clean default \
@@ -268,16 +291,15 @@ for sfw in "" -DNO_SEARCH_FROM_WRAPPER
 do
 for qpln in "" -DQP_PLN
 do
-for augtype in "" "-DAUGMENT_TYPE" \
-                  "-DAUGMENT_TYPE -DMASK_TYPE" \
+for augtype in "" "-DNO_AUGMENT_TYPE_8 -DAUGMENT_TYPE" \
+                  "-DNO_AUGMENT_TYPE_8 -DAUGMENT_TYPE -DMASK_TYPE" \
                   "-DAUGMENT_TYPE_8_PLUS_4 -DcnBitsInD1=4 -DNO_EK_XV" \
                   "-DAUGMENT_TYPE_8_PLUS_4 -DcnBitsInD1=11" \
                   "-DAUGMENT_TYPE_8_PLUS_4 -DcnBitsInD2=6" \
                   "-DAUGMENT_TYPE_8_PLUS_4 -DcnBitsInD2=10" \
                   "-DAUGMENT_TYPE_8_PLUS_4 -DcnBitsInD3=7" \
                   "-DAUGMENT_TYPE_8_PLUS_4 -DcnBitsInD3=9" \
-                  "-DAUGMENT_TYPE_8" \
-                  "-DAUGMENT_TYPE_8 -DMASK_TYPE"
+                  "-DMASK_TYPE"
 do
 for allcases in "" -DALL_SKIP_TO_SW_CASES -DDEFAULT_SKIP_TO_SW
 do
