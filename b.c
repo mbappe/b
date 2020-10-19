@@ -4555,10 +4555,11 @@ lastDigit8:;
                     // Insert could change *pLn/*pwRoot.
                     // Could it even change something higher up in the tree
                     // so pLn and pwRoot are not valid?
-                    assert(0);
+                    assert(nPopCntLoop > auListPopCntMax[nBLLoop]);
                     for (int xx = nnStart; xx < nn; ++xx) {
                         Insert(qya, pcKeys[xx])BJL([0] = pwValues[~xx]);
                     }
+                    swPopCnt(qya, nBLR, 0);
                 }
                 nnStart = nn;
                 nDigit = nDigitNew;
@@ -4734,12 +4735,11 @@ lastDigit16:;
                 } else
   #endif // BITMAP
                 {
-// Make this happen with:
-// -DNO_USE_BM_SW  -DcnBitsPerDigit=4 -DNO_ALLOW_EMBEDDED_BITMAP
-                    assert(0);
+                    assert(nPopCntLoop > auListPopCntMax[nBLLoop]);
                     for (int xx = nnStart; xx < nn; ++xx) {
                         Insert(qya, psKeys[xx])BJL([0] = pwValues[~xx]);
                     }
+                    swPopCnt(qya, nBLR, 0);
                 }
                 nnStart = nn;
                 nDigit = nDigitNew;
@@ -4926,12 +4926,13 @@ lastDigit32:;
                 } else
   #endif // BITMAP
                 {
-// Make this happen with:
-// -DNO_USE_BM_SW  -DcnBitsPerDigit=4 -DNO_ALLOW_EMBEDDED_BITMAP
-                    assert(0);
+                    assert(nPopCntLoop > auListPopCntMax[nBLLoop]);
+                    // Make this happen with:
+                    // -DcnListPopCntMax16=8; btime -1 -E0x0f0f0fff
                     for (int xx = nnStart; xx < nn; ++xx) {
                         Insert(qya, piKeys[xx])BJL([0] = pwValues[~xx]);
                     }
+                    swPopCnt(qya, nBLR, 0);
                 }
                 nnStart = nn;
                 nDigit = nDigitNew;
@@ -5140,15 +5141,21 @@ lastDigit:;
                 } else
   #endif // BITMAP
                 {
-                    printf("nBL %d nBLROld %d nBLLoop %d cnBitsInD1 %d\n",
-                           nBL, nBLROld, nBLLoop, cnBitsInD1);
-                    assert(0);
-// I wonder if I could call ListIsFull here instead of doing this loop.
-                    goto insertAll;
-insertAll:
+                    assert(nPopCntLoop > auListPopCntMax[nBLLoop]);
+                    // Make this happen with:
+                    // -DcnListPopCntMax16=8; bcheck -B17
+                    // How can we better handle this case?
+                    // Avoid it with auListPopCntMax[m] <= auListPopCntMax[n]
+                    // for m > n?
+                    // I wonder if I could call ListIsFull here instead.
+                    // I wonder if I could use InsertAll.
+                    // I wonder if I could use InsertGuts in the loop.
+                    // Can't use Insert(qya(Loop)) in this loop because Insert
+                    // can't figure out pwLnXLoop.
                     for (int xx = nnStart; xx < nn; ++xx) {
                         Insert(qya, pwKeys[xx])BJL([0] = pwValues[~xx]);
                     }
+                    swPopCnt(qya, nBLR, 0);
                 }
                 nnStart = nn;
                 nDigit = nDigitNew;
@@ -5539,10 +5546,11 @@ lastDigit8:;
                     // Insert could change *pLn/*pwRoot.
                     // Could it even change something higher up in the tree
                     // so pLn and pwRoot are not valid?
-                    assert(0);
+                    assert(nPopCntLoop > auListPopCntMax[nBLLoop]);
                     for (int xx = nnStart; xx < nn; ++xx) {
                         Insert(qya, pcKeys[xx])BJL([0] = pwValues[~xx]);
                     }
+                    swPopCnt(qya, nBLR, 0);
                 }
                 nnStart = nn;
                 nDigit = nDigitNew;
@@ -5757,12 +5765,11 @@ lastDigit16:;
                 } else
   #endif // BITMAP
                 {
-// Make this happen with:
-// -DNO_USE_BM_SW  -DcnBitsPerDigit=4 -DNO_ALLOW_EMBEDDED_BITMAP
-                    assert(0);
+                    assert(nPopCntLoop > auListPopCntMax[nBLLoop]);
                     for (int xx = nnStart; xx < nn; ++xx) {
                         Insert(qya, psKeys[xx])BJL([0] = pwValues[~xx]);
                     }
+                    swPopCnt(qya, nBLR, 0);
                 }
                 nnStart = nn;
                 nDigit = nDigitNew;
@@ -5996,12 +6003,11 @@ lastDigit32:;
                 } else
   #endif // BITMAP
                 {
-// Make this happen with:
-// -DNO_USE_BM_SW  -DcnBitsPerDigit=4 -DNO_ALLOW_EMBEDDED_BITMAP
-                    assert(0);
+                    assert(nPopCntLoop > auListPopCntMax[nBLLoop]);
                     for (int xx = nnStart; xx < nn; ++xx) {
                         Insert(qya, piKeys[xx])BJL([0] = pwValues[~xx]);
                     }
+                    swPopCnt(qya, nBLR, 0);
                 }
                 nnStart = nn;
                 nDigit = nDigitNew;
@@ -6280,13 +6286,11 @@ lastDigit:;
                 } else
   #endif // BITMAP
                 {
-                    printf("nBL %d nBLROld %d nBLLoop %d cnBitsInD1 %d\n",
-                             nBL, nBLROld, nBLLoop, cnBitsInD1);
-                    assert(0);
-// I wonder if I could call ListIsFull here instead of doing this loop.
+                    assert(nPopCntLoop > auListPopCntMax[nBLLoop]);
                     for (int xx = nnStart; xx < nn; ++xx) {
                         Insert(qya, pwKeys[xx])BJL([0] = pwValues[~xx]);
                     }
+                    swPopCnt(qya, nBLR, 0);
                 }
                 nnStart = nn;
                 nDigit = nDigitNew;

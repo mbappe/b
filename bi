@@ -43,6 +43,17 @@ if [ $? != 0 ]; then echo "non-zero exit"; exit 1; fi
 : \
 && DEFINES="-DDEBUG" make clean default \
 && ${REGRESS} \
+&& : "test for nPopCntLoop > anListPopCntMax[nBLLoop] in Splay" \
+&& DEFINES="-DcnListPopCntMax16=8 -DDEBUG" make clean default \
+&& ${REGRESS} \
+&& DEFINES="-DcnListPopCntMax16=8 -DSPLAY_WITH_INSERT -DDEBUG" \
+    make clean default \
+&& ${REGRESS} \
+&& DEFINES="-DDS_4_WAY -DDEBUG" make clean default \
+&& ${REGRESS} \
+&& : "64-way" \
+&& DEFINES="-DDSPLIT_16 -DDEBUG" make clean default \
+&& ${REGRESS} \
 && DEFINES="-DDS_8_WAY -DDEBUG" make clean default \
 && ${REGRESS} \
 && DEFINES="-DDS_16_WAY -DDEBUG" make clean default \

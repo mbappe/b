@@ -4681,7 +4681,9 @@ DSplit16(qpa, int nPopCnt, uint16_t sKey)
         DumpX(qya, sKey);
     }
       #endif // DEBUG
-    assert(nSplit < nPopCnt);
+  #if defined(DS_8_WAY) || defined(DS_16_WAY)
+    assert(nSplit < nPopCnt); // blows for 4-way and 64-way
+  #endif // DS_8_WAY || DS_16_WAY
     return nSplit;
 }
 #endif // DSPLIT_16
@@ -5274,6 +5276,8 @@ PsplitSearchByKey8(qp, uint8_t *pcKeys, int nPopCnt, uint8_t cKey, int nPos)
     /* nSplitB is the bucket number */ \
     int nSplitB = nSplit / nKeysPerBucket; \
     assert((int)((nSplit * sizeof(_x_t)) >> LOG(sizeof(_b_t))) == nSplitB); \
+    /*assert(nSplitB * nKeysPerBucket < (_nPopCnt)); blows for 4 and 64-way*/ \
+    /*assert(nSplit < (_nPopCnt)); blows for DS_4_WAY and 64-way*/ \
     if ((_nPos = BUCKET_##_FUNC(&pb[nSplitB], (_xKey), sizeof(_x_t) * 8)) \
         >= 0) \
     { \
