@@ -4045,29 +4045,26 @@ InsertAllAtBitmap(qpa, qpx(Old), int nStart, int nPopCnt)
 static int
 SplayMaxPopCnt(Word_t *pwRootOld, int nBLOld, Word_t wKey, int nBLNew)
 {
-    (void)wKey;
-    int nPopCntMax = 0;
+    Word_t wRootOld = *pwRootOld;
+    assert(tp_bIsList(wr_nType(wRootOld)));
+    if ((wr_nType(WROOT_NULL) == T_LIST) && (wRootOld == WROOT_NULL)) {
+        assert(auListPopCntMax[nBLOld] == 0);
+        return 0;
+    }
+    assert(wRootOld != WROOT_NULL);
+    assert(auListPopCntMax[nBLOld] != 0);
   #ifdef QP_PLN
     Link_t *pLnOld = STRUCT_OF(pwRootOld, Link_t, ln_wRoot);
   #endif // QP_PLN
-    Word_t wRootOld = *pwRootOld;
-    assert(wRootOld != WROOT_NULL);
-    int nTypeOld = wr_nType(wRootOld); (void)nTypeOld;
-    assert(tp_bIsList(nTypeOld));
     Word_t *pwrOld = wr_pwr(wRootOld);
     int nBLROld = gnListBLR(qyx(Old));
-
-    // Assert that we have a non-empty link that may be a T_LIST[_UA] link
-    // for non-KISS to streamline this function and make caller responsible
-    // for not calling it with an empty link.
   #ifdef NO_TYPE_IN_XX_SW
     assert(nBLOld >= nDL_to_nBL(2));
   #endif // NO_TYPE_IN_XX_SW
-
     int nPopCnt = PWR_xListPopCnt(&wRootOld, pwrOld, nBLROld);
-
+    assert(nPopCnt != 0); // should have been handled above
     Word_t wPrefixKey = wKey & ~MSK(nBLNew);
-
+    int nPopCntMax = 0;
     int nnStart = 0; (void)nnStart;
 #if defined(COMPRESSED_LISTS)
     if (nBLROld <= (int)sizeof(uint8_t) * 8) {
@@ -4290,14 +4287,16 @@ UpdateDist(qpa, int nPopCnt)
 }
 
 // Insert each key from pwRootOld into qpa. Then free pwRootOld.
-// wKey contains the common prefix.
-// pwRootOld is a link to non-empty external list.
+// pwRootOld is a link to an external list (possibly empty).
 // qpa is a link to a switch.
+// Is qpa always a newly-created, empty switch?
+// Do we know that all the links in the switch into which *pwRootOld will be
+// inserted are empty?
+// wKey contains the prefix for pwRootOld and qpa.
 static void
 Splay(qpa, Word_t *pwRootOld, int nBLOld, Word_t wKey)
 {
     qva;
-    (void)wKey;
   #ifdef DEBUG
     int nPopCntMax = 0;
   #endif // DEBUG
@@ -4307,14 +4306,31 @@ Splay(qpa, Word_t *pwRootOld, int nBLOld, Word_t wKey)
       #ifdef _LNX
     DBGI(printf("pwLnX %p ", pwLnX));
       #endif // _LNX
-    //DBGI(Dump(pwRootOld, wKey, nBLOld));
-    DBGI(Dump(pwRootLast, 0, cnBitsPerWord));
-    if (wRootOld == WROOT_NULL) { // only if ListPopCntMax == 0
-        return;
-    }
   #ifdef QP_PLN
     Link_t *pLnOld = STRUCT_OF(pwRootOld, Link_t, ln_wRoot);
   #endif // QP_PLN
+    // We don't have/know pwLnXOld for nBLOld < cnBitsPerWord if REMOTE_LNX.
+  #ifndef REMOTE_LNX
+    DBGI(DumpX(qya, wKey));
+  #endif // !REMOTE_LNX
+    DBGI(Dump(pwRootLast, 0, cnBitsPerWord));
+
+    // Splay serves no purpose, and is intentionally a no-op, if wRootOld
+    // is empty, i.e. if wRootOld == WROOT_NULL.
+    // but we might have to check before calling it more than one place to
+    // avoid handling it in just one place here.
+    // If cnListPopCntMax<nBLOld> == 0 && EmbeddedListPopCntMax(nBLOld) == 0
+    // or cnListPopCntMax<nBLOld> == 0 && NO_EMBED_KEYS || POP_CNT_MAX_IS_KING,
+    // then the list is full with no keys in it, and TransformList and other
+    // code might call Splay after creating a new switch.
+    assert(tp_bIsList(wr_nType(wRootOld)));
+    if ((wr_nType(WROOT_NULL) == T_LIST) && (wRootOld == WROOT_NULL)) {
+        assert(auListPopCntMax[nBLOld] == 0);
+        return;
+    }
+    assert(wRootOld != WROOT_NULL);
+    assert(auListPopCntMax[nBLOld] != 0);
+
     int nBLROld = gnListBLR(qyx(Old));
     // Even the following commented-out assertion blows with DOUBLE_DOWN.
     // Too bad or we could simplify some code below.
@@ -4331,7 +4347,6 @@ Splay(qpa, Word_t *pwRootOld, int nBLOld, Word_t wKey)
       #endif // HANDLE_BLOWOUTS
     }
   #endif // NO_TYPE_IN_XX_SW
-    if (wRootOld == WROOT_NULL) { return; }
 #else // KISS
     // Assert that we have a non-empty link that may be a T_LIST[_UA] link
     // for non-KISS to streamline this function and make caller responsible
@@ -4339,12 +4354,12 @@ Splay(qpa, Word_t *pwRootOld, int nBLOld, Word_t wKey)
   #ifdef NO_TYPE_IN_XX_SW
     assert(nBLOld >= nDL_to_nBL(2));
   #endif // NO_TYPE_IN_XX_SW
-    assert(wRootOld != WROOT_NULL);
 #endif // KISS
 
     int nTypeOld = wr_nType(wRootOld);
     Word_t *pwrOld = wr_pwr(wRootOld);
     int nPopCnt = PWR_xListPopCnt(&wRootOld, pwrOld, nBLROld);
+    assert(nPopCnt != 0); // empty list is handled above
     BJL(Word_t *pwValuesOld = gpwValues(qyx(Old)));
 
     // We can't assume this switch has nothing in it.
@@ -8133,6 +8148,15 @@ newSkipToBitmap:;
     // Now we need to move the keys from the old subtree to the new
     // subtree.
 
+    // Shortcut to finalInsert for empty list.
+    if (wPopCnt == 0) {
+        assert((wr_nType(WROOT_NULL) == T_LIST) && (wRoot == WROOT_NULL));
+        assert(auListPopCntMax[nBL] == 0);
+        goto finalInsert;
+    }
+    assert(wRoot != WROOT_NULL);
+    assert(auListPopCntMax[nBL] != 0);
+
     // NewSwitch changed *pwRoot.
     // But wRoot, nType, pwr, nBLNew and nBL still all apply
     // to the tree whose keys must be reinserted.
@@ -8195,6 +8219,8 @@ newSkipToBitmap:;
             // Here we are calling Splay with an orphaned list and the link
             // where the list used to reside that now points to a newly
             // created switch. nBLOld == nBL.
+            // Why are we ignoring SPLAY_WITH_INSERT here? Is it because we
+            // don't know nPos?
             Splay(qya, /*old*/ &wRoot, /*old*/ nBL, wKey);
         }
     }

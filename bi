@@ -1,7 +1,22 @@
 #!/bin/sh -x
 
-# This lengthy regression test script has the structure required to be
-# used by git bisect run.
+# Regression test with various key ifdef combinations.
+# Turn off default features we like to turn off when trying to turn on or debug
+# new functionality, individually. Those that simplify the data structure.
+# Turn on non-default features that change the structure.
+# Change algorithms without changing the structure.
+# Non-default combinations.
+# Test key builds with both compilers.
+# 32-bit doesn't work anymore but we still test key builds.
+# Targeted bug-fix or code capability regression tests.
+
+# Wish we could do more to regression test DEBUG_ALL. It might not take too
+# long to run regress with DEBUG_ALL without FULL_DUMP.
+# FULL_DUMP will probably take a lot longer. I guess we should measure.
+
+# This lengthy regression test script has the structure required to be used by
+# git bisect run, i.e. exit status indicates success or failure.
+# But running it takes too long for it to be used in that way.
 
 REGRESS=${1:-"regress"}
 
@@ -43,6 +58,37 @@ if [ $? != 0 ]; then echo "non-zero exit"; exit 1; fi
 : \
 && DEFINES="-DDEBUG" make clean default \
 && ${REGRESS} \
+&& DEFINES="-DNO_USE_BM_SW -DDEBUG" make clean default \
+&& ${REGRESS} \
+&& DEFINES="-DNO_EMBED_KEYS -DDEBUG" make clean default \
+&& ${REGRESS} \
+&& DEFINES="-DNO_SKIP_LINKS -DDEBUG" make clean default \
+&& ${REGRESS} \
+&& DEFINES="-DNO_BITMAP -DDEBUG" make clean default \
+&& ${REGRESS} \
+&& DEFINES="-DcnListPopCntMax64=0 -DcnListPopCntMaxDl1=0 -DDEBUG" \
+    make clean default \
+&& ${REGRESS} \
+&& DEFINES="-DNO_REMOTE_LNX -DDEBUG" make clean default \
+&& ${REGRESS} \
+&& : "Done with biggest hammers" \
+&& DEFINES="-DNO_UNPACK_BM_VALUES -DDEBUG" make clean default \
+&& ${REGRESS} \
+&& DEFINES="-DNO_SKIP_TO_BM_SW -DDEBUG" make clean default \
+&& ${REGRESS} \
+&& DEFINES="-DNO_SKIP_TO_BITMAP -DDEBUG" make clean default \
+&& ${REGRESS} \
+&& DEFINES="-DNO_COMPRESSED_LISTS -DDEBUG" make clean default \
+&& ${REGRESS} \
+&& DEFINES="-DNO_EK_XV -DDEBUG" make clean default \
+&& ${REGRESS} \
+&& : "turn off 2-digit bitmap conversion in Judy1" \
+&& DEFINES="-Dcn2dBmMaxWpkPercent=0 -DDEBUG" make clean default \
+&& : "Combinations" \
+&& : "Algorithms" \
+&& DEFINES="-DNO_NEW_NEXT -DDEBUG" make clean default \
+&& ${REGRESS} \
+&& : "Non-default features" \
 && : "test for nPopCntLoop > anListPopCntMax[nBLLoop] in Splay" \
 && DEFINES="-DcnListPopCntMax16=8 -DDEBUG" make clean default \
 && ${REGRESS} \
@@ -62,8 +108,6 @@ if [ $? != 0 ]; then echo "non-zero exit"; exit 1; fi
 && ${REGRESS} \
 && DEFINES="-DNO_PARALLEL_HK_128_64 -DDEBUG" make clean default \
 && ${REGRESS} \
-&& DEFINES="-DNO_NEW_NEXT -DDEBUG" make clean default \
-&& ${REGRESS} \
 && DEFINES="-DNO_LOCATE_GE_AFTER_LOCATE_EQ -DDEBUG" make clean default \
 && ${REGRESS} \
 && DEFINES="-DNO_LOCATE_GE_KEY_X -DDEBUG" make clean default \
@@ -73,9 +117,12 @@ if [ $? != 0 ]; then echo "non-zero exit"; exit 1; fi
 && MALLOC_ALIGNMENT=32 CC_MFLAGS=$MAVX2 DEFINES="-DPARALLEL_256 -DDEBUG" \
     make clean default \
 && ${REGRESS} \
+&& DEFINES="-DDEBUG_ALL" make clean default \
+&& ${REGRESS} \
 && DEFINES="-DDEBUG_ALL -DFULL_DUMP" make clean default \
 && CC=$CCB WFLAGSA=$WFLAGSA_B make clean default \
 && CC=$CCB WFLAGSA=$WFLAGSA_B DEFINES="-DDEBUG" make clean default \
+&& CC=$CCB WFLAGSA=$WFLAGSA_B DEFINES="-DDEBUG_ALL" make clean default \
 && CC=$CCB WFLAGSA=$WFLAGSA_B DEFINES="-DDEBUG_ALL -DFULL_DUMP" \
     make clean default \
 && DEFINES="-DPARALLEL_SEARCH_WORD -DNO_PSPLIT_PARALLEL -DDEBUG" \
@@ -148,12 +195,6 @@ done
 && DEFINES="-DNO_LVL_IN_WR_HB -DDEFAULT_SKIP_TO_SW -DPOP_WORD -DDEBUG" \
    make clean default \
 && ${REGRESS} \
-&& DEFINES="-DDEBUG -DNO_EK_XV" make clean default \
-&& ${REGRESS} \
-&& DEFINES="-DcnListPopCntMax64=0 -DDEBUG" make clean default \
-&& ${REGRESS} \
-&& DEFINES="-DNO_EMBED_KEYS -DDEBUG" make clean default \
-&& ${REGRESS} \
 && DEFINES="-DSKIP_TO_BITMAP -DcnListPopCntMax64=64 -DDEBUG" \
    make clean default \
 && ${REGRESS} \
@@ -161,24 +202,23 @@ done
    make clean default \
 && ${REGRESS} \
 && DEFINES="-DSPLAY_WITH_INSERT -DDOUBLE_DOWN -DUSE_LOWER_XX_SW \
--DcnListPopCntMax64=16 -DNO_USE_BM_SW -DDEBUG" \
+-DcnListPopCntMax64=16 -DDEBUG" \
    make clean default \
 && ${REGRESS} \
 && DEFINES="-DSPLAY_WITH_INSERT -DDOUBLE_DOWN -DUSE_LOWER_XX_SW \
--DNO_EMBED_KEYS -DcnListPopCntMax64=16 -DNO_USE_BM_SW -DDEBUG" \
+-DNO_EMBED_KEYS -DcnListPopCntMax64=16 -DDEBUG" \
    make clean default \
 && ${REGRESS} \
 && DEFINES="-DDOUBLE_DOWN -DUSE_LOWER_XX_SW -DcnListPopCntMax64=64 \
--DNO_EMBED_KEYS -DNO_USE_BM_SW -DDEBUG" make clean default \
+-DNO_EMBED_KEYS -DDEBUG" make clean default \
 && ${REGRESS} \
-&& DEFINES="-DDOUBLE_DOWN -DUSE_LOWER_XX_SW -DcnListPopCntMax64=64 \
--DNO_USE_BM_SW -DDEBUG" make clean default \
+&& DEFINES="-DDOUBLE_DOWN -DUSE_LOWER_XX_SW -DcnListPopCntMax64=64 -DDEBUG" \
+    make clean default \
 && ${REGRESS} \
-&& DEFINES="-DDOUBLE_DOWN -DcnListPopCntMax64=64 -DNO_EMBED_KEYS \
--DNO_USE_BM_SW -DDEBUG" make clean default \
+&& DEFINES="-DDOUBLE_DOWN -DcnListPopCntMax64=64 -DNO_EMBED_KEYS -DDEBUG" \
+    make clean default \
 && ${REGRESS} \
-&& DEFINES="-DDOUBLE_DOWN -DcnListPopCntMax64=64 \
--DNO_USE_BM_SW -DDEBUG" make clean default \
+&& DEFINES="-DDOUBLE_DOWN -DcnListPopCntMax64=64 -DDEBUG" make clean default \
 && ${REGRESS} \
 && DEFINES="-DXX_LISTS -DUSE_LOWER_XX_SW -DcnListPopCntMax64=64 -DDEBUG" \
    make clean default \
@@ -192,15 +232,7 @@ done
 && DEFINES="-DUSE_XX_SW_ONLY_AT_DL2 -DcnListPopCntMax64=64 -DDEBUG" \
    make clean default \
 && ${REGRESS} \
-&& DEFINES="-DNO_EMBED_KEYS -DDEBUG" make clean default \
-&& ${REGRESS} \
-&& DEFINES="-DNO_BITMAP -DDEBUG" make clean default \
-&& ${REGRESS} \
-&& DEFINES="-DNO_COMPRESSED_LISTS -DDEBUG" make clean default \
-&& ${REGRESS} \
 && DEFINES="-DLVL_IN_PP -DDEBUG" make clean default \
-&& ${REGRESS} \
-&& DEFINES="-DNO_SKIP_LINKS -DDEBUG" make clean default \
 && ${REGRESS} \
 && DEFINES="-DPP_IN_LINK -DDEBUG" make clean default \
 && ${REGRESS} \
@@ -279,9 +311,11 @@ done
 && DEFINES="-URAMMETRICS -DSEARCHMETRICS -DDEBUG_ALL" make clean default \
 && BPW=32 make clean default \
 && BPW=32 DEFINES=-DDEBUG make clean default \
+&& BPW=32 DEFINES="-DDEBUG_ALL" make clean default \
 && BPW=32 DEFINES="-DDEBUG_ALL -DFULL_DUMP" make clean default \
 && BPW=32 CC=$CCB WFLAGSA=$WFLAGSA_B make clean default \
 && BPW=32 CC=$CCB WFLAGSA=$WFLAGSA_B DEFINES=-DDEBUG make clean default \
+&& BPW=32 CC=$CCB WFLAGSA=$WFLAGSA_B DEFINES="-DDEBUG_ALL" make clean default \
 && BPW=32 CC=$CCB WFLAGSA=$WFLAGSA_B DEFINES="-DDEBUG_ALL -DFULL_DUMP" \
     make clean default \
 && BPW=32 DEFINES="-DALL_SKIP_TO_SW_CASES" make clean default \
