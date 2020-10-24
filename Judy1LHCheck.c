@@ -1076,6 +1076,9 @@ TestJudyCount(void *J1, void *JL, Word_t LowIndex, Word_t Elements)
             FAILURE("Count at", elm);
         }
 
+        assert(TstIndexL == TstIndex);
+        assert(TstIndex1 == TstIndex);
+        Word_t PrevIndex = TstIndex;
 #if defined(USE_JUDY1_NEXT_IN_COUNT)
         Rc = Judy1Next(J1, &TstIndex1, NULL);
         TstIndex = TstIndex1;
@@ -1099,10 +1102,11 @@ TestJudyCount(void *J1, void *JL, Word_t LowIndex, Word_t Elements)
                 JudyLLast(JL, &LastIndexL, NULL);
                 printf("PValue = %p Rc = %d\n", (void*)PValue, Rc);
                 printf("Elements = %zd\n", Elements);
-                printf("LastIndexL = %zd 0x%zx LastIndex1 = %zd 0x%zx\n",
-                       LastIndexL, LastIndexL, LastIndex1, LastIndex1);
-                printf("Next TstIndexL = %zd 0x%zx != TstIndex1 = %zd 0x%zx\n",
-                       TstIndexL, TstIndexL, TstIndex1, TstIndex1);
+                printf("LastIndexL 0x%zx LastIndex1 0x%zx\n",
+                       LastIndexL, LastIndex1);
+                printf("PrevIndex 0x%zx\n", PrevIndex);
+                printf("Next TstIndexL 0x%zx != TstIndex1 0x%zx\n",
+                       TstIndexL, TstIndex1);
                 FAILURE("Count at", elm);
             }
         }
