@@ -4666,7 +4666,7 @@ break2:;
         nPos = LocateGeKeyInEk64(qya, wKey); \
         nPopCntMax = EmbeddedListPopCntMax(_nBL); \
         if (nPos < wr_nPopCnt(wRoot, _nBL)) { \
-            Word_t wBLM = MSK(_nBL); \
+            Word_t wBLM = NZ_MSK(_nBL); \
             *pwKey = ((wRoot >> (cnBitsPerWord - (nPopCntMax - nPos) * _nBL)) \
                            & wBLM) \
                        | (wKey & ~wBLM); \
