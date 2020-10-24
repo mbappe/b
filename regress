@@ -81,7 +81,12 @@ let S="$sign * $magnitude"
 let n=0x400
 let s="$S * $n / 2 * -1"
 
-cmd="${TIME} -W0 -$Judy -lvdgGi -s$s $DOPT -S$S -n$n -B$B"
+GOPT=-G
+if [ $B == 0 ]
+then
+    GOPT=""
+fi
+cmd="${TIME} -W0 -$Judy -lvdgi $GOPT -s$s $DOPT -S$S -n$n -B$B"
 echo $cmd
 $cmd > /dev/null
 if [ $? != 0 ]
