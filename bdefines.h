@@ -281,6 +281,7 @@
 
 // Default is AUGMENT_TYPE_8.
 // It seems to shine for Time -LmeB31.
+#ifndef AUG_TYPE_64_LOOKUP
 #if cnBitsPerDigit == 8
 #if cnBitsPerWord > 32
 #ifndef USE_XX_SW
@@ -308,6 +309,7 @@
 #endif // !USE_XX_SW
 #endif // cnBitsPerWord > 32
 #endif // cnBitsPerDigit == 8
+#endif // !AUG_TYPE_64_LOOKUP
 
 #ifdef AUGMENT_TYPE_8
   #if cnBitsPerDigit != 8 || cnBitsPerWord <= 32
@@ -325,6 +327,11 @@
     #endif // cnBitsInD1 != 8 || cnBitsInD2 != 8 || cnBitsInD3 != 8
   #endif // !AUGMENT_TYPE_8_PLUS_4
 #endif // AUGMENT_TYPE_8
+
+#ifdef AUG_TYPE_64_LOOKUP
+  #undef  AUGMENT_TYPE
+  #define AUGMENT_TYPE
+#endif // AUG_TYPE_64_LOOKUP
 
 #ifdef AUGMENT_TYPE_8
   #undef  AUGMENT_TYPE
