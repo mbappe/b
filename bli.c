@@ -4696,7 +4696,10 @@ break2:;
         CASE_BLX(40); CASE_BLX(41); CASE_BLX(42); CASE_BLX(43); CASE_BLX(44);
         CASE_BLX(45); CASE_BLX(46); CASE_BLX(47); CASE_BLX(48); CASE_BLX(49);
         CASE_BLX(50); CASE_BLX(51); CASE_BLX(52); CASE_BLX(53); CASE_BLX(54);
-        CASE_BLX(55); CASE_BLX(56);
+        // Some of these cases may not be necessary depending on ifdefs, e.g.
+        // do we have an explicity pop cnt for T_EMBEDDED_KEYS.
+        CASE_BLX(55); CASE_BLX(56); CASE_BLX(57); CASE_BLX(58); CASE_BLX(59);
+        CASE_BLX(60); CASE_BLX(61); CASE_BLX(62); CASE_BLX(63); CASE_BLX(64);
         }
           #else // _PARALLEL_EK elif !NEXT elif B_JUDYL
               #if 1
