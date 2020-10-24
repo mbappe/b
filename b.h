@@ -7635,7 +7635,7 @@ LocateGeKeyInList(qpa, int nBLR, Word_t* pwKey)
     Word_t wKey = *pwKey;
   #ifdef LOCATE_GE_USING_EQ_M1
     int nPos;
-    if ((wKey & MSK(nBLR)) == 0) {
+    if ((wKey & NZ_MSK(nBLR)) == 0) {
         nPos = 0;
     } else {
         int nPopCnt; (void)nPopCnt;
