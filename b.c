@@ -10879,6 +10879,12 @@ Initialize(void)
     printf("# No QP_PLN\n");
 #endif //        QP_PLN else
 
+#ifdef           AUG_TYPE_64_LOOKUP
+    printf("#    AUG_TYPE_64_LOOKUP\n");
+#else //         AUG_TYPE_64_LOOKUP
+    printf("# No AUG_TYPE_64_LOOKUP\n");
+#endif //        AUG_TYPE_64_LOOKUP else
+
 #ifdef           AUGMENT_TYPE
     printf("#    AUGMENT_TYPE\n");
 #else //         AUGMENT_TYPE
