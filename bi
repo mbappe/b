@@ -58,8 +58,6 @@ if [ $? != 0 ]; then echo "non-zero exit"; exit 1; fi
 : \
 && DEFINES="-DDEBUG" make clean default \
 && ${REGRESS} \
-&& DEFINES="-DAUG_TYPE_64_LOOKUP -DDEBUG" make clean default \
-&& ${REGRESS} \
 && DEFINES="-DNO_USE_BM_SW -DDEBUG" make clean default \
 && ${REGRESS} \
 && DEFINES="-DNO_EMBED_KEYS -DDEBUG" make clean default \
@@ -330,6 +328,10 @@ done
 && BPW=32 CC=$CCB WFLAGSA=$WFLAGSA_B \
     DEFINES="-DALL_SKIP_TO_SW_CASES -DDEBUG_ALL -DFULL_DUMP" \
     make clean default \
+&& DEFINES="-DAUG_TYPE_64_LOOKUP -DDEBUG" make clean default \
+&& ${REGRESS} \
+&& DEFINES="-DAUG_TYPE_64_LOOKUP -DBL_SPECIFIC_LIST -DDEBUG" make clean default \
+&& ${REGRESS} \
 && :
 if [ $? != 0 ]; then echo "non-zero exit"; exit 1; fi
 
