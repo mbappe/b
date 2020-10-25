@@ -252,6 +252,17 @@
   #endif // #ifndef NO_PF_EK_XV_2
 #endif // EK_XV
 
+#ifdef DOUBLE_DOWN
+  // Does XX_LISTS without DOUBLE_DOWN make sense?
+  // I don't think we ever get a shared list unless DOUBLE_DOWN.
+  // USE_XX_SW can create XX_SW even without DOUBLE_DOWN.
+  #undef  XX_LISTS
+  #define XX_LISTS
+  // We haven't implemented the code to deal with shared lists in a bm switch.
+  #undef  NO_USE_BM_SW
+  #define NO_USE_BM_SW
+#endif // DOUBLE_DOWN
+
 #ifdef AUGMENT_TYPE_8_PLUS_4
   #if cnBitsPerDigit == 8
   #if cnBitsInD1 == 8 && cnBitsInD2 == 8 && cnBitsInD3 == 8
@@ -428,11 +439,6 @@
   #undef _LNX
   #define _LNX
 #endif // DSPLIT_16
-
-#ifdef DOUBLE_DOWN
-  #undef  XX_LISTS
-  #define XX_LISTS
-#endif // DOUBLE_DOWN
 
 #ifdef XX_LISTS
   #undef  SKIP_TO_XX_SW

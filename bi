@@ -219,6 +219,7 @@ done
 && ${REGRESS} \
 && DEFINES="-DDOUBLE_DOWN -DcnListPopCntMax64=64 -DDEBUG" make clean default \
 && ${REGRESS} \
+&& : "XX_LISTS without DOUBLE_DOWN doesn't result in any shared lists" \
 && DEFINES="-DXX_LISTS -DUSE_LOWER_XX_SW -DcnListPopCntMax64=64 -DDEBUG" \
    make clean default \
 && ${REGRESS} \

@@ -27,8 +27,8 @@ CountSw(qpa,
     qva; (void)nLinks;
     int nBLR = gnBLR(qy);
     assert(wRoot != WROOT_NULL);
-    DBGC(printf("\n# CountSw nType %d nBLR %d wIndex " OWx"\n",
-                nType, nBLR, wIndex));
+    DBGC(printf("\n# CountSw nBL %d nType %d nBLR %d wIndex %zd nLinks %d\n",
+                nBL, nType, nBLR, wIndex, nLinks));
     Word_t wPopCnt = 0;
     Word_t ww, wwLimit;
     Link_t *pLinks =
@@ -41,16 +41,23 @@ CountSw(qpa,
         pwr_pLinks((Switch_t *)pwr);
     (void)pLinks;
   #ifdef XX_LISTS
+    // nBL == cnBitsPerWord is the only time wIndex will be after the last
+    // link in the switch?
+    // What are we doing here?
     int nBW = gnBW(qy, nBLR);
     int nBLLoop = nBLR - nBW;
     Link_t *pLnLoop = &pLinks[wIndex];
-    Word_t* pwRootLoop = &pLnLoop->ln_wRoot; (void)pwRootLoop;
+    Word_t* pwRootLoop = &pLnLoop->ln_wRoot;
     Word_t wRootLoop = *pwRootLoop;
     int nTypeLoop = wr_nType(wRootLoop);
     if (nTypeLoop == T_XX_LIST) {
+        // What are we doing here?
         int nBLRLoop = gnListBLR(qyx(Loop));
+        assert(nBLRLoop > nBLLoop);
+        assert(nBLRLoop <= cnBitsPerWord);
+        // Why are we changing wIndex?
         wIndex &= ~MSK(nBLRLoop - nBLLoop);
-DBGC(printf("# CountSw wIndex " OWx"\n", wIndex));
+        DBGC(printf("# CountSw wIndex " OWx"\n", wIndex));
     }
   #endif // XX_LISTS
     if ((wIndex > (unsigned)nLinks / 2)

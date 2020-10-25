@@ -2903,16 +2903,25 @@ typedef struct {
 #endif // defined(OFFSET_IN_SW_BM_WORD) || defined(X_SW_BM_HALF_WORDS)
 
 #ifdef BM_IN_LINK
-  #define N_WORDS_SW_BM(_nBW) \
-      (int)DIV_UP_X(((Word_t)(1 + _SW_BM_HALF_WORDS) << cnBitsPerDigit), \
-                    cnBitsPerWord)
-#elif (cnBitsInD2 == cnBitsPerDigit) && (cnBitsInD3 == cnBitsInD2)
+  // Requires cnBitsInD2 <= cnBitsPerDigits && cnBitsInD3 <= cnBitsPerDigit.
   #define N_WORDS_SW_BM(_nBW) \
       (int)DIV_UP_X(((Word_t)(1 + _SW_BM_HALF_WORDS) << cnBitsPerDigit), \
                     cnBitsPerWord)
 #else // BM_IN_LINK
-  #define N_WORDS_SW_BM(_nBW) \
-      (int)DIV_UP_X(((Word_t)(1 + _SW_BM_HALF_WORDS) << (_nBW)), cnBitsPerWord)
+  #if (cnBitsInD2 == cnBitsPerDigit) && (cnBitsInD3 == cnBitsInD2)
+  #if cnBitsPerWord - cnBitsLeftAtDl3 % cnBitsPerDigit == 0
+    #define _CONSTANT_N_WORDS_SW_BM
+  #endif // cnBitsPerWord - cnBitsLeftAtDl3 % cnBitsPerDigit == 0
+  #endif // (cnBitsInD2 == cnBitsPerDigit) && (cnBitsInD3 == cnBitsInD2)
+  #ifdef _CONSTANT_N_WORDS_SW_BM
+    #define N_WORDS_SW_BM(_nBW) \
+        (int)DIV_UP_X(((Word_t)(1 + _SW_BM_HALF_WORDS) << cnBitsPerDigit), \
+                      cnBitsPerWord)
+  #else // _CONSTANT_N_WORDS_SW_BM
+    #define N_WORDS_SW_BM(_nBW) \
+        (int)DIV_UP_X(((Word_t)(1 + _SW_BM_HALF_WORDS) << (_nBW)), \
+                      cnBitsPerWord)
+  #endif // _CONSTANT_N_WORDS_SW_BM else
 #endif // else BM_IN_LINK
 
 // Default is -UPOP_WORD_IN_LINK.
@@ -8647,6 +8656,7 @@ GetPopCnt(qpa)
 // nBL applies to pLinks[x].
 // If (pLinks, nLinkCnt) contains links to any shared lists, then it must
 // contain all of the links to any shared lists it contains.
+// How do we ensure this constraint is respected?
 static Word_t
 CountSwLoop(qpa, int nLinkStart, int nLinkCnt)
 {
@@ -8679,7 +8689,8 @@ CountSwLoop(qpa, int nLinkStart, int nLinkCnt)
             int nBLRLoop = gnListBLR(qyx(Loop));
             int nXxCnt = EXP(nBLRLoop - nBLLoop);
             if ((i + nXxCnt <= nLinkCnt)) {
-                wPopCnt += PWR_xListPopCnt(&pLnLoop->ln_wRoot, pwrLoop, nBLRLoop);
+                wPopCnt
+                    += PWR_xListPopCnt(&pLnLoop->ln_wRoot, pwrLoop, nBLRLoop);
                 i += nXxCnt - 1;
                 continue;
             }

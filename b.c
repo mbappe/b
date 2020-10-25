@@ -7479,8 +7479,9 @@ insertAll:;
                 nBW, wKey));
     int nBLR = nBL - pwr_nBW(&wRoot);
     DBGI(printf("# nBL %d nBLOld %d nBLR %d\n", nBL, nBLOld, nBLR));
-    DBGI(printf("# Old tree:\n"));
-    DBGI(DumpX(qyax(Old), wKey));
+    // pwRootOld may be uninitialized if embedded bitmap goto insertAll.
+    //DBGI(printf("# Old tree:\n"));
+    //DBGI(DumpX(qyax(Old), wKey));
     for (int nIndex = 0; nIndex < (int)EXP(pwr_nBW(&wRoot)); nIndex++) {
         // We're calling InsertAll to insert from one of the links of
         // the old switch into the new switch.
@@ -14075,7 +14076,7 @@ if ((nBmWordNum == 0) && (wIndex == 0xff)) {
                 }
                 //A(0); // check -B17
                 wIndex
-                    = (nBmWordNum << (nBW - LOG(N_WORDS_SW_BM(nBW))))
+                    = nBmWordNum * (cnBitsPerWord >> _SW_BM_HALF_WORDS)
                         + nBmBitNum;
                 //wIndex &= MSK(nBLR);
                 DBGN(printf("T_BM_SW wIndex 0x%" _fw"x\n", wIndex));
@@ -14201,7 +14202,7 @@ BmSwGetNextIndex:
                 }
                 //A(0); // check -B17
                 wIndex
-                    = (nBmWordNum << (nBW - LOG(N_WORDS_SW_BM(nBW))))
+                    = nBmWordNum * (cnBitsPerWord >> _SW_BM_HALF_WORDS)
                         + nBmBitNum;
                 DBGN(printf("T_BM_SW wIndex 0x%" _fw"x\n", wIndex));
                 if (nBLR == cnBitsPerWord) {
