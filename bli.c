@@ -44,20 +44,25 @@ CountSw(qpa,
     // nBL == cnBitsPerWord is the only time wIndex will be after the last
     // link in the switch?
     // What are we doing here?
-    int nBW = gnBW(qy, nBLR);
-    int nBLLoop = nBLR - nBW;
-    Link_t *pLnLoop = &pLinks[wIndex];
-    Word_t* pwRootLoop = &pLnLoop->ln_wRoot;
-    Word_t wRootLoop = *pwRootLoop;
-    int nTypeLoop = wr_nType(wRootLoop);
-    if (nTypeLoop == T_XX_LIST) {
-        // What are we doing here?
-        int nBLRLoop = gnListBLR(qyx(Loop));
-        assert(nBLRLoop > nBLLoop);
-        assert(nBLRLoop <= cnBitsPerWord);
-        // Why are we changing wIndex?
-        wIndex &= ~MSK(nBLRLoop - nBLLoop);
-        DBGC(printf("# CountSw wIndex " OWx"\n", wIndex));
+    if (!tp_bIsBmSw(nType)) { // don't have to look for T_XX_SW in BmSw.
+        int nBW = gnBW(qy, nBLR);
+        assert((Word_t)nLinks == EXP(nBW));
+        assert(wIndex < (Word_t)nLinks);
+        int nBLLoop = nBLR - nBW;
+        Link_t *pLnLoop = &pLinks[wIndex]; // not to be counted
+        Word_t* pwRootLoop = &pLnLoop->ln_wRoot;
+        Word_t wRootLoop = *pwRootLoop;
+        int nTypeLoop = wr_nType(wRootLoop);
+        if (nTypeLoop == T_XX_LIST) {
+            // What are we doing here?
+            int nBLRLoop = gnListBLR(qyx(Loop)); // not to be counted
+            assert(nBLRLoop > nBLLoop);
+            assert(nBLRLoop <= cnBitsPerWord);
+            // Why are we changing wIndex?
+            // Back up to the beginning of this shared list.
+            wIndex &= ~MSK(nBLRLoop - nBLLoop);
+            DBGC(printf("# CountSw wIndex " OWx"\n", wIndex));
+        }
     }
   #endif // XX_LISTS
     if ((wIndex > (unsigned)nLinks / 2)
