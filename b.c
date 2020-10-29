@@ -10886,6 +10886,24 @@ Initialize(void)
     printf("# No AUG_TYPE_64_LOOKUP\n");
 #endif //        AUG_TYPE_64_LOOKUP else
 
+#ifdef           AUG_TYPE_32_LOOKUP
+    printf("#    AUG_TYPE_32_LOOKUP\n");
+#else //         AUG_TYPE_32_LOOKUP
+    printf("# No AUG_TYPE_32_LOOKUP\n");
+#endif //        AUG_TYPE_32_LOOKUP else
+
+#ifdef           AUG_TYPE_16_LOOKUP
+    printf("#    AUG_TYPE_16_LOOKUP\n");
+#else //         AUG_TYPE_16_LOOKUP
+    printf("# No AUG_TYPE_16_LOOKUP\n");
+#endif //        AUG_TYPE_16_LOOKUP else
+
+#ifdef           AUG_TYPE_8_LOOKUP
+    printf("#    AUG_TYPE_8_LOOKUP\n");
+#else //         AUG_TYPE_8_LOOKUP
+    printf("# No AUG_TYPE_8_LOOKUP\n");
+#endif //        AUG_TYPE_8_LOOKUP else
+
 #ifdef           AUGMENT_TYPE
     printf("#    AUGMENT_TYPE\n");
 #else //         AUGMENT_TYPE

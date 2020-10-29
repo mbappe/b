@@ -521,6 +521,12 @@ PrefixCheckAtLeaf(qp, Word_t wKey
     #define PREFIX_CHECK_AT_LEAF(qy, _wKey)  Success
 #endif // _DO_PREFIX_CHECK_AT_LEAF else
 
+#ifdef LOOKUP
+#ifdef _AUG_TYPE_X_LOOKUP
+    #define _AUG_TYPE_X
+#endif // _AUG_TYPE_X_LOOKUP
+#endif // LOOKUP
+
 #if defined(AUGMENT_TYPE_8) && defined(LOOKUP)
     #define _AUG_TYPE_8_SW
 #elif defined(AUG_TYPE_8_SW_NEXT) && defined(NEXT)
@@ -528,11 +534,9 @@ PrefixCheckAtLeaf(qp, Word_t wKey
 #endif // AUGMENT_TYPE_8 && LOOKUP elif AUG_TYPE_8_SW_NEXT && NEXT
 
 #if defined(AUGMENT_TYPE) && defined(LOOKUP) || defined(_AUG_TYPE_8_SW)
-  #define _AUG_TYPE
+    #define _AUG_TYPE
 #elif defined(AUG_TYPE_8_NEXT_EK_XV) && defined(NEXT)
-  #define _AUG_TYPE
-#elif defined(AUG_TYPE_64_LOOKUP) && defined(LOOKUP)
-  #define _AUG_TYPE
+    #define _AUG_TYPE
 #endif
 
 #ifdef _AUG_TYPE
@@ -541,7 +545,13 @@ static int
 AugTypeBits(int nBL)
 {
   #ifdef AUG_TYPE_64_LOOKUP
-    return (nBL - 1) << 4;
+    return (nBL << 4) - 16;
+  #elif defined(AUG_TYPE_32_LOOKUP)
+    return (nBL << 3) - 16;
+  #elif defined(AUG_TYPE_16_LOOKUP)
+    return (nBL << 2) - 16;
+  #elif defined(AUG_TYPE_8_LOOKUP)
+    return (nBL << 1) - 16;
   #elif defined(AUGMENT_TYPE_8_PLUS_4)
     // cnBitsPerDigit == 8
     //  4 <= cnBitsLeftAtDl1 <  12
@@ -570,15 +580,24 @@ AugTypeBits(int nBL)
   #endif // else AUGMENT_TYPE_8
 }
 
+#ifndef _AUG_TYPE_X
 static int
 AugTypeBitsInv(int nAugTypeBits)
 {
     ASSERT((nAugTypeBits & cnTypeMask) == 0);
   #ifdef AUG_TYPE_64_LOOKUP
-    return (nAugTypeBits >> 4) + 1;
+    return (nAugTypeBits + 16) >> 4; // nBL
+  #elif defined(AUG_TYPE_32_LOOKUP)
+    return (nAugTypeBits + 16) >> 3; // nBL
+  #elif defined(AUG_TYPE_16_LOOKUP)
+    return (nAugTypeBits + 16) >> 2; // nBL
+  #elif defined(AUG_TYPE_8_LOOKUP)
+    return (nAugTypeBits + 16) >> 1; // nBL
   #elif defined(AUGMENT_TYPE_8_PLUS_4)
-    // If cnBitsLeftAtDl3 < 24, then nAugTypeBits == 112 is ambiguous.
-    assert((cnBitsLeftAtDl3 >= 24) || (nAugTypeBits < 112));
+    // If cnBitsLeftAtDl3 + cnBitsPerDigit * 5 < cnBitsPerWord, then
+    // ((nAugTypeBits + 16) >> 1) == 64 is ambiguous.
+    assert((cnBitsLeftAtDl3 + cnBitsPerDigit * 5 >= cnBitsPerWord)
+        || (((nAugTypeBits + 16) >> 1) < 64));
       #if 1
     uint64_t x = ( (Word_t)cnBitsPerWord                         << 56)
                + (((Word_t)cnBitsLeftAtDl3 + cnBitsPerDigit * 4) << 48)
@@ -620,13 +639,14 @@ AugTypeBitsInv(int nAugTypeBits)
       #endif
   #endif // else AUGMENT_TYPE_8
 }
+#endif // !_AUG_TYPE_X
 
 #endif // _AUG_TYPE
 
 #if (cwListPopCntMax != 0)
   // _T_LIST indicates t_list label is needed.
   // Use _T_LIST to allow less than 80 character lines.
-  #if defined(AUG_TYPE_64_LOOKUP) && defined(LOOKUP) && !defined(BL_SPECIFIC_LIST)
+  #if defined(_AUG_TYPE_X) && !defined(BL_SPECIFIC_LIST)
      #define _T_LIST
   #elif cnBitsInD1 <= 8 || !defined(LOOKUP)
      #define _T_LIST
@@ -1299,6 +1319,30 @@ fastAgain:;
     case T_SKIP_TO_SWITCH + ((32 - 1) << 4):
     case T_SKIP_TO_SWITCH + ((24 - 1) << 4):
     case T_SKIP_TO_SWITCH + ((16 - 1) << 4):
+          #elif defined(AUG_TYPE_32_LOOKUP) && defined(LOOKUP)
+    case T_SKIP_TO_SWITCH + ((64 / 2 - 1) << 4):
+    case T_SKIP_TO_SWITCH + ((56 / 2 - 1) << 4):
+    case T_SKIP_TO_SWITCH + ((48 / 2 - 1) << 4):
+    case T_SKIP_TO_SWITCH + ((40 / 2 - 1) << 4):
+    case T_SKIP_TO_SWITCH + ((32 / 2 - 1) << 4):
+    case T_SKIP_TO_SWITCH + ((24 / 2 - 1) << 4):
+    case T_SKIP_TO_SWITCH + ((16 / 2 - 1) << 4):
+          #elif defined(AUG_TYPE_16_LOOKUP) && defined(LOOKUP)
+    case T_SKIP_TO_SWITCH + ((64 / 4 - 1) << 4):
+    case T_SKIP_TO_SWITCH + ((56 / 4 - 1) << 4):
+    case T_SKIP_TO_SWITCH + ((48 / 4 - 1) << 4):
+    case T_SKIP_TO_SWITCH + ((40 / 4 - 1) << 4):
+    case T_SKIP_TO_SWITCH + ((32 / 4 - 1) << 4):
+    case T_SKIP_TO_SWITCH + ((24 / 4 - 1) << 4):
+    case T_SKIP_TO_SWITCH + ((16 / 4 - 1) << 4):
+          #elif defined(AUG_TYPE_8_LOOKUP) && defined(LOOKUP)
+    case T_SKIP_TO_SWITCH + ((64 / 8 - 1) << 4):
+    case T_SKIP_TO_SWITCH + ((56 / 8 - 1) << 4):
+    case T_SKIP_TO_SWITCH + ((48 / 8 - 1) << 4):
+    case T_SKIP_TO_SWITCH + ((40 / 8 - 1) << 4):
+    case T_SKIP_TO_SWITCH + ((32 / 8 - 1) << 4):
+    case T_SKIP_TO_SWITCH + ((24 / 8 - 1) << 4):
+    case T_SKIP_TO_SWITCH + ((16 / 8 - 1) << 4):
           #else // AUG_TYPE_64_LOOKUP && LOOKUP
     CASES_AUG_TYPE(T_SKIP_TO_SWITCH)
     case T_SKIP_TO_SWITCH: // skip link to uncompressed switch
@@ -1322,6 +1366,30 @@ fastAgain:;
     case T_SWITCH + ((32 - 1) << 4): goto t_sw_32;
     case T_SWITCH + ((24 - 1) << 4): goto t_sw_24;
     case T_SWITCH + ((16 - 1) << 4): goto t_sw_16;
+      #elif defined(AUG_TYPE_32_LOOKUP) && defined(LOOKUP)
+    case T_SWITCH + ((64 / 2 - 1) << 4): goto t_sw_64;
+    case T_SWITCH + ((56 / 2 - 1) << 4): goto t_sw_56;
+    case T_SWITCH + ((48 / 2 - 1) << 4): goto t_sw_48;
+    case T_SWITCH + ((40 / 2 - 1) << 4): goto t_sw_40;
+    case T_SWITCH + ((32 / 2 - 1) << 4): goto t_sw_32;
+    case T_SWITCH + ((24 / 2 - 1) << 4): goto t_sw_24;
+    case T_SWITCH + ((16 / 2 - 1) << 4): goto t_sw_16;
+      #elif defined(AUG_TYPE_16_LOOKUP) && defined(LOOKUP)
+    case T_SWITCH + ((64 / 4 - 1) << 4): goto t_sw_64;
+    case T_SWITCH + ((56 / 4 - 1) << 4): goto t_sw_56;
+    case T_SWITCH + ((48 / 4 - 1) << 4): goto t_sw_48;
+    case T_SWITCH + ((40 / 4 - 1) << 4): goto t_sw_40;
+    case T_SWITCH + ((32 / 4 - 1) << 4): goto t_sw_32;
+    case T_SWITCH + ((24 / 4 - 1) << 4): goto t_sw_24;
+    case T_SWITCH + ((16 / 4 - 1) << 4): goto t_sw_16;
+      #elif defined(AUG_TYPE_8_LOOKUP) && defined(LOOKUP)
+    case T_SWITCH + ((64 / 8 - 1) << 4): goto t_sw_64;
+    case T_SWITCH + ((56 / 8 - 1) << 4): goto t_sw_56;
+    case T_SWITCH + ((48 / 8 - 1) << 4): goto t_sw_48;
+    case T_SWITCH + ((40 / 8 - 1) << 4): goto t_sw_40;
+    case T_SWITCH + ((32 / 8 - 1) << 4): goto t_sw_32;
+    case T_SWITCH + ((24 / 8 - 1) << 4): goto t_sw_24;
+    case T_SWITCH + ((16 / 8 - 1) << 4): goto t_sw_16;
       #else // AUG_TYPE_64_LOOKUP && LOOKUP
           #if defined(DEFAULT_SWITCH)
     default:
@@ -1370,6 +1438,30 @@ fastAgain:;
     case T_SKIP_TO_BM_SW + ((32 - 1) << 4):
     case T_SKIP_TO_BM_SW + ((24 - 1) << 4):
     case T_SKIP_TO_BM_SW + ((16 - 1) << 4):
+      #elif defined(AUG_TYPE_32_LOOKUP) && defined(LOOKUP)
+    case T_SKIP_TO_BM_SW + ((64 / 2 - 1) << 4):
+    case T_SKIP_TO_BM_SW + ((56 / 2 - 1) << 4):
+    case T_SKIP_TO_BM_SW + ((48 / 2 - 1) << 4):
+    case T_SKIP_TO_BM_SW + ((40 / 2 - 1) << 4):
+    case T_SKIP_TO_BM_SW + ((32 / 2 - 1) << 4):
+    case T_SKIP_TO_BM_SW + ((24 / 2 - 1) << 4):
+    case T_SKIP_TO_BM_SW + ((16 / 2 - 1) << 4):
+      #elif defined(AUG_TYPE_16_LOOKUP) && defined(LOOKUP)
+    case T_SKIP_TO_BM_SW + ((64 / 4 - 1) << 4):
+    case T_SKIP_TO_BM_SW + ((56 / 4 - 1) << 4):
+    case T_SKIP_TO_BM_SW + ((48 / 4 - 1) << 4):
+    case T_SKIP_TO_BM_SW + ((40 / 4 - 1) << 4):
+    case T_SKIP_TO_BM_SW + ((32 / 4 - 1) << 4):
+    case T_SKIP_TO_BM_SW + ((24 / 4 - 1) << 4):
+    case T_SKIP_TO_BM_SW + ((16 / 4 - 1) << 4):
+      #elif defined(AUG_TYPE_8_LOOKUP) && defined(LOOKUP)
+    case T_SKIP_TO_BM_SW + ((64 / 8 - 1) << 4):
+    case T_SKIP_TO_BM_SW + ((56 / 8 - 1) << 4):
+    case T_SKIP_TO_BM_SW + ((48 / 8 - 1) << 4):
+    case T_SKIP_TO_BM_SW + ((40 / 8 - 1) << 4):
+    case T_SKIP_TO_BM_SW + ((32 / 8 - 1) << 4):
+    case T_SKIP_TO_BM_SW + ((24 / 8 - 1) << 4):
+    case T_SKIP_TO_BM_SW + ((16 / 8 - 1) << 4):
       #else // AUG_TYPE_64_LOOKUP && LOOKUP
     CASES_AUG_TYPE(T_SKIP_TO_BM_SW)
     case T_SKIP_TO_BM_SW:
@@ -1392,6 +1484,30 @@ fastAgain:;
     case T_BM_SW + ((32 - 1) << 4):
     case T_BM_SW + ((24 - 1) << 4):
     case T_BM_SW + ((16 - 1) << 4):
+      #elif defined(AUG_TYPE_32_LOOKUP) && defined(LOOKUP)
+    case T_BM_SW + ((64 / 2 - 1) << 4):
+    case T_BM_SW + ((56 / 2 - 1) << 4):
+    case T_BM_SW + ((48 / 2 - 1) << 4):
+    case T_BM_SW + ((40 / 2 - 1) << 4):
+    case T_BM_SW + ((32 / 2 - 1) << 4):
+    case T_BM_SW + ((24 / 2 - 1) << 4):
+    case T_BM_SW + ((16 / 2 - 1) << 4):
+      #elif defined(AUG_TYPE_16_LOOKUP) && defined(LOOKUP)
+    case T_BM_SW + ((64 / 4 - 1) << 4):
+    case T_BM_SW + ((56 / 4 - 1) << 4):
+    case T_BM_SW + ((48 / 4 - 1) << 4):
+    case T_BM_SW + ((40 / 4 - 1) << 4):
+    case T_BM_SW + ((32 / 4 - 1) << 4):
+    case T_BM_SW + ((24 / 4 - 1) << 4):
+    case T_BM_SW + ((16 / 4 - 1) << 4):
+      #elif defined(AUG_TYPE_8_LOOKUP) && defined(LOOKUP)
+    case T_BM_SW + ((64 / 8 - 1) << 4):
+    case T_BM_SW + ((56 / 8 - 1) << 4):
+    case T_BM_SW + ((48 / 8 - 1) << 4):
+    case T_BM_SW + ((40 / 8 - 1) << 4):
+    case T_BM_SW + ((32 / 8 - 1) << 4):
+    case T_BM_SW + ((24 / 8 - 1) << 4):
+    case T_BM_SW + ((16 / 8 - 1) << 4):
       #else // AUG_TYPE_64_LOOKUP && LOOKUP
     CASES_AUG_TYPE(T_BM_SW)
     case T_BM_SW:
@@ -1429,6 +1545,33 @@ fastAgain:;
     case T_LIST + ((24 - 1) << 4): goto t_list_24;
     case T_LIST + ((16 - 1) << 4): goto t_list_16;
     case T_LIST + (( 8 - 1) << 4): goto t_list_8;
+      #elif defined(AUG_TYPE_32_LOOKUP) && defined(LOOKUP)
+    case T_LIST + ((64 / 2 - 1) << 4): goto t_list_64;
+    case T_LIST + ((56 / 2 - 1) << 4): goto t_list_56;
+    case T_LIST + ((48 / 2 - 1) << 4): goto t_list_48;
+    case T_LIST + ((40 / 2 - 1) << 4): goto t_list_40;
+    case T_LIST + ((32 / 2 - 1) << 4): goto t_list_32;
+    case T_LIST + ((24 / 2 - 1) << 4): goto t_list_24;
+    case T_LIST + ((16 / 2 - 1) << 4): goto t_list_16;
+    case T_LIST + (( 8 / 2 - 1) << 4): goto t_list_8;
+      #elif defined(AUG_TYPE_16_LOOKUP) && defined(LOOKUP)
+    case T_LIST + ((64 / 4 - 1) << 4): goto t_list_64;
+    case T_LIST + ((56 / 4 - 1) << 4): goto t_list_56;
+    case T_LIST + ((48 / 4 - 1) << 4): goto t_list_48;
+    case T_LIST + ((40 / 4 - 1) << 4): goto t_list_40;
+    case T_LIST + ((32 / 4 - 1) << 4): goto t_list_32;
+    case T_LIST + ((24 / 4 - 1) << 4): goto t_list_24;
+    case T_LIST + ((16 / 4 - 1) << 4): goto t_list_16;
+    case T_LIST + (( 8 / 4 - 1) << 4): goto t_list_8;
+      #elif defined(AUG_TYPE_8_LOOKUP) && defined(LOOKUP)
+    case T_LIST + ((64 / 8 - 1) << 4): goto t_list_64;
+    case T_LIST + ((56 / 8 - 1) << 4): goto t_list_56;
+    case T_LIST + ((48 / 8 - 1) << 4): goto t_list_48;
+    case T_LIST + ((40 / 8 - 1) << 4): goto t_list_40;
+    case T_LIST + ((32 / 8 - 1) << 4): goto t_list_32;
+    case T_LIST + ((24 / 8 - 1) << 4): goto t_list_24;
+    case T_LIST + ((16 / 8 - 1) << 4): goto t_list_16;
+    case T_LIST + (( 8 / 8 - 1) << 4): goto t_list_8;
       #else // AUG_TYPE_64_LOOKUP && LOOKUP
           #if defined(AUGMENT_TYPE_8) && defined(LOOKUP)
     case 112 + T_LIST: goto t_list112;
@@ -1448,7 +1591,7 @@ fastAgain:;
           #endif // NEXT
       #endif // AUG_TYPE_64_LOOKUP && LOOKUP
   #endif // (cwListPopCntMax != 0)
-  #if !defined(AUG_TYPE_64_LOOKUP) || !defined(LOOKUP)
+  #ifndef _AUG_TYPE_X
   #if defined(DEFAULT_LIST)
     default:
   #endif // DEFAULT_LIST
@@ -1460,7 +1603,7 @@ fastAgain:;
         goto t_list;
   #endif // _T_LIST
   #endif // (cwListPopCntMax != 0)
-  #endif // !AUG_TYPE_64_LOOKUP || !LOOKUP
+  #endif // !_AUG_TYPE_X
 
   #ifdef UA_PARALLEL_128
     CASES_AUG_TYPE(T_LIST_UA)
@@ -1489,6 +1632,30 @@ fastAgain:;
     case T_SKIP_TO_BITMAP + ((32 - 1) << 4):
     case T_SKIP_TO_BITMAP + ((24 - 1) << 4):
     case T_SKIP_TO_BITMAP + ((16 - 1) << 4):
+      #elif defined(AUG_TYPE_32_LOOKUP) && defined(LOOKUP)
+    case T_SKIP_TO_BITMAP + ((64 / 2 - 1) << 4):
+    case T_SKIP_TO_BITMAP + ((56 / 2 - 1) << 4):
+    case T_SKIP_TO_BITMAP + ((48 / 2 - 1) << 4):
+    case T_SKIP_TO_BITMAP + ((40 / 2 - 1) << 4):
+    case T_SKIP_TO_BITMAP + ((32 / 2 - 1) << 4):
+    case T_SKIP_TO_BITMAP + ((24 / 2 - 1) << 4):
+    case T_SKIP_TO_BITMAP + ((16 / 2 - 1) << 4):
+      #elif defined(AUG_TYPE_16_LOOKUP) && defined(LOOKUP)
+    case T_SKIP_TO_BITMAP + ((64 / 4 - 1) << 4):
+    case T_SKIP_TO_BITMAP + ((56 / 4 - 1) << 4):
+    case T_SKIP_TO_BITMAP + ((48 / 4 - 1) << 4):
+    case T_SKIP_TO_BITMAP + ((40 / 4 - 1) << 4):
+    case T_SKIP_TO_BITMAP + ((32 / 4 - 1) << 4):
+    case T_SKIP_TO_BITMAP + ((24 / 4 - 1) << 4):
+    case T_SKIP_TO_BITMAP + ((16 / 4 - 1) << 4):
+      #elif defined(AUG_TYPE_8_LOOKUP) && defined(LOOKUP)
+    case T_SKIP_TO_BITMAP + ((64 / 8 - 1) << 4):
+    case T_SKIP_TO_BITMAP + ((56 / 8 - 1) << 4):
+    case T_SKIP_TO_BITMAP + ((48 / 8 - 1) << 4):
+    case T_SKIP_TO_BITMAP + ((40 / 8 - 1) << 4):
+    case T_SKIP_TO_BITMAP + ((32 / 8 - 1) << 4):
+    case T_SKIP_TO_BITMAP + ((24 / 8 - 1) << 4):
+    case T_SKIP_TO_BITMAP + ((16 / 8 - 1) << 4):
       #else // AUG_TYPE_64_LOOKUP && LOOKUP
     CASES_AUG_TYPE(T_SKIP_TO_BITMAP)
     case T_SKIP_TO_BITMAP:
@@ -1502,6 +1669,12 @@ fastAgain:;
   #if cn2dBmMaxWpkPercent != 0
           #if defined(AUG_TYPE_64_LOOKUP) && defined(LOOKUP)
     case T_BITMAP + ((16 - 1) << 4):
+          #elif defined(AUG_TYPE_32_LOOKUP) && defined(LOOKUP)
+    case T_BITMAP + ((16 / 2 - 1) << 4):
+          #elif defined(AUG_TYPE_16_LOOKUP) && defined(LOOKUP)
+    case T_BITMAP + ((16 / 4 - 1) << 4):
+          #elif defined(AUG_TYPE_8_LOOKUP) && defined(LOOKUP)
+    case T_BITMAP + ((16 / 8 - 1) << 4):
           #else // AUG_TYPE_64_LOOKUP && LOOKUP
     case 16 + T_BITMAP:
           #endif // else AUG_TYPE_64_LOOKUP && LOOKUP
@@ -1519,6 +1692,12 @@ fastAgain:;
       #if !defined(DEFAULT_BITMAP) || defined(DEFAULT_AND_CASE)
           #if defined(AUG_TYPE_64_LOOKUP) && defined(LOOKUP)
     case T_BITMAP + ((8 - 1) << 4):
+          #elif defined(AUG_TYPE_32_LOOKUP) && defined(LOOKUP)
+    case T_BITMAP + ((8 / 2 - 1) << 4):
+          #elif defined(AUG_TYPE_16_LOOKUP) && defined(LOOKUP)
+    case T_BITMAP + ((8 / 4 - 1) << 4):
+          #elif defined(AUG_TYPE_8_LOOKUP) && defined(LOOKUP)
+    case T_BITMAP + ((8 / 8 - 1) << 4):
           #else // AUG_TYPE_64_LOOKUP && LOOKUP
     case T_BITMAP:
           #endif // else AUG_TYPE_64_LOOKUP && LOOKUP
@@ -1528,11 +1707,14 @@ fastAgain:;
   #endif // BITMAP
 
   #ifdef UNPACK_BM_VALUES
-      #ifdef LOOKUP
-    CASES_AUG_TYPE(T_UNPACKED_BM) // Why do we have this?
-      #endif // LOOKUP
       #if defined(AUG_TYPE_64_LOOKUP) && defined(LOOKUP)
     case T_UNPACKED_BM + ((8 - 1) << 4):
+      #elif defined(AUG_TYPE_32_LOOKUP) && defined(LOOKUP)
+    case T_UNPACKED_BM + ((8 / 2 - 1) << 4):
+      #elif defined(AUG_TYPE_16_LOOKUP) && defined(LOOKUP)
+    case T_UNPACKED_BM + ((8 / 4 - 1) << 4):
+      #elif defined(AUG_TYPE_8_LOOKUP) && defined(LOOKUP)
+    case T_UNPACKED_BM + ((8 / 8 - 1) << 4):
       #else // AUG_TYPE_64_LOOKUP && LOOKUP
     case T_UNPACKED_BM: // never exists for B_JUDY1
       #endif // else AUG_TYPE_64_LOOKUP && LOOKUP
@@ -1549,6 +1731,33 @@ fastAgain:;
     case T_EMBEDDED_KEYS + ((16 - 1) << 4): goto t_ek_16;
     case T_EMBEDDED_KEYS + (( 8 - 1) << 4): goto t_ek_8;
       #endif // AUG_TYPE_64_LOOKUP && LOOKUP
+      #if defined(AUG_TYPE_32_LOOKUP) && defined(LOOKUP)
+    case T_EMBEDDED_KEYS + ((56 / 2 - 1) << 4): goto t_ek_56;
+    case T_EMBEDDED_KEYS + ((48 / 2 - 1) << 4): goto t_ek_48;
+    case T_EMBEDDED_KEYS + ((40 / 2 - 1) << 4): goto t_ek_40;
+    case T_EMBEDDED_KEYS + ((32 / 2 - 1) << 4): goto t_ek_32;
+    case T_EMBEDDED_KEYS + ((24 / 2 - 1) << 4): goto t_ek_24;
+    case T_EMBEDDED_KEYS + ((16 / 2 - 1) << 4): goto t_ek_16;
+    case T_EMBEDDED_KEYS + (( 8 / 2 - 1) << 4): goto t_ek_8;
+      #endif // AUG_TYPE_32_LOOKUP && LOOKUP
+      #if defined(AUG_TYPE_16_LOOKUP) && defined(LOOKUP)
+    case T_EMBEDDED_KEYS + ((56 / 4 - 1) << 4): goto t_ek_56;
+    case T_EMBEDDED_KEYS + ((48 / 4 - 1) << 4): goto t_ek_48;
+    case T_EMBEDDED_KEYS + ((40 / 4 - 1) << 4): goto t_ek_40;
+    case T_EMBEDDED_KEYS + ((32 / 4 - 1) << 4): goto t_ek_32;
+    case T_EMBEDDED_KEYS + ((24 / 4 - 1) << 4): goto t_ek_24;
+    case T_EMBEDDED_KEYS + ((16 / 4 - 1) << 4): goto t_ek_16;
+    case T_EMBEDDED_KEYS + (( 8 / 4 - 1) << 4): goto t_ek_8;
+      #endif // AUG_TYPE_16_LOOKUP && LOOKUP
+      #if defined(AUG_TYPE_8_LOOKUP) && defined(LOOKUP)
+    case T_EMBEDDED_KEYS + ((56 / 8 - 1) << 4): goto t_ek_56;
+    case T_EMBEDDED_KEYS + ((48 / 8 - 1) << 4): goto t_ek_48;
+    case T_EMBEDDED_KEYS + ((40 / 8 - 1) << 4): goto t_ek_40;
+    case T_EMBEDDED_KEYS + ((32 / 8 - 1) << 4): goto t_ek_32;
+    case T_EMBEDDED_KEYS + ((24 / 8 - 1) << 4): goto t_ek_24;
+    case T_EMBEDDED_KEYS + ((16 / 8 - 1) << 4): goto t_ek_16;
+    case T_EMBEDDED_KEYS + (( 8 / 8 - 1) << 4): goto t_ek_8;
+      #endif // AUG_TYPE_8_LOOKUP && LOOKUP
       #ifdef _AUG_TYPE_8_EK
     case T_EMBEDDED_KEYS + 112: goto t_ek_112;
     case T_EMBEDDED_KEYS +  96: goto t_ek_96;
@@ -1559,11 +1768,11 @@ fastAgain:;
     case T_EMBEDDED_KEYS +  16: goto t_ek_16;
     case T_EMBEDDED_KEYS +   0: goto t_ek_0;
       #else // _AUG_TYPE_8_EK
-          #if !defined(AUG_TYPE_64_LOOKUP) || !defined(LOOKUP)
+          #ifndef _AUG_TYPE_X
     CASES_AUG_TYPE(T_EMBEDDED_KEYS)
     case T_EMBEDDED_KEYS:
         goto t_embedded_keys;
-          #endif // !AUG_TYPE_64_LOOKUP || !LOOKUP
+          #endif // !_AUG_TYPE_X
       #endif // _AUG_TYPE_8_EK else
   #endif // EMBED_KEYS
 
@@ -1577,6 +1786,33 @@ fastAgain:;
     case T_EK_XV + ((16 - 1) << 4): goto t_ek_xv_16;
     case T_EK_XV + (( 8 - 1) << 4): goto t_ek_xv_8;
       #endif // defined(AUG_TYPE_64_LOOKUP) && defined(LOOKUP)
+      #if defined(AUG_TYPE_32_LOOKUP) && defined(LOOKUP)
+    case T_EK_XV + ((56 / 2 - 1) << 4): goto t_ek_xv_56;
+    case T_EK_XV + ((48 / 2 - 1) << 4): goto t_ek_xv_48;
+    case T_EK_XV + ((40 / 2 - 1) << 4): goto t_ek_xv_40;
+    case T_EK_XV + ((32 / 2 - 1) << 4): goto t_ek_xv_32;
+    case T_EK_XV + ((24 / 2 - 1) << 4): goto t_ek_xv_24;
+    case T_EK_XV + ((16 / 2 - 1) << 4): goto t_ek_xv_16;
+    case T_EK_XV + (( 8 / 2 - 1) << 4): goto t_ek_xv_8;
+      #endif // defined(AUG_TYPE_32_LOOKUP) && defined(LOOKUP)
+      #if defined(AUG_TYPE_16_LOOKUP) && defined(LOOKUP)
+    case T_EK_XV + ((56 / 4 - 1) << 4): goto t_ek_xv_56;
+    case T_EK_XV + ((48 / 4 - 1) << 4): goto t_ek_xv_48;
+    case T_EK_XV + ((40 / 4 - 1) << 4): goto t_ek_xv_40;
+    case T_EK_XV + ((32 / 4 - 1) << 4): goto t_ek_xv_32;
+    case T_EK_XV + ((24 / 4 - 1) << 4): goto t_ek_xv_24;
+    case T_EK_XV + ((16 / 4 - 1) << 4): goto t_ek_xv_16;
+    case T_EK_XV + (( 8 / 4 - 1) << 4): goto t_ek_xv_8;
+      #endif // defined(AUG_TYPE_16_LOOKUP) && defined(LOOKUP)
+      #if defined(AUG_TYPE_8_LOOKUP) && defined(LOOKUP)
+    case T_EK_XV + ((56 / 8 - 1) << 4): goto t_ek_xv_56;
+    case T_EK_XV + ((48 / 8 - 1) << 4): goto t_ek_xv_48;
+    case T_EK_XV + ((40 / 8 - 1) << 4): goto t_ek_xv_40;
+    case T_EK_XV + ((32 / 8 - 1) << 4): goto t_ek_xv_32;
+    case T_EK_XV + ((24 / 8 - 1) << 4): goto t_ek_xv_24;
+    case T_EK_XV + ((16 / 8 - 1) << 4): goto t_ek_xv_16;
+    case T_EK_XV + (( 8 / 8 - 1) << 4): goto t_ek_xv_8;
+      #endif // defined(AUG_TYPE_8_LOOKUP) && defined(LOOKUP)
       #if defined(AUG_TYPE_8_NEXT_EK_XV) && defined(NEXT)
     case T_EK_XV + 112: goto t_ek_xv_plus_112;
     case T_EK_XV +  96: goto t_ek_xv_plus_96;
@@ -1587,11 +1823,11 @@ fastAgain:;
     case T_EK_XV +  16: goto t_ek_xv_plus_16;
     case T_EK_XV +   0: goto t_ek_xv_plus_0;
       #else // AUG_TYPE_8_NEXT_EK_XV && NEXT
-          #if !defined(AUG_TYPE_64_LOOKUP) || !defined(LOOKUP)
+          #ifndef _AUG_TYPE_X
     CASES_AUG_TYPE(T_EK_XV)
     case T_EK_XV:
         goto t_ek_xv;
-          #endif // !AUG_TYPE_64_LOOKUP || !LOOKUP
+          #endif // !_AUG_TYPE_X
       #endif // AUG_TYPE_8_NEXT_EK_XV && NEXT else
   #endif // EK_XV
 
@@ -1784,7 +2020,7 @@ t_skip_to_xx_sw:
     } // end of t_skip_to_xx_sw
   #endif // SKIP_TO_XX_SW
 
-  #if defined(AUG_TYPE_64_LOOKUP) && defined(LOOKUP)
+  #ifdef _AUG_TYPE_X
 t_sw_64:
     {
         if (WROOT_IS_NULL(T_SWITCH, wRoot)) { goto break_from_main_switch; }
@@ -1946,9 +2182,9 @@ t_sw_16:
         nAugTypeBits = AugTypeBits(nBL);
         goto againAugType;
     } // end of t_sw_16
-  #endif // AUG_TYPE_64_LOOKUP && LOOKUP
+  #endif // _AUG_TYPE_X
 
-  #ifndef AUG_TYPE_64_LOOKUP
+  #ifndef _AUG_TYPE_X_LOOKUP
   #ifdef _AUG_TYPE_8_SW
 
 t_sw_plus_112:
@@ -2247,7 +2483,7 @@ t_sw_plus_16:
     } // end of t_sw_plus_16
 
   #endif // AUGMENT_TYPE && LOOKUP || _AUG_TYPE_8_SW
-  #endif // !AUG_TYPE_64_LOOKUP
+  #endif // !AUG_TYPE_X_LOOKUP
 
   // #ifdef SWITCH
   #if defined(SKIP_LINKS) || defined(CODE_XX_SW)
@@ -2882,70 +3118,28 @@ t_skip_to_list:
   #endif // SKIP_TO_LIST
 
   #if (cwListPopCntMax != 0)
-  #ifdef LOOKUP
-  #ifdef BL_SPECIFIC_LIST
-  #ifdef AUG_TYPE_64_LOOKUP
-t_list_64: // nBL == 64
-  #endif // AUG_TYPE_64_LOOKUP
-  #ifdef AUGMENT_TYPE_8
-t_list112: // nDL == 8
-  #endif // AUGMENT_TYPE_8
-  #if defined(AUG_TYPE_64_LOOKUP) || defined(AUGMENT_TYPE_8)
-    {
-      #ifdef AUG_TYPE_64_LOOKUP
-        nBLR = nBL = 64;
-      #endif // AUG_TYPE_64_LOOKUP
-      #ifdef AUGMENT_TYPE_8
-      #if cnBitsLeftAtDl3 >= 24
-        nBLR = nBL = AugTypeBitsInv(112);
-      #endif // cnBitsLeftAtDl3 >= 24
-      #endif // AUGMENT_TYPE_8
-        if (WROOT_IS_NULL(T_LIST, wRoot)
-      #ifdef AUGMENT_TYPE_8
-            || (PREFIX_CHECK_AT_LEAF(qy, wKey) != Success)
-      #endif // AUGMENT_TYPE_8
-            || ((nPos = SEARCH_LIST(Word, qya, nBLR, wKey)) < 0))
-        {
-            goto break_from_main_switch;
-        }
-        SMETRICS_POP(j__SearchPopulation += gnListPopCnt(qy, nBLR));
-        SMETRICS_GET(++j__GetCalls);
-        return BJL(&gpwValues(qy)[~nPos]) BJ1(KeyFound);
-    } // end of t_list112
-  #endif // AUG_TYPE_64_LOOKUP || AUGMENT_TYPE_8
-  #endif // BL_SPECIFIC_LIST
-  #endif // LOOKUP
+#define T_LIST_LOOKUP_GUTS(_nBL, pLn, pwRoot, pwLnX, _wKey, _wRoot, _suffix) \
+{ \
+    nBLR = nBL = _nBL; \
+    int nPos; /* nPos is not used after break_from_main_switch for LOOKUP */ \
+    if (WROOT_IS_NULL(T_LIST, _wRoot) \
+        || (PREFIX_CHECK_AT_LEAF(qy, _wKey) != Success) \
+        || ((nPos = SEARCH_LIST(_suffix, qya, nBLR, _wKey)) < 0)) \
+    { \
+        goto break_from_main_switch; \
+    } \
+    SMETRICS_POP(j__SearchPopulation += gnListPopCnt(qy, nBLR)); \
+    SMETRICS_GET(++j__GetCalls); \
+    return BJL(&gpwValues(qy)[~nPos]) BJ1(KeyFound); \
+}
   #endif // (cwListPopCntMax != 0)
 
   #if (cwListPopCntMax != 0)
-  #if defined(AUG_TYPE_64_LOOKUP) && defined(LOOKUP)
+  #ifdef _AUG_TYPE_X
   #ifdef BL_SPECIFIC_LIST
-t_list_56: // nBL == 56
-    {
-        nBLR = nBL = 56;
-        if (WROOT_IS_NULL(T_LIST, wRoot)
-            || (PREFIX_CHECK_AT_LEAF(qy, wKey) != Success)
-            || ((nPos = SEARCH_LIST(Word, qya, nBLR, wKey)) < 0))
-        {
-            goto break_from_main_switch;
-        }
-        SMETRICS_POP(j__SearchPopulation += gnListPopCnt(qy, nBLR));
-        SMETRICS_GET(++j__GetCalls);
-        return BJL(&gpwValues(qy)[~nPos]) BJ1(KeyFound);
-    } // end of t_list_56
-t_list_48: // nBL == 48
-    {
-        nBLR = nBL = 48;
-        if (WROOT_IS_NULL(T_LIST, wRoot)
-            || (PREFIX_CHECK_AT_LEAF(qy, wKey) != Success)
-            || ((nPos = SEARCH_LIST(Word, qya, nBLR, wKey)) < 0))
-        {
-            goto break_from_main_switch;
-        }
-        SMETRICS_POP(j__SearchPopulation += gnListPopCnt(qy, nBLR));
-        SMETRICS_GET(++j__GetCalls);
-        return BJL(&gpwValues(qy)[~nPos]) BJ1(KeyFound);
-    } // end of t_list_48
+t_list_64: T_LIST_LOOKUP_GUTS(64, pLn, pwRoot, pwLnX, wKey, wRoot, Word);
+t_list_56: T_LIST_LOOKUP_GUTS(56, pLn, pwRoot, pwLnX, wKey, wRoot, Word);
+t_list_48: T_LIST_LOOKUP_GUTS(48, pLn, pwRoot, pwLnX, wKey, wRoot, Word);
   #else // BL_SPECIFIC_LIST
 t_list_64:
 t_list_56:
@@ -2956,91 +3150,50 @@ t_list_40: // nBL == 40
   #ifdef BL_SPECIFIC_LIST
         nBLR = nBL = 40;
   #endif // BL_SPECIFIC_LIST
-        if (WROOT_IS_NULL(T_LIST, wRoot)
-            || (PREFIX_CHECK_AT_LEAF(qy, wKey) != Success)
-            || ((nPos = SEARCH_LIST(Word, qya, nBLR, wKey)) < 0))
-        {
-            goto break_from_main_switch;
-        }
-        SMETRICS_POP(j__SearchPopulation += gnListPopCnt(qy, nBLR));
-        SMETRICS_GET(++j__GetCalls);
-        return BJL(&gpwValues(qy)[~nPos]) BJ1(KeyFound);
-    } // end of t_list_40
-t_list_32: // nBL == 32
+        T_LIST_LOOKUP_GUTS(nBL, pLn, pwRoot, pwLnX, wKey, wRoot, Word);
+    }
   #ifdef BL_SPECIFIC_LIST
-    {
-        nBLR = nBL = 32;
-        if (WROOT_IS_NULL(T_LIST, wRoot)
-            || (PREFIX_CHECK_AT_LEAF(qy, wKey) != Success)
-            || ((nPos = SEARCH_LIST(32, qya, nBLR, wKey)) < 0))
-        {
-            goto break_from_main_switch;
-        }
-        SMETRICS_POP(j__SearchPopulation += gnListPopCnt(qy, nBLR));
-        SMETRICS_GET(++j__GetCalls);
-        return BJL(&gpwValues(qy)[~nPos]) BJ1(KeyFound);
-    } // end of t_list_32
-  #endif // BL_SPECIFIC_LIST
+t_list_32: T_LIST_LOOKUP_GUTS(32, pLn, pwRoot, pwLnX, wKey, wRoot, 32);
+  #else // BL_SPECIFIC_LIST
+t_list_32: // nBL == 32
+  #endif // BL_SPECIFIC_LIST else
 t_list_24: // nBL == 24
     {
   #ifdef BL_SPECIFIC_LIST
         nBLR = nBL = 24;
   #endif // BL_SPECIFIC_LIST else
-        if (WROOT_IS_NULL(T_LIST, wRoot)
-            || (PREFIX_CHECK_AT_LEAF(qy, wKey) != Success)
-            || ((nPos = SEARCH_LIST(32, qya, nBLR, wKey)) < 0))
-        {
-            goto break_from_main_switch;
-        }
-        SMETRICS_POP(j__SearchPopulation += gnListPopCnt(qy, nBLR));
-        SMETRICS_GET(++j__GetCalls);
-        return BJL(&gpwValues(qy)[~nPos]) BJ1(KeyFound);
-    } // end of t_list_24
-t_list_16: // nBL == 16
-    {
-        nBLR = nBL = 16;
-        if (WROOT_IS_NULL(T_LIST, wRoot)
-            || (PREFIX_CHECK_AT_LEAF(qy, wKey) != Success)
-            || ((nPos = SEARCH_LIST(16, qya, nBLR, wKey)) < 0))
-        {
-            goto break_from_main_switch;
-        }
-        SMETRICS_POP(j__SearchPopulation += gnListPopCnt(qy, nBLR));
-        SMETRICS_GET(++j__GetCalls);
-        return BJL(&gpwValues(qy)[~nPos]) BJ1(KeyFound);
-    } // end of t_list_16
-t_list_8: // nBL == 8
-    {
-        nBLR = nBL = 8;
-        if (WROOT_IS_NULL(T_LIST, wRoot)
-            || (PREFIX_CHECK_AT_LEAF(qy, wKey) != Success)
-            || ((nPos = SEARCH_LIST(8, qya, nBLR, wKey)) < 0))
-        {
-            goto break_from_main_switch;
-        }
-        SMETRICS_POP(j__SearchPopulation += gnListPopCnt(qy, nBLR));
-        SMETRICS_GET(++j__GetCalls);
-        return BJL(&gpwValues(qy)[~nPos]) BJ1(KeyFound);
-    } // end of t_list_8
-  #endif // AUG_TYPE_64_LOOKUP && LOOKUP
+        T_LIST_LOOKUP_GUTS(nBL, pLn, pwRoot, pwLnX, wKey, wRoot, 32);
+    }
+t_list_16: T_LIST_LOOKUP_GUTS(16, pLn, pwRoot, pwLnX, wKey, wRoot, 16);
+t_list_8: T_LIST_LOOKUP_GUTS(8, pLn, pwRoot, pwLnX, wKey, wRoot, /*suffix*/ 8);
+  #endif // _AUG_TYPE_X
   #endif // (cwListPopCntMax != 0)
 
-  #ifndef AUG_TYPE_64_LOOKUP
+  #if (cwListPopCntMax != 0)
+  #ifdef AUGMENT_TYPE_8
+  #ifdef LOOKUP
+  #ifdef BL_SPECIFIC_LIST
+t_list112: // nDL == 8
+    {
+      #if cnBitsLeftAtDl3 >= 24 // For AUGMENT_TYPE_8_PLUS_4?
+        assert(nBL == AugTypeBitsInv(112)); assert(nBLR == nBL);
+        nBLR = nBL = AugTypeBitsInv(112);
+      #endif // cnBitsLeftAtDl3 >= 24
+        T_LIST_LOOKUP_GUTS(nBL, pLn, pwRoot, pwLnX, wKey, wRoot, Word);
+    } // end of t_list112
+  #endif // BL_SPECIFIC_LIST
+  #endif // LOOKUP
+  #endif // AUGMENT_TYPE_8
+  #endif // (cwListPopCntMax != 0)
+
+  #ifndef _AUG_TYPE_X
   #if (cwListPopCntMax != 0)
   #if defined(AUGMENT_TYPE_8) && defined(LOOKUP)
   #ifdef BL_SPECIFIC_LIST
 t_list96: // nDL == 7
     {
         nBLR = nBL = AugTypeBitsInv(96);
-        if (WROOT_IS_NULL(T_LIST, wRoot)
-            || (PREFIX_CHECK_AT_LEAF(qy, wKey) != Success)
-            || ((nPos = SEARCH_LIST(Word, qya, nBLR, wKey)) < 0))
-        {
-            goto break_from_main_switch;
-        }
-        SMETRICS_POP(j__SearchPopulation += gnListPopCnt(qy, nBLR));
-        SMETRICS_GET(++j__GetCalls);
-        return BJL(&gpwValues(qy)[~nPos]) BJ1(KeyFound);
+        T_LIST_LOOKUP_GUTS(nBL, pLn, pwRoot, pwLnX, wKey, wRoot, Word);
     } // end of t_list96
   #endif // BL_SPECIFIC_LIST
   #endif // AUGMENT_TYPE_8 && LOOKUP
@@ -3052,15 +3205,7 @@ t_list96: // nDL == 7
 t_list80: // nDL == 6
     {
         nBLR = nBL = AugTypeBitsInv(80);
-        if (WROOT_IS_NULL(T_LIST, wRoot)
-            || (PREFIX_CHECK_AT_LEAF(qy, wKey) != Success)
-            || ((nPos = SEARCH_LIST(Word, qya, nBLR, wKey)) < 0))
-        {
-            goto break_from_main_switch;
-        }
-        SMETRICS_POP(j__SearchPopulation += gnListPopCnt(qy, nBLR));
-        SMETRICS_GET(++j__GetCalls);
-        return BJL(&gpwValues(qy)[~nPos]) BJ1(KeyFound);
+        T_LIST_LOOKUP_GUTS(nBL, pLn, pwRoot, pwLnX, wKey, wRoot, Word);
     } // end of t_list80
   #endif // BL_SPECIFIC_LIST
   #endif // AUGMENT_TYPE_8 && LOOKUP
@@ -3085,15 +3230,7 @@ t_list48: // nBL > 32
       #ifdef BL_SPECIFIC_LIST
         nBLR = nBL = AugTypeBitsInv(64);
       #endif // BL_SPECIFIC_LIST
-        if (WROOT_IS_NULL(T_LIST, wRoot)
-            || (PREFIX_CHECK_AT_LEAF(qy, wKey) != Success)
-            || ((nPos = SEARCH_LIST(Word, qya, nBLR, wKey)) < 0))
-        {
-            goto break_from_main_switch;
-        }
-        SMETRICS_POP(j__SearchPopulation += gnListPopCnt(qy, nBLR));
-        SMETRICS_GET(++j__GetCalls);
-        return BJL(&gpwValues(qy)[~nPos]) BJ1(KeyFound);
+        T_LIST_LOOKUP_GUTS(nBL, pLn, pwRoot, pwLnX, wKey, wRoot, Word);
     } // end of t_list64
   #endif // AUGMENT_TYPE && LOOKUP
   #endif // (cwListPopCntMax != 0)
@@ -3104,20 +3241,11 @@ t_list48: // nBL > 32
 t_list48: // nDL == 4
     {
         nBLR = nBL = AugTypeBitsInv(48);
-        if (WROOT_IS_NULL(T_LIST, wRoot)
-            || (PREFIX_CHECK_AT_LEAF(qy, wKey) != Success)
-              #if defined(AUGMENT_TYPE_8) && cnBitsLeftAtDl3 > 24
-            || ((nPos = SEARCH_LIST(Word, qya, nBLR, wKey)) < 0)
-              #else // AUGMENT_TYPE_8 && cnBitsLeftAtDl3 > 24
-            || ((nPos = SEARCH_LIST(32, qya, nBLR, wKey)) < 0)
-              #endif // else AUGMENT_TYPE_8 && cnBitsLeftAtDl3 > 24
-            )
-        {
-            goto break_from_main_switch;
-        }
-        SMETRICS_POP(j__SearchPopulation += gnListPopCnt(qy, nBLR));
-        SMETRICS_GET(++j__GetCalls);
-        return BJL(&gpwValues(qy)[~nPos]) BJ1(KeyFound);
+      #if defined(AUGMENT_TYPE_8) && cnBitsLeftAtDl3 > 24
+        T_LIST_LOOKUP_GUTS(nBL, pLn, pwRoot, pwLnX, wKey, wRoot, Word);
+      #else // AUGMENT_TYPE_8 && cnBitsLeftAtDl3 > 24
+        T_LIST_LOOKUP_GUTS(nBL, pLn, pwRoot, pwLnX, wKey, wRoot, 32);
+      #endif // else AUGMENT_TYPE_8 && cnBitsLeftAtDl3 > 24
     } // end of t_list48
   #endif // BL_SPECIFIC_LIST
   #endif // AUGMENT_TYPE_8 && LOOKUP
@@ -3143,27 +3271,18 @@ t_list16: // nDL == 2
         assert(nBLR == AugTypeBitsInv(32));
         nBLR = nBL = AugTypeBitsInv(32);
       #endif // BL_SPECIFIC_LIST
-        if (WROOT_IS_NULL(T_LIST, wRoot)
-            || (PREFIX_CHECK_AT_LEAF(qy, wKey) != Success)
-            || ((nPos = SEARCH_LIST(32, qya, nBLR, wKey)) < 0))
-        {
-            goto break_from_main_switch;
-        }
-        SMETRICS_POP(j__SearchPopulation += gnListPopCnt(qy, nBLR));
-        SMETRICS_GET(++j__GetCalls);
-        return BJL(&gpwValues(qy)[~nPos]) BJ1(KeyFound);
+        T_LIST_LOOKUP_GUTS(nBL, pLn, pwRoot, pwLnX, wKey, wRoot, 32);
     } // end of case t_list32
   #endif // AUGMENT_TYPE && LOOKUP
   #endif // (cwListPopCntMax != 0)
 
   #if (cwListPopCntMax != 0)
   #if defined(AUGMENT_TYPE) && defined(LOOKUP)
-      #ifdef AUG_TYPE_64_LOOKUP
-      #elif !defined(AUGMENT_TYPE_8)
+      #ifndef AUGMENT_TYPE_8
 t_list16:
       #elif defined(BL_SPECIFIC_LIST) || cnBitsLeftAtDl2 <= 16
 t_list16:
-      #endif // !AUG_TYPE_8 elif BL_SPECIFIC_LIST || cnBitsLeftAtDl2 <= 16
+      #endif // !AUGMENT_TYPE_8 elif BL_SPECIFIC_LIST || cnBitsLeftAtDl2 <= 16
     //     nDL ==  2 for  AUGMENT_TYPE_8
     // 8 < nBL <= 16 for !AUGMENT_TYPE_8
   #if defined(AUGMENT_TYPE_8) && !defined(BL_SPECIFIC_LIST) && cnBitsInD1 > 8
@@ -3189,24 +3308,15 @@ t_list: // nDL == 1
         // Not a bug. Just perf issue to flag.
         // nBLR is already set correctly. Just not a constant.
       #endif
-        if (WROOT_IS_NULL(T_LIST, wRoot)
-            || (PREFIX_CHECK_AT_LEAF(qy, wKey) != Success)
-                  #if defined(BL_SPECIFIC_LIST) && cnBitsLeftAtDl2 > 16
-            || ((nPos = SEARCH_LIST(32, qya, nBLR, wKey)) < 0)
-                  #else // BL_SPECIFIC_LIST && cnBitsLeftAtDl2 > 16
-            || ((nPos = SEARCH_LIST(16, qya, nBLR, wKey)) < 0)
-                  #endif // BL_SPECIFIC_LIST && cnBitsLeftAtDl2 > 16 else
-            )
-        {
-            goto break_from_main_switch;
-        }
-        SMETRICS_POP(j__SearchPopulation += gnListPopCnt(qy, nBLR));
-        SMETRICS_GET(++j__GetCalls);
-        return BJL(&gpwValues(qy)[~nPos]) BJ1(KeyFound);
+      #if defined(BL_SPECIFIC_LIST) && cnBitsLeftAtDl2 > 16
+        T_LIST_LOOKUP_GUTS(nBL, pLn, pwRoot, pwLnX, wKey, wRoot, 32);
+      #else // BL_SPECIFIC_LIST && cnBitsLeftAtDl2 > 16
+        T_LIST_LOOKUP_GUTS(nBL, pLn, pwRoot, pwLnX, wKey, wRoot, 16);
+      #endif // BL_SPECIFIC_LIST && cnBitsLeftAtDl2 > 16 else
     } // end of t_list16
   #endif // AUGMENT_TYPE && LOOKUP
   #endif // (cwListPopCntMax != 0)
-  #endif // !AUG_TYPE_64_LOOKUP
+  #endif // !_AUG_TYPE_X
 
 // Notes on LOOKUP for AUGMENT_TYPE_8_PLUS_4 without BL_SPECIFIC_LIST.
 // We want at most 4 code blocks. nBL <= 8, 16, 32, 64.
@@ -3225,7 +3335,7 @@ t_list: // nDL == 1
 
   #if !defined(SEPARATE_T_NULL) || (cwListPopCntMax == 0)
 // t_list is not needed for AUGMENT_TYPE and LOOKUP if cnBitsInD1 > 8.
-  #ifdef AUG_TYPE_64_LOOKUP
+  #ifdef _AUG_TYPE_X_LOOKUP
       #ifndef LOOKUP
     #define _ONE_BYTE_T_LIST
       #endif // !LOOKUP
@@ -3235,7 +3345,7 @@ t_list: // nDL == 1
     #define _ONE_BYTE_T_LIST
   #elif defined(AUG_TYPE_8_SW_NEXT) && defined(NEXT)
     #define _ONE_BYTE_T_LIST
-  #endif // AUG_TYPE_64_LOOKUP && ...
+  #endif // _AUG_TYPE_X_LOOKUP elif ...
   #ifdef _ONE_BYTE_T_LIST
   #ifdef _T_LIST
 t_list:
@@ -3247,7 +3357,7 @@ t_list:
         // Establish a constant nBL and nBLR for the compiler, if possible.
       #ifdef AUGMENT_TYPE
       #ifdef LOOKUP
-          #if defined(AUG_TYPE_64_LOOKUP) && !defined(BL_SPECIFIC_LIST)
+          #if defined(_AUG_TYPE_X) && !defined(BL_SPECIFIC_LIST)
           #elif defined(AUGMENT_TYPE_8) || (cnBitsInD1 == 8)
         assert(nBLR == AugTypeBitsInv(0));
         nBLR = nBL = AugTypeBitsInv(0);
@@ -3260,7 +3370,7 @@ t_list:
           #else
         #pragma message("Can't use a constant nBL in t_list.")
         // nBLR is already set correctly. Just not a constant.
-          #endif // elif defined(AUGMENT_TYPE_8) || (cnBitsInD1 == 8)
+          #endif // _AUG_TYPE_X && BL_SPECIFIC_LIST elif ...
       #endif // LOOKUP
       #endif // AUGMENT_TYPE
 
@@ -3284,7 +3394,7 @@ t_list:
         // I wonder if we could incorporate them into the SEARCH_LIST macro.
       #ifdef LOOKUP
           #if defined(AUGMENT_TYPE) && !defined(AUGMENT_TYPE_NOT)
-              #ifdef AUG_TYPE_64_LOOKUP
+              #ifdef _AUG_TYPE_X
         if ((nPos = SEARCH_LIST(, qya, nBLR, wKey)) >= 0)
               #elif defined(AUGMENT_TYPE_8) && cnBitsInD1 > 8
         if ((nPos = SEARCH_LIST(16, qya, nBLR, wKey)) >= 0)
@@ -4403,7 +4513,7 @@ t_unpacked_bm:
     #define HANDLE_DL2(_nBL)
       #endif // NO_TYPE_IN_XX_SW || HANDLE_DL2_IN_EMBEDDED_KEYS
 
-      #if defined(AUG_TYPE_64_LOOKUP) && defined(LOOKUP)
+      #if defined(_AUG_TYPE_X) && defined(LOOKUP)
         #define _AUG_TYPE_EK
       #elif defined(_AUG_TYPE_8_EK) // AUG_TYPE_64_LOOKUP && LOOKUP
         #define _AUG_TYPE_EK
@@ -4445,7 +4555,7 @@ t_unpacked_bm:
         } \
         goto break_from_main_switch
 
-          #if defined(AUG_TYPE_64_LOOKUP) && defined(LOOKUP)
+          #ifdef _AUG_TYPE_X
 t_ek_56:  T_EK_X(56, wRoot, pwLnX, wKey);
 t_ek_48:  T_EK_X(48, wRoot, pwLnX, wKey);
 t_ek_40:  T_EK_X(40, wRoot, pwLnX, wKey);
@@ -4453,7 +4563,7 @@ t_ek_32:  T_EK_X(32, wRoot, pwLnX, wKey);
 t_ek_24:  T_EK_X(24, wRoot, pwLnX, wKey);
 t_ek_16:  T_EK_X(16, wRoot, pwLnX, wKey);
 t_ek_8:   T_EK_X( 8, wRoot, pwLnX, wKey);
-          #endif // defined(AUG_TYPE_64_LOOKUP) && defined(LOOKUP)
+          #endif // _AUG_TYPE_X
           #ifdef _AUG_TYPE_8_EK
 t_ek_112: assert(0);
 t_ek_96:  T_EK_X(56, wRoot, pwLnX, wKey);
@@ -4829,7 +4939,7 @@ foundIt:
 
   #ifdef EK_XV
 
-      #if defined(AUG_TYPE_64_LOOKUP) && defined(LOOKUP)
+      #ifdef _AUG_TYPE_X
 t_ek_xv_56:
 t_ek_xv_48:
 t_ek_xv_40:
@@ -4837,7 +4947,7 @@ t_ek_xv_32:
 t_ek_xv_24:
 t_ek_xv_16:
 t_ek_xv_8:
-      #endif // defined(AUG_TYPE_64_LOOKUP) && defined(LOOKUP)
+      #endif // _AUG_TYPE_X
       #if defined(AUG_TYPE_8_NEXT_EK_XV) && defined(NEXT)
 t_ek_xv_plus_112: assert(nBL == 64); goto t_ek_xv;
 t_ek_xv_plus_96: assert(nBL == 56); goto t_ek_xv;

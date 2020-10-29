@@ -25,9 +25,9 @@ REGRESS=${1:-"regress"}
 # Unfortunately, with clang, -Wno-initializer-overrides is cancelled out
 # by -Wextra if -Wextra occurs after -Wno_initializer-overrides on the
 # command line.
-CCA=clang
+CCA="clang -DNO_TEST_BY_COUNT"
 WFLAGSA_A=-Wno-initializer-overrides
-CCB=gcc
+CCB="gcc -DNO_TEST_BY_COUNT"
 WFLAGSA_B=-Wno-override-init
 CC=$CCA
 WFLAGSA=$WFLAGSA_A
@@ -332,6 +332,18 @@ done
 && DEFINES="-DAUG_TYPE_64_LOOKUP -DDEBUG" make clean default \
 && ${REGRESS} \
 && DEFINES="-DAUG_TYPE_64_LOOKUP -DBL_SPECIFIC_LIST -DDEBUG" make clean default \
+&& ${REGRESS} \
+&& DEFINES="-DAUG_TYPE_32_LOOKUP -DDEBUG" make clean default \
+&& ${REGRESS} \
+&& DEFINES="-DAUG_TYPE_32_LOOKUP -DBL_SPECIFIC_LIST -DDEBUG" make clean default \
+&& ${REGRESS} \
+&& DEFINES="-DAUG_TYPE_16_LOOKUP -DDEBUG" make clean default \
+&& ${REGRESS} \
+&& DEFINES="-DAUG_TYPE_16_LOOKUP -DBL_SPECIFIC_LIST -DDEBUG" make clean default \
+&& ${REGRESS} \
+&& DEFINES="-DAUG_TYPE_8_LOOKUP -DDEBUG" make clean default \
+&& ${REGRESS} \
+&& DEFINES="-DAUG_TYPE_8_LOOKUP -DBL_SPECIFIC_LIST -DDEBUG" make clean default \
 && ${REGRESS} \
 && :
 if [ $? != 0 ]; then echo "non-zero exit"; exit 1; fi

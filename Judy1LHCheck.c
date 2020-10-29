@@ -540,7 +540,7 @@ main(int argc, char *argv[])
             TestJudyCount(J1, JL, LowIndex, Delta);
         }
 #ifndef NO_TEST_NEXT // for turn-on testing
-        Word_t HighIndex; (void)HighIndex;
+        Word_t HighIndex;
 //      Test JLN, J1N
         HighIndex = TestJudyNext(J1, JL, (Word_t)0, TotalPop);
 
@@ -1042,6 +1042,13 @@ TestJudyCount(void *J1, void *JL, Word_t LowIndex, Word_t Elements)
         }
     }
 
+  #ifndef NO_TEST_BY_COUNT
+    // Number of keys preceding LowIndex.
+    // LowIndex is not counted in wLowCount.
+    Word_t wLowCount
+        = (LowIndex == 0) ? 0 : Judy1Count(J1, 0, LowIndex - 1, NULL);
+  #endif // !NO_TEST_BY_COUNT
+
     for (elm = 0; elm < Elements; elm++)
     {
         Count1 = Judy1Count(J1, LowIndex, TstIndex, NULL);
@@ -1075,6 +1082,35 @@ TestJudyCount(void *J1, void *JL, Word_t LowIndex, Word_t Elements)
             }
             FAILURE("Count at", elm);
         }
+
+  #ifndef NO_TEST_BY_COUNT
+        // LowIndex is counted in Count1 if it is present.
+        Word_t wByKey = LowIndex;
+        Word_t wByCnt = Count1;
+        int retBy = Judy1ByCount(J1, wByCnt, &wByKey, NULL);
+        if (retBy != 1) {
+            FAILURE("ByCount != -1; wByCnt", wByCnt);
+        }
+        if (wByKey != TstIndex) {
+            printf("LowIndex 0x%zx TstIndex 0x%zx Count1 %zd\n",
+                   LowIndex, TstIndex, Count1);
+            printf("wByCnt %zd wByKey 0x%zx\n", wByCnt, wByKey);
+            FAILURE("ByCount from LowIndex at elm", elm);
+        }
+        wByKey = 0;
+        wByCnt += wLowCount;
+        retBy = Judy1ByCount(J1, wByCnt, &wByKey, NULL);
+        if (retBy != 1) {
+            FAILURE("ByCount != -1; wByCnt", wByCnt);
+        }
+        if (wByKey != TstIndex) {
+            printf("wLowCount %zd\n", wLowCount);
+            printf("LowIndex 0x%zx TstIndex 0x%zx Count1 %zd\n",
+                   LowIndex, TstIndex, Count1);
+            printf("wByCnt %zd wByKey 0x%zx\n", wByCnt, wByKey);
+            FAILURE("ByCount from 0 at elm", elm);
+        }
+  #endif // !NO_TEST_BY_COUNT
 
         assert(TstIndexL == TstIndex);
         assert(TstIndex1 == TstIndex);

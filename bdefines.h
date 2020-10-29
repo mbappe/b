@@ -260,6 +260,21 @@
   #define XX_LISTS
 #endif // DOUBLE_DOWN
 
+#ifdef AUG_TYPE_64_LOOKUP
+  #define _AUG_TYPE_X_LOOKUP
+#elif defined(AUG_TYPE_32_LOOKUP)
+  #define _AUG_TYPE_X_LOOKUP
+#elif defined(AUG_TYPE_16_LOOKUP)
+  #define _AUG_TYPE_X_LOOKUP
+#elif defined(AUG_TYPE_8_LOOKUP)
+  #define _AUG_TYPE_X_LOOKUP
+#endif // AUG_TYPE_64_LOOKUP elif ...  AUG_TYPE_16_LOOKUP else
+
+#ifdef _AUG_TYPE_X_LOOKUP
+  #undef  AUGMENT_TYPE
+  #define AUGMENT_TYPE
+#endif // _AUG_TYPE_X_LOOKUP
+
 #ifdef AUGMENT_TYPE_8_PLUS_4
   #if cnBitsPerDigit == 8
   #if cnBitsInD1 == 8 && cnBitsInD2 == 8 && cnBitsInD3 == 8
@@ -289,7 +304,7 @@
 
 // Default is AUGMENT_TYPE_8.
 // It seems to shine for Time -LmeB31.
-#ifndef AUG_TYPE_64_LOOKUP
+#ifndef _AUG_TYPE_X_LOOKUP
 #if cnBitsPerDigit == 8
 #if cnBitsPerWord > 32
 #ifndef USE_XX_SW
@@ -317,7 +332,7 @@
 #endif // !USE_XX_SW
 #endif // cnBitsPerWord > 32
 #endif // cnBitsPerDigit == 8
-#endif // !AUG_TYPE_64_LOOKUP
+#endif // !_AUG_TYPE_X_LOOKUP
 
 #ifdef AUGMENT_TYPE_8
   #if cnBitsPerDigit != 8 || cnBitsPerWord <= 32
@@ -335,11 +350,6 @@
     #endif // cnBitsInD1 != 8 || cnBitsInD2 != 8 || cnBitsInD3 != 8
   #endif // !AUGMENT_TYPE_8_PLUS_4
 #endif // AUGMENT_TYPE_8
-
-#ifdef AUG_TYPE_64_LOOKUP
-  #undef  AUGMENT_TYPE
-  #define AUGMENT_TYPE
-#endif // AUG_TYPE_64_LOOKUP
 
 #ifdef AUGMENT_TYPE_8
   #undef  AUGMENT_TYPE
