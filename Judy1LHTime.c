@@ -5803,6 +5803,15 @@ TestJudyNextEmpty(void *J1, void *JL, PNewSeed_t PSeed, Word_t Elements)
                 {
                     Word_t J1KeyBefore = J1Key;
                     Rc = Judy1NextEmpty(J1, &J1Key, PJE0);
+                    // We know that J1KeyBefore is in the array.
+                    // If NextEmpty returns 0, then all of the keys greater
+                    // than J1KeyBefore are also in the array.
+                    // Therefore the number of keys in the array from
+                    // J1KeyBefore through -1 equals -1 - J1KeyBefore + 1;
+                    // which equals 0 - J1KeyBefore; which equals -J1KeyBefore.
+                    // If we did not know that J1KeyBefore is in the array
+                    // we would have to relax the test to:
+                    // Count(J1KeyBefore + 1, -1) == -J1KeyBefore - 1.
                     if ((Rc != 1)
                         && ((Judy1Count(J1, J1KeyBefore, -1, PJE0)
                                 != -J1KeyBefore)
@@ -5912,6 +5921,15 @@ TestJudyPrevEmpty(void *J1, void *JL, PNewSeed_t PSeed, Word_t Elements)
                 {
                     Word_t J1KeyBefore = J1Key;
                     Rc = Judy1PrevEmpty(J1, &J1Key, PJE0);
+                    // We know that J1KeyBefore is in the array.
+                    // If PrevEmpty returns 0, then all of the keys less than
+                    // J1KeyBefore are also in the array.
+                    // Therefore the number of keys in the array from
+                    // 0 throuh J1KeyBefore equals J1KeyBefore - 0 + 1;
+                    // which equals J1KeyBefore + 1.
+                    // If we did not know that J1KeyBefore is in the array
+                    // we would have to relax the test to:
+                    // Count(0, J1KeyBefore - 1) == J1KeyBefore.
                     if ((Rc != 1)
                         && (Judy1Count(J1, 0, J1KeyBefore, PJE0)
                             != (J1KeyBefore + 1)))
