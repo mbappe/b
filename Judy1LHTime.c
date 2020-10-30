@@ -3873,6 +3873,7 @@ nextPart:
       #ifndef DSMETRICS_HITS
       #ifndef DSMETRICS_NHITS
         if (mFlag) {
+          #ifdef DEBUG
             if (j__DirectHits + j__NotDirectHits + j__GetCallsP + j__GetCallsM
                    != NewGetCalls)
             {
@@ -3884,6 +3885,7 @@ nextPart:
                        j__DirectHits, j__NotDirectHits, j__GetCallsP,
                        j__GetCallsM);
             }
+          #endif // DEBUG
             assert(j__DirectHits + j__NotDirectHits + j__GetCallsP + j__GetCallsM
                    == NewGetCalls);
         }
