@@ -545,34 +545,36 @@ static int
 AugTypeBits(int nBL)
 {
   #ifdef AUG_TYPE_64_LOOKUP
-    return (nBL << 4) - 16;
+    return (nBL << (cnBitsTypeMask - 0)) - (1 << cnBitsTypeMask);
   #elif defined(AUG_TYPE_32_LOOKUP)
-    return (nBL << 3) - 16;
+    return (nBL << (cnBitsTypeMask - 1)) - (1 << cnBitsTypeMask);
   #elif defined(AUG_TYPE_16_LOOKUP)
-    return (nBL << 2) - 16;
+    return (nBL << (cnBitsTypeMask - 2)) - (1 << cnBitsTypeMask);
   #elif defined(AUG_TYPE_8_LOOKUP)
-    return (nBL << 1) - 16;
+    return (nBL << (cnBitsTypeMask - 3)) - (1 << cnBitsTypeMask);
   #elif defined(AUGMENT_TYPE_8_PLUS_4)
     // cnBitsPerDigit == 8
     //  4 <= cnBitsLeftAtDl1 <  12
     // 12 <= cnBitsLeftAtDl2 <  20
     // 20 <= cnBitsLeftAtDl3 <  28
       #if 1
-    return (((nBL + 4) << 1) & ~0x0f) - 16;
+    return
+        (((nBL + 4) << (cnBitsTypeMask - 3)) & ~MSK(cnBitsTypeMask))
+            - (1 << cnBitsTypeMask);
       #else
     uint64_t x = 0x7060504030201000;
     return ((uint8_t*)&x)[(nBL+4)/8-1];
       #endif
   #elif defined(AUGMENT_TYPE_8)
       #if 1
-    return (nBL << 1) - 16;
+    return (nBL << (cnBitsTypeMask - 3)) - (1 << cnBitsTypeMask);
       #else
     uint64_t x = 0x7060504030201000;
     return ((uint8_t*)&x)[nBL/8-1];
       #endif
   #else // AUGMENT_TYPE_8
       #if 1
-    return (LOG(nBL - 1) - 2) << 4; // nLogBytesLeft << 4
+    return (LOG(nBL - 1) - 2) << cnBitsTypeMask; // nLogBL << cnBitsTypeMask
       #else
     uint64_t x = 0x3030303020201000;
     return ((uint8_t*)&x)[nBL/8-1];
@@ -586,13 +588,13 @@ AugTypeBitsInv(int nAugTypeBits)
 {
     ASSERT((nAugTypeBits & cnTypeMask) == 0);
   #ifdef AUG_TYPE_64_LOOKUP
-    return (nAugTypeBits + 16) >> 4; // nBL
+    return (nAugTypeBits + (1 << cnBitsTypeMask)) >> (cnBitsTypeMask - 0);
   #elif defined(AUG_TYPE_32_LOOKUP)
-    return (nAugTypeBits + 16) >> 3; // nBL
+    return (nAugTypeBits + (1 << cnBitsTypeMask)) >> (cnBitsTypeMask - 1);
   #elif defined(AUG_TYPE_16_LOOKUP)
-    return (nAugTypeBits + 16) >> 2; // nBL
+    return (nAugTypeBits + (1 << cnBitsTypeMask)) >> (cnBitsTypeMask - 2);
   #elif defined(AUG_TYPE_8_LOOKUP)
-    return (nAugTypeBits + 16) >> 1; // nBL
+    return (nAugTypeBits + (1 << cnBitsTypeMask)) >> (cnBitsTypeMask - 3);
   #elif defined(AUGMENT_TYPE_8_PLUS_4)
     // If cnBitsLeftAtDl3 + cnBitsPerDigit * 5 < cnBitsPerWord, then
     // ((nAugTypeBits + 16) >> 1) == 64 is ambiguous.
@@ -607,7 +609,7 @@ AugTypeBitsInv(int nAugTypeBits)
                + (         cnBitsLeftAtDl3                       << 16)
                + (         cnBitsLeftAtDl2                       <<  8)
                + (         cnBitsLeftAtDl1                            );
-    return ((uint8_t*)&x)[nAugTypeBits/16];
+    return ((uint8_t*)&x)[nAugTypeBits/(1 << cnBitsTypeMask)];
       #else
     if (nAugTypeBits == 0) {
         return cnBitsInD1;
@@ -624,15 +626,15 @@ AugTypeBitsInv(int nAugTypeBits)
       #endif
   #elif defined(AUGMENT_TYPE_8)
       #if 1
-    return (nAugTypeBits + 16) >> 1; // nBL
+    return (nAugTypeBits + (1 << cnBitsTypeMask)) >> (cnBitsTypeMask - 3);
       #else
     uint64_t x = 0x4038302820181008;
     return ((uint8_t*)&x)[nAugTypeBits/16];
       #endif
   #else // AUGMENT_TYPE_8
-    assert(!(nAugTypeBits & ~16));
+    assert(!(nAugTypeBits & ~(1 << cnBitsTypeMask)));
       #if 1
-    return 8 << (nAugTypeBits >> 4);
+    return 8 << (nAugTypeBits >> cnBitsTypeMask);
       #else
     uint64_t x = 0x4040404020201008;
     return ((uint8_t*)&x)[nAugTypeBits/16];
@@ -658,15 +660,18 @@ AugTypeBitsInv(int nAugTypeBits)
 #endif // (cwListPopCntMax != 0)
 
 #ifdef EMBED_KEYS
+#ifndef B_JUDYL
 #ifdef AUGMENT_TYPE_8
 #ifndef AUGMENT_TYPE_8_PLUS_4
 #ifdef LOOKUP
-#ifndef B_JUDYL
     #define _AUG_TYPE_8_EK
-#endif // !B_JUDYL
 #endif // LOOKUP
 #endif // !AUGMENT_TYPE_8_PLUS_4
 #endif // AUGMENT_TYPE_8
+#ifdef _AUG_TYPE_X
+    #define _AUG_TYPE_X_EK
+#endif // _AUG_TYPE_X
+#endif // !B_JUDYL
 #endif // EMBED_KEYS
 
 #ifdef JUMP_TABLE
@@ -1191,12 +1196,20 @@ fastAgain:;
   // We have it to help gauge cost when doing it for !JUMP_TABLE.
   #ifdef MASK_TYPE
     // AUGMENTED_TYPE_MASK
-      #ifdef AUGMENT_TYPE_8
-    #define AUGMENTED_TYPE_MASK  0x7f
+      #ifdef AUG_TYPE_64_LOOKUP
+    #define AUGMENTED_TYPE_MASK  ((int)MSK(cnBitsTypeMask + 6))
+      #elif defined(AUG_TYPE_32_LOOKUP)
+    #define AUGMENTED_TYPE_MASK  ((int)MSK(cnBitsTypeMask + 5))
+      #elif defined(AUG_TYPE_16_LOOKUP)
+    #define AUGMENTED_TYPE_MASK  ((int)MSK(cnBitsTypeMask + 4))
+      #elif defined(AUG_TYPE_8_LOOKUP)
+    #define AUGMENTED_TYPE_MASK  ((int)MSK(cnBitsTypeMask + 3))
+      #elif defined(AUGMENT_TYPE_8)
+    #define AUGMENTED_TYPE_MASK  ((int)MSK(cnBitsTypeMask + 3))
       #elif defined(AUGMENT_TYPE)
-    #define AUGMENTED_TYPE_MASK  0x3f
+    #define AUGMENTED_TYPE_MASK  ((int)MSK(cnBitsTypeMask + 2))
       #else // AUGMENT_TYPE_8 elif AUGMENT_TYPE
-    #define AUGMENTED_TYPE_MASK  0x0f
+    #define AUGMENTED_TYPE_MASK  ((int)MSK(cnBitsTypeMask))
       #endif // AUGMENT_TYPE_8 elif AUGMENT_TYPE else
     #define MASKED_AUGMENTED_TYPE  (AUGMENTED_TYPE & AUGMENTED_TYPE_MASK)
   #else // MASK_TYPE
@@ -1232,14 +1245,19 @@ fastAgain:;
   #endif // DEBUG
   #if defined(AUGMENT_TYPE_8) && defined(_AUG_TYPE)
     #define CASES_AUG_TYPE_8(_t) \
-        case 112 + (_t): case 96 + (_t): case 80 + (_t): case 64 + (_t):
+        case (_t) + 7 * (1 << cnBitsTypeMask): \
+        case (_t) + 6 * (1 << cnBitsTypeMask): \
+        case (_t) + 5 * (1 << cnBitsTypeMask): \
+        case (_t) + 4 * (1 << cnBitsTypeMask):
   #else // AUGMENT_TYPE_8 && _AUG_TYPE
     #define CASES_AUG_TYPE_8(_t)
   #endif // AUGMENT_TYPE_8 && _AUG_TYPE else
   #ifdef _AUG_TYPE
     #define CASES_AUG_TYPE(_t) \
         CASES_AUG_TYPE_8(_t) \
-        case 48 + (_t): case 32 + (_t): case 16 + (_t):
+        case (_t) + 3 * (1 << cnBitsTypeMask): \
+        case (_t) + 2 * (1 << cnBitsTypeMask): \
+        case (_t) + 1 * (1 << cnBitsTypeMask):
   #else // _AUG_TYPE
     #define CASES_AUG_TYPE(_t)
   #endif // _AUG_TYPE else
@@ -1312,37 +1330,37 @@ fastAgain:;
   #ifdef SKIP_LINKS
       #if !defined(DEFAULT_SKIP_TO_SW) || defined(DEFAULT_AND_CASE)
           #if defined(AUG_TYPE_64_LOOKUP) && defined(LOOKUP)
-    case T_SKIP_TO_SWITCH + ((64 - 1) << 4):
-    case T_SKIP_TO_SWITCH + ((56 - 1) << 4):
-    case T_SKIP_TO_SWITCH + ((48 - 1) << 4):
-    case T_SKIP_TO_SWITCH + ((40 - 1) << 4):
-    case T_SKIP_TO_SWITCH + ((32 - 1) << 4):
-    case T_SKIP_TO_SWITCH + ((24 - 1) << 4):
-    case T_SKIP_TO_SWITCH + ((16 - 1) << 4):
+    case T_SKIP_TO_SWITCH + ((64 - 1) << cnBitsTypeMask):
+    case T_SKIP_TO_SWITCH + ((56 - 1) << cnBitsTypeMask):
+    case T_SKIP_TO_SWITCH + ((48 - 1) << cnBitsTypeMask):
+    case T_SKIP_TO_SWITCH + ((40 - 1) << cnBitsTypeMask):
+    case T_SKIP_TO_SWITCH + ((32 - 1) << cnBitsTypeMask):
+    case T_SKIP_TO_SWITCH + ((24 - 1) << cnBitsTypeMask):
+    case T_SKIP_TO_SWITCH + ((16 - 1) << cnBitsTypeMask):
           #elif defined(AUG_TYPE_32_LOOKUP) && defined(LOOKUP)
-    case T_SKIP_TO_SWITCH + ((64 / 2 - 1) << 4):
-    case T_SKIP_TO_SWITCH + ((56 / 2 - 1) << 4):
-    case T_SKIP_TO_SWITCH + ((48 / 2 - 1) << 4):
-    case T_SKIP_TO_SWITCH + ((40 / 2 - 1) << 4):
-    case T_SKIP_TO_SWITCH + ((32 / 2 - 1) << 4):
-    case T_SKIP_TO_SWITCH + ((24 / 2 - 1) << 4):
-    case T_SKIP_TO_SWITCH + ((16 / 2 - 1) << 4):
+    case T_SKIP_TO_SWITCH + ((64 / 2 - 1) << cnBitsTypeMask):
+    case T_SKIP_TO_SWITCH + ((56 / 2 - 1) << cnBitsTypeMask):
+    case T_SKIP_TO_SWITCH + ((48 / 2 - 1) << cnBitsTypeMask):
+    case T_SKIP_TO_SWITCH + ((40 / 2 - 1) << cnBitsTypeMask):
+    case T_SKIP_TO_SWITCH + ((32 / 2 - 1) << cnBitsTypeMask):
+    case T_SKIP_TO_SWITCH + ((24 / 2 - 1) << cnBitsTypeMask):
+    case T_SKIP_TO_SWITCH + ((16 / 2 - 1) << cnBitsTypeMask):
           #elif defined(AUG_TYPE_16_LOOKUP) && defined(LOOKUP)
-    case T_SKIP_TO_SWITCH + ((64 / 4 - 1) << 4):
-    case T_SKIP_TO_SWITCH + ((56 / 4 - 1) << 4):
-    case T_SKIP_TO_SWITCH + ((48 / 4 - 1) << 4):
-    case T_SKIP_TO_SWITCH + ((40 / 4 - 1) << 4):
-    case T_SKIP_TO_SWITCH + ((32 / 4 - 1) << 4):
-    case T_SKIP_TO_SWITCH + ((24 / 4 - 1) << 4):
-    case T_SKIP_TO_SWITCH + ((16 / 4 - 1) << 4):
+    case T_SKIP_TO_SWITCH + ((64 / 4 - 1) << cnBitsTypeMask):
+    case T_SKIP_TO_SWITCH + ((56 / 4 - 1) << cnBitsTypeMask):
+    case T_SKIP_TO_SWITCH + ((48 / 4 - 1) << cnBitsTypeMask):
+    case T_SKIP_TO_SWITCH + ((40 / 4 - 1) << cnBitsTypeMask):
+    case T_SKIP_TO_SWITCH + ((32 / 4 - 1) << cnBitsTypeMask):
+    case T_SKIP_TO_SWITCH + ((24 / 4 - 1) << cnBitsTypeMask):
+    case T_SKIP_TO_SWITCH + ((16 / 4 - 1) << cnBitsTypeMask):
           #elif defined(AUG_TYPE_8_LOOKUP) && defined(LOOKUP)
-    case T_SKIP_TO_SWITCH + ((64 / 8 - 1) << 4):
-    case T_SKIP_TO_SWITCH + ((56 / 8 - 1) << 4):
-    case T_SKIP_TO_SWITCH + ((48 / 8 - 1) << 4):
-    case T_SKIP_TO_SWITCH + ((40 / 8 - 1) << 4):
-    case T_SKIP_TO_SWITCH + ((32 / 8 - 1) << 4):
-    case T_SKIP_TO_SWITCH + ((24 / 8 - 1) << 4):
-    case T_SKIP_TO_SWITCH + ((16 / 8 - 1) << 4):
+    case T_SKIP_TO_SWITCH + ((64 / 8 - 1) << cnBitsTypeMask):
+    case T_SKIP_TO_SWITCH + ((56 / 8 - 1) << cnBitsTypeMask):
+    case T_SKIP_TO_SWITCH + ((48 / 8 - 1) << cnBitsTypeMask):
+    case T_SKIP_TO_SWITCH + ((40 / 8 - 1) << cnBitsTypeMask):
+    case T_SKIP_TO_SWITCH + ((32 / 8 - 1) << cnBitsTypeMask):
+    case T_SKIP_TO_SWITCH + ((24 / 8 - 1) << cnBitsTypeMask):
+    case T_SKIP_TO_SWITCH + ((16 / 8 - 1) << cnBitsTypeMask):
           #else // AUG_TYPE_64_LOOKUP && LOOKUP
     CASES_AUG_TYPE(T_SKIP_TO_SWITCH)
     case T_SKIP_TO_SWITCH: // skip link to uncompressed switch
@@ -1359,51 +1377,51 @@ fastAgain:;
 
   // #ifdef SWITCH
       #if defined(AUG_TYPE_64_LOOKUP) && defined(LOOKUP)
-    case T_SWITCH + ((64 - 1) << 4): goto t_sw_64;
-    case T_SWITCH + ((56 - 1) << 4): goto t_sw_56;
-    case T_SWITCH + ((48 - 1) << 4): goto t_sw_48;
-    case T_SWITCH + ((40 - 1) << 4): goto t_sw_40;
-    case T_SWITCH + ((32 - 1) << 4): goto t_sw_32;
-    case T_SWITCH + ((24 - 1) << 4): goto t_sw_24;
-    case T_SWITCH + ((16 - 1) << 4): goto t_sw_16;
+    case T_SWITCH + ((64 - 1) << cnBitsTypeMask): goto t_sw_64;
+    case T_SWITCH + ((56 - 1) << cnBitsTypeMask): goto t_sw_56;
+    case T_SWITCH + ((48 - 1) << cnBitsTypeMask): goto t_sw_48;
+    case T_SWITCH + ((40 - 1) << cnBitsTypeMask): goto t_sw_40;
+    case T_SWITCH + ((32 - 1) << cnBitsTypeMask): goto t_sw_32;
+    case T_SWITCH + ((24 - 1) << cnBitsTypeMask): goto t_sw_24;
+    case T_SWITCH + ((16 - 1) << cnBitsTypeMask): goto t_sw_16;
       #elif defined(AUG_TYPE_32_LOOKUP) && defined(LOOKUP)
-    case T_SWITCH + ((64 / 2 - 1) << 4): goto t_sw_64;
-    case T_SWITCH + ((56 / 2 - 1) << 4): goto t_sw_56;
-    case T_SWITCH + ((48 / 2 - 1) << 4): goto t_sw_48;
-    case T_SWITCH + ((40 / 2 - 1) << 4): goto t_sw_40;
-    case T_SWITCH + ((32 / 2 - 1) << 4): goto t_sw_32;
-    case T_SWITCH + ((24 / 2 - 1) << 4): goto t_sw_24;
-    case T_SWITCH + ((16 / 2 - 1) << 4): goto t_sw_16;
+    case T_SWITCH + ((64 / 2 - 1) << cnBitsTypeMask): goto t_sw_64;
+    case T_SWITCH + ((56 / 2 - 1) << cnBitsTypeMask): goto t_sw_56;
+    case T_SWITCH + ((48 / 2 - 1) << cnBitsTypeMask): goto t_sw_48;
+    case T_SWITCH + ((40 / 2 - 1) << cnBitsTypeMask): goto t_sw_40;
+    case T_SWITCH + ((32 / 2 - 1) << cnBitsTypeMask): goto t_sw_32;
+    case T_SWITCH + ((24 / 2 - 1) << cnBitsTypeMask): goto t_sw_24;
+    case T_SWITCH + ((16 / 2 - 1) << cnBitsTypeMask): goto t_sw_16;
       #elif defined(AUG_TYPE_16_LOOKUP) && defined(LOOKUP)
-    case T_SWITCH + ((64 / 4 - 1) << 4): goto t_sw_64;
-    case T_SWITCH + ((56 / 4 - 1) << 4): goto t_sw_56;
-    case T_SWITCH + ((48 / 4 - 1) << 4): goto t_sw_48;
-    case T_SWITCH + ((40 / 4 - 1) << 4): goto t_sw_40;
-    case T_SWITCH + ((32 / 4 - 1) << 4): goto t_sw_32;
-    case T_SWITCH + ((24 / 4 - 1) << 4): goto t_sw_24;
-    case T_SWITCH + ((16 / 4 - 1) << 4): goto t_sw_16;
+    case T_SWITCH + ((64 / 4 - 1) << cnBitsTypeMask): goto t_sw_64;
+    case T_SWITCH + ((56 / 4 - 1) << cnBitsTypeMask): goto t_sw_56;
+    case T_SWITCH + ((48 / 4 - 1) << cnBitsTypeMask): goto t_sw_48;
+    case T_SWITCH + ((40 / 4 - 1) << cnBitsTypeMask): goto t_sw_40;
+    case T_SWITCH + ((32 / 4 - 1) << cnBitsTypeMask): goto t_sw_32;
+    case T_SWITCH + ((24 / 4 - 1) << cnBitsTypeMask): goto t_sw_24;
+    case T_SWITCH + ((16 / 4 - 1) << cnBitsTypeMask): goto t_sw_16;
       #elif defined(AUG_TYPE_8_LOOKUP) && defined(LOOKUP)
-    case T_SWITCH + ((64 / 8 - 1) << 4): goto t_sw_64;
-    case T_SWITCH + ((56 / 8 - 1) << 4): goto t_sw_56;
-    case T_SWITCH + ((48 / 8 - 1) << 4): goto t_sw_48;
-    case T_SWITCH + ((40 / 8 - 1) << 4): goto t_sw_40;
-    case T_SWITCH + ((32 / 8 - 1) << 4): goto t_sw_32;
-    case T_SWITCH + ((24 / 8 - 1) << 4): goto t_sw_24;
-    case T_SWITCH + ((16 / 8 - 1) << 4): goto t_sw_16;
+    case T_SWITCH + ((64 / 8 - 1) << cnBitsTypeMask): goto t_sw_64;
+    case T_SWITCH + ((56 / 8 - 1) << cnBitsTypeMask): goto t_sw_56;
+    case T_SWITCH + ((48 / 8 - 1) << cnBitsTypeMask): goto t_sw_48;
+    case T_SWITCH + ((40 / 8 - 1) << cnBitsTypeMask): goto t_sw_40;
+    case T_SWITCH + ((32 / 8 - 1) << cnBitsTypeMask): goto t_sw_32;
+    case T_SWITCH + ((24 / 8 - 1) << cnBitsTypeMask): goto t_sw_24;
+    case T_SWITCH + ((16 / 8 - 1) << cnBitsTypeMask): goto t_sw_16;
       #else // AUG_TYPE_64_LOOKUP && LOOKUP
           #if defined(DEFAULT_SWITCH)
     default:
           #endif // defined(DEFAULT_SWITCH)
           #ifdef _AUG_TYPE_8_SW
-    case 112 + T_SWITCH: goto t_sw_plus_112;
-    case  96 + T_SWITCH: goto t_sw_plus_96;
-    case  80 + T_SWITCH: goto t_sw_plus_80;
-    case  64 + T_SWITCH: goto t_sw_plus_64;
+    case T_SWITCH + 7 * (1 << cnBitsTypeMask): goto t_sw_plus_112;
+    case T_SWITCH + 6 * (1 << cnBitsTypeMask): goto t_sw_plus_96;
+    case T_SWITCH + 5 * (1 << cnBitsTypeMask): goto t_sw_plus_80;
+    case T_SWITCH + 4 * (1 << cnBitsTypeMask): goto t_sw_plus_64;
           #endif // _AUG_TYPE_8_SW
         #if defined(AUGMENT_TYPE) && defined(LOOKUP) || defined(_AUG_TYPE_8_SW)
-    case 48 + T_SWITCH: goto t_sw_plus_48;
-    case 32 + T_SWITCH: goto t_sw_plus_32;
-    case 16 + T_SWITCH: goto t_sw_plus_16;
+    case T_SWITCH + 3 * (1 << cnBitsTypeMask): goto t_sw_plus_48;
+    case T_SWITCH + 2 * (1 << cnBitsTypeMask): goto t_sw_plus_32;
+    case T_SWITCH + 1 * (1 << cnBitsTypeMask): goto t_sw_plus_16;
         #endif // AUGMENT_TYPE && LOOKUP || _AUG_TYPE_8_SW
           #ifdef NEXT
           #if defined(AUG_TYPE_8_NEXT_EK_XV) && !defined(AUG_TYPE_8_SW_NEXT)
@@ -1431,37 +1449,37 @@ fastAgain:;
 
   #ifdef SKIP_TO_BM_SW
       #if defined(AUG_TYPE_64_LOOKUP) && defined(LOOKUP)
-    case T_SKIP_TO_BM_SW + ((64 - 1) << 4):
-    case T_SKIP_TO_BM_SW + ((56 - 1) << 4):
-    case T_SKIP_TO_BM_SW + ((48 - 1) << 4):
-    case T_SKIP_TO_BM_SW + ((40 - 1) << 4):
-    case T_SKIP_TO_BM_SW + ((32 - 1) << 4):
-    case T_SKIP_TO_BM_SW + ((24 - 1) << 4):
-    case T_SKIP_TO_BM_SW + ((16 - 1) << 4):
+    case T_SKIP_TO_BM_SW + ((64 - 1) << cnBitsTypeMask):
+    case T_SKIP_TO_BM_SW + ((56 - 1) << cnBitsTypeMask):
+    case T_SKIP_TO_BM_SW + ((48 - 1) << cnBitsTypeMask):
+    case T_SKIP_TO_BM_SW + ((40 - 1) << cnBitsTypeMask):
+    case T_SKIP_TO_BM_SW + ((32 - 1) << cnBitsTypeMask):
+    case T_SKIP_TO_BM_SW + ((24 - 1) << cnBitsTypeMask):
+    case T_SKIP_TO_BM_SW + ((16 - 1) << cnBitsTypeMask):
       #elif defined(AUG_TYPE_32_LOOKUP) && defined(LOOKUP)
-    case T_SKIP_TO_BM_SW + ((64 / 2 - 1) << 4):
-    case T_SKIP_TO_BM_SW + ((56 / 2 - 1) << 4):
-    case T_SKIP_TO_BM_SW + ((48 / 2 - 1) << 4):
-    case T_SKIP_TO_BM_SW + ((40 / 2 - 1) << 4):
-    case T_SKIP_TO_BM_SW + ((32 / 2 - 1) << 4):
-    case T_SKIP_TO_BM_SW + ((24 / 2 - 1) << 4):
-    case T_SKIP_TO_BM_SW + ((16 / 2 - 1) << 4):
+    case T_SKIP_TO_BM_SW + ((64 / 2 - 1) << cnBitsTypeMask):
+    case T_SKIP_TO_BM_SW + ((56 / 2 - 1) << cnBitsTypeMask):
+    case T_SKIP_TO_BM_SW + ((48 / 2 - 1) << cnBitsTypeMask):
+    case T_SKIP_TO_BM_SW + ((40 / 2 - 1) << cnBitsTypeMask):
+    case T_SKIP_TO_BM_SW + ((32 / 2 - 1) << cnBitsTypeMask):
+    case T_SKIP_TO_BM_SW + ((24 / 2 - 1) << cnBitsTypeMask):
+    case T_SKIP_TO_BM_SW + ((16 / 2 - 1) << cnBitsTypeMask):
       #elif defined(AUG_TYPE_16_LOOKUP) && defined(LOOKUP)
-    case T_SKIP_TO_BM_SW + ((64 / 4 - 1) << 4):
-    case T_SKIP_TO_BM_SW + ((56 / 4 - 1) << 4):
-    case T_SKIP_TO_BM_SW + ((48 / 4 - 1) << 4):
-    case T_SKIP_TO_BM_SW + ((40 / 4 - 1) << 4):
-    case T_SKIP_TO_BM_SW + ((32 / 4 - 1) << 4):
-    case T_SKIP_TO_BM_SW + ((24 / 4 - 1) << 4):
-    case T_SKIP_TO_BM_SW + ((16 / 4 - 1) << 4):
+    case T_SKIP_TO_BM_SW + ((64 / 4 - 1) << cnBitsTypeMask):
+    case T_SKIP_TO_BM_SW + ((56 / 4 - 1) << cnBitsTypeMask):
+    case T_SKIP_TO_BM_SW + ((48 / 4 - 1) << cnBitsTypeMask):
+    case T_SKIP_TO_BM_SW + ((40 / 4 - 1) << cnBitsTypeMask):
+    case T_SKIP_TO_BM_SW + ((32 / 4 - 1) << cnBitsTypeMask):
+    case T_SKIP_TO_BM_SW + ((24 / 4 - 1) << cnBitsTypeMask):
+    case T_SKIP_TO_BM_SW + ((16 / 4 - 1) << cnBitsTypeMask):
       #elif defined(AUG_TYPE_8_LOOKUP) && defined(LOOKUP)
-    case T_SKIP_TO_BM_SW + ((64 / 8 - 1) << 4):
-    case T_SKIP_TO_BM_SW + ((56 / 8 - 1) << 4):
-    case T_SKIP_TO_BM_SW + ((48 / 8 - 1) << 4):
-    case T_SKIP_TO_BM_SW + ((40 / 8 - 1) << 4):
-    case T_SKIP_TO_BM_SW + ((32 / 8 - 1) << 4):
-    case T_SKIP_TO_BM_SW + ((24 / 8 - 1) << 4):
-    case T_SKIP_TO_BM_SW + ((16 / 8 - 1) << 4):
+    case T_SKIP_TO_BM_SW + ((64 / 8 - 1) << cnBitsTypeMask):
+    case T_SKIP_TO_BM_SW + ((56 / 8 - 1) << cnBitsTypeMask):
+    case T_SKIP_TO_BM_SW + ((48 / 8 - 1) << cnBitsTypeMask):
+    case T_SKIP_TO_BM_SW + ((40 / 8 - 1) << cnBitsTypeMask):
+    case T_SKIP_TO_BM_SW + ((32 / 8 - 1) << cnBitsTypeMask):
+    case T_SKIP_TO_BM_SW + ((24 / 8 - 1) << cnBitsTypeMask):
+    case T_SKIP_TO_BM_SW + ((16 / 8 - 1) << cnBitsTypeMask):
       #else // AUG_TYPE_64_LOOKUP && LOOKUP
     CASES_AUG_TYPE(T_SKIP_TO_BM_SW)
     case T_SKIP_TO_BM_SW:
@@ -1477,37 +1495,37 @@ fastAgain:;
 
   #ifdef CODE_BM_SW
       #if defined(AUG_TYPE_64_LOOKUP) && defined(LOOKUP)
-    case T_BM_SW + ((64 - 1) << 4):
-    case T_BM_SW + ((56 - 1) << 4):
-    case T_BM_SW + ((48 - 1) << 4):
-    case T_BM_SW + ((40 - 1) << 4):
-    case T_BM_SW + ((32 - 1) << 4):
-    case T_BM_SW + ((24 - 1) << 4):
-    case T_BM_SW + ((16 - 1) << 4):
+    case T_BM_SW + ((64 - 1) << cnBitsTypeMask):
+    case T_BM_SW + ((56 - 1) << cnBitsTypeMask):
+    case T_BM_SW + ((48 - 1) << cnBitsTypeMask):
+    case T_BM_SW + ((40 - 1) << cnBitsTypeMask):
+    case T_BM_SW + ((32 - 1) << cnBitsTypeMask):
+    case T_BM_SW + ((24 - 1) << cnBitsTypeMask):
+    case T_BM_SW + ((16 - 1) << cnBitsTypeMask):
       #elif defined(AUG_TYPE_32_LOOKUP) && defined(LOOKUP)
-    case T_BM_SW + ((64 / 2 - 1) << 4):
-    case T_BM_SW + ((56 / 2 - 1) << 4):
-    case T_BM_SW + ((48 / 2 - 1) << 4):
-    case T_BM_SW + ((40 / 2 - 1) << 4):
-    case T_BM_SW + ((32 / 2 - 1) << 4):
-    case T_BM_SW + ((24 / 2 - 1) << 4):
-    case T_BM_SW + ((16 / 2 - 1) << 4):
+    case T_BM_SW + ((64 / 2 - 1) << cnBitsTypeMask):
+    case T_BM_SW + ((56 / 2 - 1) << cnBitsTypeMask):
+    case T_BM_SW + ((48 / 2 - 1) << cnBitsTypeMask):
+    case T_BM_SW + ((40 / 2 - 1) << cnBitsTypeMask):
+    case T_BM_SW + ((32 / 2 - 1) << cnBitsTypeMask):
+    case T_BM_SW + ((24 / 2 - 1) << cnBitsTypeMask):
+    case T_BM_SW + ((16 / 2 - 1) << cnBitsTypeMask):
       #elif defined(AUG_TYPE_16_LOOKUP) && defined(LOOKUP)
-    case T_BM_SW + ((64 / 4 - 1) << 4):
-    case T_BM_SW + ((56 / 4 - 1) << 4):
-    case T_BM_SW + ((48 / 4 - 1) << 4):
-    case T_BM_SW + ((40 / 4 - 1) << 4):
-    case T_BM_SW + ((32 / 4 - 1) << 4):
-    case T_BM_SW + ((24 / 4 - 1) << 4):
-    case T_BM_SW + ((16 / 4 - 1) << 4):
+    case T_BM_SW + ((64 / 4 - 1) << cnBitsTypeMask):
+    case T_BM_SW + ((56 / 4 - 1) << cnBitsTypeMask):
+    case T_BM_SW + ((48 / 4 - 1) << cnBitsTypeMask):
+    case T_BM_SW + ((40 / 4 - 1) << cnBitsTypeMask):
+    case T_BM_SW + ((32 / 4 - 1) << cnBitsTypeMask):
+    case T_BM_SW + ((24 / 4 - 1) << cnBitsTypeMask):
+    case T_BM_SW + ((16 / 4 - 1) << cnBitsTypeMask):
       #elif defined(AUG_TYPE_8_LOOKUP) && defined(LOOKUP)
-    case T_BM_SW + ((64 / 8 - 1) << 4):
-    case T_BM_SW + ((56 / 8 - 1) << 4):
-    case T_BM_SW + ((48 / 8 - 1) << 4):
-    case T_BM_SW + ((40 / 8 - 1) << 4):
-    case T_BM_SW + ((32 / 8 - 1) << 4):
-    case T_BM_SW + ((24 / 8 - 1) << 4):
-    case T_BM_SW + ((16 / 8 - 1) << 4):
+    case T_BM_SW + ((64 / 8 - 1) << cnBitsTypeMask):
+    case T_BM_SW + ((56 / 8 - 1) << cnBitsTypeMask):
+    case T_BM_SW + ((48 / 8 - 1) << cnBitsTypeMask):
+    case T_BM_SW + ((40 / 8 - 1) << cnBitsTypeMask):
+    case T_BM_SW + ((32 / 8 - 1) << cnBitsTypeMask):
+    case T_BM_SW + ((24 / 8 - 1) << cnBitsTypeMask):
+    case T_BM_SW + ((16 / 8 - 1) << cnBitsTypeMask):
       #else // AUG_TYPE_64_LOOKUP && LOOKUP
     CASES_AUG_TYPE(T_BM_SW)
     case T_BM_SW:
@@ -1537,52 +1555,52 @@ fastAgain:;
 
   #if (cwListPopCntMax != 0)
       #if defined(AUG_TYPE_64_LOOKUP) && defined(LOOKUP)
-    case T_LIST + ((64 - 1) << 4): goto t_list_64;
-    case T_LIST + ((56 - 1) << 4): goto t_list_56;
-    case T_LIST + ((48 - 1) << 4): goto t_list_48;
-    case T_LIST + ((40 - 1) << 4): goto t_list_40;
-    case T_LIST + ((32 - 1) << 4): goto t_list_32;
-    case T_LIST + ((24 - 1) << 4): goto t_list_24;
-    case T_LIST + ((16 - 1) << 4): goto t_list_16;
-    case T_LIST + (( 8 - 1) << 4): goto t_list_8;
+    case T_LIST + ((64 - 1) << cnBitsTypeMask): goto t_list_64;
+    case T_LIST + ((56 - 1) << cnBitsTypeMask): goto t_list_56;
+    case T_LIST + ((48 - 1) << cnBitsTypeMask): goto t_list_48;
+    case T_LIST + ((40 - 1) << cnBitsTypeMask): goto t_list_40;
+    case T_LIST + ((32 - 1) << cnBitsTypeMask): goto t_list_32;
+    case T_LIST + ((24 - 1) << cnBitsTypeMask): goto t_list_24;
+    case T_LIST + ((16 - 1) << cnBitsTypeMask): goto t_list_16;
+    case T_LIST + (( 8 - 1) << cnBitsTypeMask): goto t_list_8;
       #elif defined(AUG_TYPE_32_LOOKUP) && defined(LOOKUP)
-    case T_LIST + ((64 / 2 - 1) << 4): goto t_list_64;
-    case T_LIST + ((56 / 2 - 1) << 4): goto t_list_56;
-    case T_LIST + ((48 / 2 - 1) << 4): goto t_list_48;
-    case T_LIST + ((40 / 2 - 1) << 4): goto t_list_40;
-    case T_LIST + ((32 / 2 - 1) << 4): goto t_list_32;
-    case T_LIST + ((24 / 2 - 1) << 4): goto t_list_24;
-    case T_LIST + ((16 / 2 - 1) << 4): goto t_list_16;
-    case T_LIST + (( 8 / 2 - 1) << 4): goto t_list_8;
+    case T_LIST + ((64 / 2 - 1) << cnBitsTypeMask): goto t_list_64;
+    case T_LIST + ((56 / 2 - 1) << cnBitsTypeMask): goto t_list_56;
+    case T_LIST + ((48 / 2 - 1) << cnBitsTypeMask): goto t_list_48;
+    case T_LIST + ((40 / 2 - 1) << cnBitsTypeMask): goto t_list_40;
+    case T_LIST + ((32 / 2 - 1) << cnBitsTypeMask): goto t_list_32;
+    case T_LIST + ((24 / 2 - 1) << cnBitsTypeMask): goto t_list_24;
+    case T_LIST + ((16 / 2 - 1) << cnBitsTypeMask): goto t_list_16;
+    case T_LIST + (( 8 / 2 - 1) << cnBitsTypeMask): goto t_list_8;
       #elif defined(AUG_TYPE_16_LOOKUP) && defined(LOOKUP)
-    case T_LIST + ((64 / 4 - 1) << 4): goto t_list_64;
-    case T_LIST + ((56 / 4 - 1) << 4): goto t_list_56;
-    case T_LIST + ((48 / 4 - 1) << 4): goto t_list_48;
-    case T_LIST + ((40 / 4 - 1) << 4): goto t_list_40;
-    case T_LIST + ((32 / 4 - 1) << 4): goto t_list_32;
-    case T_LIST + ((24 / 4 - 1) << 4): goto t_list_24;
-    case T_LIST + ((16 / 4 - 1) << 4): goto t_list_16;
-    case T_LIST + (( 8 / 4 - 1) << 4): goto t_list_8;
+    case T_LIST + ((64 / 4 - 1) << cnBitsTypeMask): goto t_list_64;
+    case T_LIST + ((56 / 4 - 1) << cnBitsTypeMask): goto t_list_56;
+    case T_LIST + ((48 / 4 - 1) << cnBitsTypeMask): goto t_list_48;
+    case T_LIST + ((40 / 4 - 1) << cnBitsTypeMask): goto t_list_40;
+    case T_LIST + ((32 / 4 - 1) << cnBitsTypeMask): goto t_list_32;
+    case T_LIST + ((24 / 4 - 1) << cnBitsTypeMask): goto t_list_24;
+    case T_LIST + ((16 / 4 - 1) << cnBitsTypeMask): goto t_list_16;
+    case T_LIST + (( 8 / 4 - 1) << cnBitsTypeMask): goto t_list_8;
       #elif defined(AUG_TYPE_8_LOOKUP) && defined(LOOKUP)
-    case T_LIST + ((64 / 8 - 1) << 4): goto t_list_64;
-    case T_LIST + ((56 / 8 - 1) << 4): goto t_list_56;
-    case T_LIST + ((48 / 8 - 1) << 4): goto t_list_48;
-    case T_LIST + ((40 / 8 - 1) << 4): goto t_list_40;
-    case T_LIST + ((32 / 8 - 1) << 4): goto t_list_32;
-    case T_LIST + ((24 / 8 - 1) << 4): goto t_list_24;
-    case T_LIST + ((16 / 8 - 1) << 4): goto t_list_16;
-    case T_LIST + (( 8 / 8 - 1) << 4): goto t_list_8;
+    case T_LIST + ((64 / 8 - 1) << cnBitsTypeMask): goto t_list_64;
+    case T_LIST + ((56 / 8 - 1) << cnBitsTypeMask): goto t_list_56;
+    case T_LIST + ((48 / 8 - 1) << cnBitsTypeMask): goto t_list_48;
+    case T_LIST + ((40 / 8 - 1) << cnBitsTypeMask): goto t_list_40;
+    case T_LIST + ((32 / 8 - 1) << cnBitsTypeMask): goto t_list_32;
+    case T_LIST + ((24 / 8 - 1) << cnBitsTypeMask): goto t_list_24;
+    case T_LIST + ((16 / 8 - 1) << cnBitsTypeMask): goto t_list_16;
+    case T_LIST + (( 8 / 8 - 1) << cnBitsTypeMask): goto t_list_8;
       #else // AUG_TYPE_64_LOOKUP && LOOKUP
           #if defined(AUGMENT_TYPE_8) && defined(LOOKUP)
-    case 112 + T_LIST: goto t_list112;
-    case  96 + T_LIST: goto t_list96;
-    case  80 + T_LIST: goto t_list80;
-    case  64 + T_LIST: goto t_list64;
+    case T_LIST + 7 * (1 << cnBitsTypeMask): goto t_list112;
+    case T_LIST + 6 * (1 << cnBitsTypeMask): goto t_list96;
+    case T_LIST + 5 * (1 << cnBitsTypeMask): goto t_list80;
+    case T_LIST + 4 * (1 << cnBitsTypeMask): goto t_list64;
           #endif // AUGMENT_TYPE_8 && LOOKUP
           #if defined(AUGMENT_TYPE) && defined(LOOKUP)
-    case 48 + T_LIST: goto t_list48;
-    case 32 + T_LIST: goto t_list32;
-    case 16 + T_LIST: goto t_list16;
+    case T_LIST + 3 * (1 << cnBitsTypeMask): goto t_list48;
+    case T_LIST + 2 * (1 << cnBitsTypeMask): goto t_list32;
+    case T_LIST + 1 * (1 << cnBitsTypeMask): goto t_list16;
           #endif // AUGMENT_TYPE && LOOKUP
           #ifdef NEXT
           #if defined(AUG_TYPE_8_SW_NEXT) || defined(AUG_TYPE_8_NEXT_EK_XV)
@@ -1625,37 +1643,37 @@ fastAgain:;
   #if defined(PACK_BM_VALUES) || !defined(B_JUDYL)
   #ifdef SKIP_TO_BITMAP
       #if defined(AUG_TYPE_64_LOOKUP) && defined(LOOKUP)
-    case T_SKIP_TO_BITMAP + ((64 - 1) << 4):
-    case T_SKIP_TO_BITMAP + ((56 - 1) << 4):
-    case T_SKIP_TO_BITMAP + ((48 - 1) << 4):
-    case T_SKIP_TO_BITMAP + ((40 - 1) << 4):
-    case T_SKIP_TO_BITMAP + ((32 - 1) << 4):
-    case T_SKIP_TO_BITMAP + ((24 - 1) << 4):
-    case T_SKIP_TO_BITMAP + ((16 - 1) << 4):
+    case T_SKIP_TO_BITMAP + ((64 - 1) << cnBitsTypeMask):
+    case T_SKIP_TO_BITMAP + ((56 - 1) << cnBitsTypeMask):
+    case T_SKIP_TO_BITMAP + ((48 - 1) << cnBitsTypeMask):
+    case T_SKIP_TO_BITMAP + ((40 - 1) << cnBitsTypeMask):
+    case T_SKIP_TO_BITMAP + ((32 - 1) << cnBitsTypeMask):
+    case T_SKIP_TO_BITMAP + ((24 - 1) << cnBitsTypeMask):
+    case T_SKIP_TO_BITMAP + ((16 - 1) << cnBitsTypeMask):
       #elif defined(AUG_TYPE_32_LOOKUP) && defined(LOOKUP)
-    case T_SKIP_TO_BITMAP + ((64 / 2 - 1) << 4):
-    case T_SKIP_TO_BITMAP + ((56 / 2 - 1) << 4):
-    case T_SKIP_TO_BITMAP + ((48 / 2 - 1) << 4):
-    case T_SKIP_TO_BITMAP + ((40 / 2 - 1) << 4):
-    case T_SKIP_TO_BITMAP + ((32 / 2 - 1) << 4):
-    case T_SKIP_TO_BITMAP + ((24 / 2 - 1) << 4):
-    case T_SKIP_TO_BITMAP + ((16 / 2 - 1) << 4):
+    case T_SKIP_TO_BITMAP + ((64 / 2 - 1) << cnBitsTypeMask):
+    case T_SKIP_TO_BITMAP + ((56 / 2 - 1) << cnBitsTypeMask):
+    case T_SKIP_TO_BITMAP + ((48 / 2 - 1) << cnBitsTypeMask):
+    case T_SKIP_TO_BITMAP + ((40 / 2 - 1) << cnBitsTypeMask):
+    case T_SKIP_TO_BITMAP + ((32 / 2 - 1) << cnBitsTypeMask):
+    case T_SKIP_TO_BITMAP + ((24 / 2 - 1) << cnBitsTypeMask):
+    case T_SKIP_TO_BITMAP + ((16 / 2 - 1) << cnBitsTypeMask):
       #elif defined(AUG_TYPE_16_LOOKUP) && defined(LOOKUP)
-    case T_SKIP_TO_BITMAP + ((64 / 4 - 1) << 4):
-    case T_SKIP_TO_BITMAP + ((56 / 4 - 1) << 4):
-    case T_SKIP_TO_BITMAP + ((48 / 4 - 1) << 4):
-    case T_SKIP_TO_BITMAP + ((40 / 4 - 1) << 4):
-    case T_SKIP_TO_BITMAP + ((32 / 4 - 1) << 4):
-    case T_SKIP_TO_BITMAP + ((24 / 4 - 1) << 4):
-    case T_SKIP_TO_BITMAP + ((16 / 4 - 1) << 4):
+    case T_SKIP_TO_BITMAP + ((64 / 4 - 1) << cnBitsTypeMask):
+    case T_SKIP_TO_BITMAP + ((56 / 4 - 1) << cnBitsTypeMask):
+    case T_SKIP_TO_BITMAP + ((48 / 4 - 1) << cnBitsTypeMask):
+    case T_SKIP_TO_BITMAP + ((40 / 4 - 1) << cnBitsTypeMask):
+    case T_SKIP_TO_BITMAP + ((32 / 4 - 1) << cnBitsTypeMask):
+    case T_SKIP_TO_BITMAP + ((24 / 4 - 1) << cnBitsTypeMask):
+    case T_SKIP_TO_BITMAP + ((16 / 4 - 1) << cnBitsTypeMask):
       #elif defined(AUG_TYPE_8_LOOKUP) && defined(LOOKUP)
-    case T_SKIP_TO_BITMAP + ((64 / 8 - 1) << 4):
-    case T_SKIP_TO_BITMAP + ((56 / 8 - 1) << 4):
-    case T_SKIP_TO_BITMAP + ((48 / 8 - 1) << 4):
-    case T_SKIP_TO_BITMAP + ((40 / 8 - 1) << 4):
-    case T_SKIP_TO_BITMAP + ((32 / 8 - 1) << 4):
-    case T_SKIP_TO_BITMAP + ((24 / 8 - 1) << 4):
-    case T_SKIP_TO_BITMAP + ((16 / 8 - 1) << 4):
+    case T_SKIP_TO_BITMAP + ((64 / 8 - 1) << cnBitsTypeMask):
+    case T_SKIP_TO_BITMAP + ((56 / 8 - 1) << cnBitsTypeMask):
+    case T_SKIP_TO_BITMAP + ((48 / 8 - 1) << cnBitsTypeMask):
+    case T_SKIP_TO_BITMAP + ((40 / 8 - 1) << cnBitsTypeMask):
+    case T_SKIP_TO_BITMAP + ((32 / 8 - 1) << cnBitsTypeMask):
+    case T_SKIP_TO_BITMAP + ((24 / 8 - 1) << cnBitsTypeMask):
+    case T_SKIP_TO_BITMAP + ((16 / 8 - 1) << cnBitsTypeMask):
       #else // AUG_TYPE_64_LOOKUP && LOOKUP
     CASES_AUG_TYPE(T_SKIP_TO_BITMAP)
     case T_SKIP_TO_BITMAP:
@@ -1668,15 +1686,15 @@ fastAgain:;
   #ifdef _AUG_TYPE
   #if cn2dBmMaxWpkPercent != 0
           #if defined(AUG_TYPE_64_LOOKUP) && defined(LOOKUP)
-    case T_BITMAP + ((16 - 1) << 4):
+    case T_BITMAP + ((16 - 1) << cnBitsTypeMask):
           #elif defined(AUG_TYPE_32_LOOKUP) && defined(LOOKUP)
-    case T_BITMAP + ((16 / 2 - 1) << 4):
+    case T_BITMAP + ((16 / 2 - 1) << cnBitsTypeMask):
           #elif defined(AUG_TYPE_16_LOOKUP) && defined(LOOKUP)
-    case T_BITMAP + ((16 / 4 - 1) << 4):
+    case T_BITMAP + ((16 / 4 - 1) << cnBitsTypeMask):
           #elif defined(AUG_TYPE_8_LOOKUP) && defined(LOOKUP)
-    case T_BITMAP + ((16 / 8 - 1) << 4):
+    case T_BITMAP + ((16 / 8 - 1) << cnBitsTypeMask):
           #else // AUG_TYPE_64_LOOKUP && LOOKUP
-    case 16 + T_BITMAP:
+    case T_BITMAP + ((16 / 8 - 1)  << cnBitsTypeMask):
           #endif // else AUG_TYPE_64_LOOKUP && LOOKUP
       #ifdef LOOKUP
         goto t_bm_plus_16;
@@ -1691,13 +1709,13 @@ fastAgain:;
   #if defined(PACK_BM_VALUES) || !defined(LOOKUP) || !defined(B_JUDYL)
       #if !defined(DEFAULT_BITMAP) || defined(DEFAULT_AND_CASE)
           #if defined(AUG_TYPE_64_LOOKUP) && defined(LOOKUP)
-    case T_BITMAP + ((8 - 1) << 4):
+    case T_BITMAP + ((8 - 1) << cnBitsTypeMask):
           #elif defined(AUG_TYPE_32_LOOKUP) && defined(LOOKUP)
-    case T_BITMAP + ((8 / 2 - 1) << 4):
+    case T_BITMAP + ((8 / 2 - 1) << cnBitsTypeMask):
           #elif defined(AUG_TYPE_16_LOOKUP) && defined(LOOKUP)
-    case T_BITMAP + ((8 / 4 - 1) << 4):
+    case T_BITMAP + ((8 / 4 - 1) << cnBitsTypeMask):
           #elif defined(AUG_TYPE_8_LOOKUP) && defined(LOOKUP)
-    case T_BITMAP + ((8 / 8 - 1) << 4):
+    case T_BITMAP + ((8 / 8 - 1) << cnBitsTypeMask):
           #else // AUG_TYPE_64_LOOKUP && LOOKUP
     case T_BITMAP:
           #endif // else AUG_TYPE_64_LOOKUP && LOOKUP
@@ -1708,13 +1726,13 @@ fastAgain:;
 
   #ifdef UNPACK_BM_VALUES
       #if defined(AUG_TYPE_64_LOOKUP) && defined(LOOKUP)
-    case T_UNPACKED_BM + ((8 - 1) << 4):
+    case T_UNPACKED_BM + ((8 - 1) << cnBitsTypeMask):
       #elif defined(AUG_TYPE_32_LOOKUP) && defined(LOOKUP)
-    case T_UNPACKED_BM + ((8 / 2 - 1) << 4):
+    case T_UNPACKED_BM + ((8 / 2 - 1) << cnBitsTypeMask):
       #elif defined(AUG_TYPE_16_LOOKUP) && defined(LOOKUP)
-    case T_UNPACKED_BM + ((8 / 4 - 1) << 4):
+    case T_UNPACKED_BM + ((8 / 4 - 1) << cnBitsTypeMask):
       #elif defined(AUG_TYPE_8_LOOKUP) && defined(LOOKUP)
-    case T_UNPACKED_BM + ((8 / 8 - 1) << 4):
+    case T_UNPACKED_BM + ((8 / 8 - 1) << cnBitsTypeMask):
       #else // AUG_TYPE_64_LOOKUP && LOOKUP
     case T_UNPACKED_BM: // never exists for B_JUDY1
       #endif // else AUG_TYPE_64_LOOKUP && LOOKUP
@@ -1722,51 +1740,91 @@ fastAgain:;
   #endif // UNPACK_BM_VALUES
 
   #if defined(EMBED_KEYS)
+      #ifdef _AUG_TYPE_X_EK
       #if defined(AUG_TYPE_64_LOOKUP) && defined(LOOKUP)
-    case T_EMBEDDED_KEYS + ((56 - 1) << 4): goto t_ek_56;
-    case T_EMBEDDED_KEYS + ((48 - 1) << 4): goto t_ek_48;
-    case T_EMBEDDED_KEYS + ((40 - 1) << 4): goto t_ek_40;
-    case T_EMBEDDED_KEYS + ((32 - 1) << 4): goto t_ek_32;
-    case T_EMBEDDED_KEYS + ((24 - 1) << 4): goto t_ek_24;
-    case T_EMBEDDED_KEYS + ((16 - 1) << 4): goto t_ek_16;
-    case T_EMBEDDED_KEYS + (( 8 - 1) << 4): goto t_ek_8;
+    case T_EMBEDDED_KEYS + ((56 - 1) << cnBitsTypeMask): goto t_ek_56;
+    case T_EMBEDDED_KEYS + ((48 - 1) << cnBitsTypeMask): goto t_ek_48;
+    case T_EMBEDDED_KEYS + ((40 - 1) << cnBitsTypeMask): goto t_ek_40;
+    case T_EMBEDDED_KEYS + ((32 - 1) << cnBitsTypeMask): goto t_ek_32;
+    case T_EMBEDDED_KEYS + ((24 - 1) << cnBitsTypeMask): goto t_ek_24;
+    case T_EMBEDDED_KEYS + ((16 - 1) << cnBitsTypeMask): goto t_ek_16;
+    case T_EMBEDDED_KEYS + (( 8 - 1) << cnBitsTypeMask): goto t_ek_8;
       #endif // AUG_TYPE_64_LOOKUP && LOOKUP
       #if defined(AUG_TYPE_32_LOOKUP) && defined(LOOKUP)
-    case T_EMBEDDED_KEYS + ((56 / 2 - 1) << 4): goto t_ek_56;
-    case T_EMBEDDED_KEYS + ((48 / 2 - 1) << 4): goto t_ek_48;
-    case T_EMBEDDED_KEYS + ((40 / 2 - 1) << 4): goto t_ek_40;
-    case T_EMBEDDED_KEYS + ((32 / 2 - 1) << 4): goto t_ek_32;
-    case T_EMBEDDED_KEYS + ((24 / 2 - 1) << 4): goto t_ek_24;
-    case T_EMBEDDED_KEYS + ((16 / 2 - 1) << 4): goto t_ek_16;
-    case T_EMBEDDED_KEYS + (( 8 / 2 - 1) << 4): goto t_ek_8;
+    case T_EMBEDDED_KEYS + ((56 / 2 - 1) << cnBitsTypeMask): goto t_ek_56;
+    case T_EMBEDDED_KEYS + ((48 / 2 - 1) << cnBitsTypeMask): goto t_ek_48;
+    case T_EMBEDDED_KEYS + ((40 / 2 - 1) << cnBitsTypeMask): goto t_ek_40;
+    case T_EMBEDDED_KEYS + ((32 / 2 - 1) << cnBitsTypeMask): goto t_ek_32;
+    case T_EMBEDDED_KEYS + ((24 / 2 - 1) << cnBitsTypeMask): goto t_ek_24;
+    case T_EMBEDDED_KEYS + ((16 / 2 - 1) << cnBitsTypeMask): goto t_ek_16;
+    case T_EMBEDDED_KEYS + (( 8 / 2 - 1) << cnBitsTypeMask): goto t_ek_8;
       #endif // AUG_TYPE_32_LOOKUP && LOOKUP
       #if defined(AUG_TYPE_16_LOOKUP) && defined(LOOKUP)
-    case T_EMBEDDED_KEYS + ((56 / 4 - 1) << 4): goto t_ek_56;
-    case T_EMBEDDED_KEYS + ((48 / 4 - 1) << 4): goto t_ek_48;
-    case T_EMBEDDED_KEYS + ((40 / 4 - 1) << 4): goto t_ek_40;
-    case T_EMBEDDED_KEYS + ((32 / 4 - 1) << 4): goto t_ek_32;
-    case T_EMBEDDED_KEYS + ((24 / 4 - 1) << 4): goto t_ek_24;
-    case T_EMBEDDED_KEYS + ((16 / 4 - 1) << 4): goto t_ek_16;
-    case T_EMBEDDED_KEYS + (( 8 / 4 - 1) << 4): goto t_ek_8;
+    case T_EMBEDDED_KEYS + ((56 / 4 - 1) << cnBitsTypeMask): goto t_ek_56;
+    case T_EMBEDDED_KEYS + ((48 / 4 - 1) << cnBitsTypeMask): goto t_ek_48;
+    case T_EMBEDDED_KEYS + ((40 / 4 - 1) << cnBitsTypeMask): goto t_ek_40;
+    case T_EMBEDDED_KEYS + ((32 / 4 - 1) << cnBitsTypeMask): goto t_ek_32;
+    case T_EMBEDDED_KEYS + ((24 / 4 - 1) << cnBitsTypeMask): goto t_ek_24;
+    case T_EMBEDDED_KEYS + ((16 / 4 - 1) << cnBitsTypeMask): goto t_ek_16;
+    case T_EMBEDDED_KEYS + (( 8 / 4 - 1) << cnBitsTypeMask): goto t_ek_8;
       #endif // AUG_TYPE_16_LOOKUP && LOOKUP
       #if defined(AUG_TYPE_8_LOOKUP) && defined(LOOKUP)
-    case T_EMBEDDED_KEYS + ((56 / 8 - 1) << 4): goto t_ek_56;
-    case T_EMBEDDED_KEYS + ((48 / 8 - 1) << 4): goto t_ek_48;
-    case T_EMBEDDED_KEYS + ((40 / 8 - 1) << 4): goto t_ek_40;
-    case T_EMBEDDED_KEYS + ((32 / 8 - 1) << 4): goto t_ek_32;
-    case T_EMBEDDED_KEYS + ((24 / 8 - 1) << 4): goto t_ek_24;
-    case T_EMBEDDED_KEYS + ((16 / 8 - 1) << 4): goto t_ek_16;
-    case T_EMBEDDED_KEYS + (( 8 / 8 - 1) << 4): goto t_ek_8;
+    case T_EMBEDDED_KEYS + ((56 / 8 - 1) << cnBitsTypeMask): goto t_ek_56;
+    case T_EMBEDDED_KEYS + ((48 / 8 - 1) << cnBitsTypeMask): goto t_ek_48;
+    case T_EMBEDDED_KEYS + ((40 / 8 - 1) << cnBitsTypeMask): goto t_ek_40;
+    case T_EMBEDDED_KEYS + ((32 / 8 - 1) << cnBitsTypeMask): goto t_ek_32;
+    case T_EMBEDDED_KEYS + ((24 / 8 - 1) << cnBitsTypeMask): goto t_ek_24;
+    case T_EMBEDDED_KEYS + ((16 / 8 - 1) << cnBitsTypeMask): goto t_ek_16;
+    case T_EMBEDDED_KEYS + (( 8 / 8 - 1) << cnBitsTypeMask): goto t_ek_8;
       #endif // AUG_TYPE_8_LOOKUP && LOOKUP
+      #elif defined(_AUG_TYPE_X) // _AUG_TYPE_X_EK
+      #if defined(AUG_TYPE_64_LOOKUP) && defined(LOOKUP)
+    case T_EMBEDDED_KEYS + ((56 - 1) << cnBitsTypeMask): \
+    case T_EMBEDDED_KEYS + ((48 - 1) << cnBitsTypeMask): \
+    case T_EMBEDDED_KEYS + ((40 - 1) << cnBitsTypeMask): \
+    case T_EMBEDDED_KEYS + ((32 - 1) << cnBitsTypeMask): \
+    case T_EMBEDDED_KEYS + ((24 - 1) << cnBitsTypeMask): \
+    case T_EMBEDDED_KEYS + ((16 - 1) << cnBitsTypeMask): \
+    case T_EMBEDDED_KEYS + (( 8 - 1) << cnBitsTypeMask):
+      #endif // AUG_TYPE_64_LOOKUP && LOOKUP
+      #if defined(AUG_TYPE_32_LOOKUP) && defined(LOOKUP)
+    case T_EMBEDDED_KEYS + ((56 / 2 - 1) << cnBitsTypeMask): \
+    case T_EMBEDDED_KEYS + ((48 / 2 - 1) << cnBitsTypeMask): \
+    case T_EMBEDDED_KEYS + ((40 / 2 - 1) << cnBitsTypeMask): \
+    case T_EMBEDDED_KEYS + ((32 / 2 - 1) << cnBitsTypeMask): \
+    case T_EMBEDDED_KEYS + ((24 / 2 - 1) << cnBitsTypeMask): \
+    case T_EMBEDDED_KEYS + ((16 / 2 - 1) << cnBitsTypeMask): \
+    case T_EMBEDDED_KEYS + (( 8 / 2 - 1) << cnBitsTypeMask):
+      #endif // AUG_TYPE_32_LOOKUP && LOOKUP
+      #if defined(AUG_TYPE_16_LOOKUP) && defined(LOOKUP)
+    case T_EMBEDDED_KEYS + ((56 / 4 - 1) << cnBitsTypeMask): \
+    case T_EMBEDDED_KEYS + ((48 / 4 - 1) << cnBitsTypeMask): \
+    case T_EMBEDDED_KEYS + ((40 / 4 - 1) << cnBitsTypeMask): \
+    case T_EMBEDDED_KEYS + ((32 / 4 - 1) << cnBitsTypeMask): \
+    case T_EMBEDDED_KEYS + ((24 / 4 - 1) << cnBitsTypeMask): \
+    case T_EMBEDDED_KEYS + ((16 / 4 - 1) << cnBitsTypeMask): \
+    case T_EMBEDDED_KEYS + (( 8 / 4 - 1) << cnBitsTypeMask):
+      #endif // AUG_TYPE_16_LOOKUP && LOOKUP
+      #if defined(AUG_TYPE_8_LOOKUP) && defined(LOOKUP)
+    case T_EMBEDDED_KEYS + ((56 / 8 - 1) << cnBitsTypeMask): \
+    case T_EMBEDDED_KEYS + ((48 / 8 - 1) << cnBitsTypeMask): \
+    case T_EMBEDDED_KEYS + ((40 / 8 - 1) << cnBitsTypeMask): \
+    case T_EMBEDDED_KEYS + ((32 / 8 - 1) << cnBitsTypeMask): \
+    case T_EMBEDDED_KEYS + ((24 / 8 - 1) << cnBitsTypeMask): \
+    case T_EMBEDDED_KEYS + ((16 / 8 - 1) << cnBitsTypeMask): \
+    case T_EMBEDDED_KEYS + (( 8 / 8 - 1) << cnBitsTypeMask):
+      #endif // AUG_TYPE_8_LOOKUP && LOOKUP
+        goto t_embedded_keys;
+      #endif // _AUG_TYPE_X_EK elif _AUG_TYPE_X
       #ifdef _AUG_TYPE_8_EK
-    case T_EMBEDDED_KEYS + 112: goto t_ek_112;
-    case T_EMBEDDED_KEYS +  96: goto t_ek_96;
-    case T_EMBEDDED_KEYS +  80: goto t_ek_80;
-    case T_EMBEDDED_KEYS +  64: goto t_ek_64;
-    case T_EMBEDDED_KEYS +  48: goto t_ek_48;
-    case T_EMBEDDED_KEYS +  32: goto t_ek_32;
-    case T_EMBEDDED_KEYS +  16: goto t_ek_16;
-    case T_EMBEDDED_KEYS +   0: goto t_ek_0;
+    case T_EMBEDDED_KEYS + 7 * (1 << cnBitsTypeMask): goto t_ek_112;
+    case T_EMBEDDED_KEYS + 6 * (1 << cnBitsTypeMask): goto t_ek_96;
+    case T_EMBEDDED_KEYS + 5 * (1 << cnBitsTypeMask): goto t_ek_80;
+    case T_EMBEDDED_KEYS + 4 * (1 << cnBitsTypeMask): goto t_ek_64;
+    case T_EMBEDDED_KEYS + 3 * (1 << cnBitsTypeMask): goto t_ek_48;
+    case T_EMBEDDED_KEYS + 2 * (1 << cnBitsTypeMask): goto t_ek_32;
+    case T_EMBEDDED_KEYS + 1 * (1 << cnBitsTypeMask): goto t_ek_16;
+    case T_EMBEDDED_KEYS + 0 * (1 << cnBitsTypeMask): goto t_ek_0;
       #else // _AUG_TYPE_8_EK
           #ifndef _AUG_TYPE_X
     CASES_AUG_TYPE(T_EMBEDDED_KEYS)
@@ -1778,50 +1836,50 @@ fastAgain:;
 
   #ifdef EK_XV
       #if defined(AUG_TYPE_64_LOOKUP) && defined(LOOKUP)
-    case T_EK_XV + ((56 - 1) << 4): goto t_ek_xv_56;
-    case T_EK_XV + ((48 - 1) << 4): goto t_ek_xv_48;
-    case T_EK_XV + ((40 - 1) << 4): goto t_ek_xv_40;
-    case T_EK_XV + ((32 - 1) << 4): goto t_ek_xv_32;
-    case T_EK_XV + ((24 - 1) << 4): goto t_ek_xv_24;
-    case T_EK_XV + ((16 - 1) << 4): goto t_ek_xv_16;
-    case T_EK_XV + (( 8 - 1) << 4): goto t_ek_xv_8;
+    case T_EK_XV + ((56 - 1) << cnBitsTypeMask): goto t_ek_xv_56;
+    case T_EK_XV + ((48 - 1) << cnBitsTypeMask): goto t_ek_xv_48;
+    case T_EK_XV + ((40 - 1) << cnBitsTypeMask): goto t_ek_xv_40;
+    case T_EK_XV + ((32 - 1) << cnBitsTypeMask): goto t_ek_xv_32;
+    case T_EK_XV + ((24 - 1) << cnBitsTypeMask): goto t_ek_xv_24;
+    case T_EK_XV + ((16 - 1) << cnBitsTypeMask): goto t_ek_xv_16;
+    case T_EK_XV + (( 8 - 1) << cnBitsTypeMask): goto t_ek_xv_8;
       #endif // defined(AUG_TYPE_64_LOOKUP) && defined(LOOKUP)
       #if defined(AUG_TYPE_32_LOOKUP) && defined(LOOKUP)
-    case T_EK_XV + ((56 / 2 - 1) << 4): goto t_ek_xv_56;
-    case T_EK_XV + ((48 / 2 - 1) << 4): goto t_ek_xv_48;
-    case T_EK_XV + ((40 / 2 - 1) << 4): goto t_ek_xv_40;
-    case T_EK_XV + ((32 / 2 - 1) << 4): goto t_ek_xv_32;
-    case T_EK_XV + ((24 / 2 - 1) << 4): goto t_ek_xv_24;
-    case T_EK_XV + ((16 / 2 - 1) << 4): goto t_ek_xv_16;
-    case T_EK_XV + (( 8 / 2 - 1) << 4): goto t_ek_xv_8;
+    case T_EK_XV + ((56 / 2 - 1) << cnBitsTypeMask): goto t_ek_xv_56;
+    case T_EK_XV + ((48 / 2 - 1) << cnBitsTypeMask): goto t_ek_xv_48;
+    case T_EK_XV + ((40 / 2 - 1) << cnBitsTypeMask): goto t_ek_xv_40;
+    case T_EK_XV + ((32 / 2 - 1) << cnBitsTypeMask): goto t_ek_xv_32;
+    case T_EK_XV + ((24 / 2 - 1) << cnBitsTypeMask): goto t_ek_xv_24;
+    case T_EK_XV + ((16 / 2 - 1) << cnBitsTypeMask): goto t_ek_xv_16;
+    case T_EK_XV + (( 8 / 2 - 1) << cnBitsTypeMask): goto t_ek_xv_8;
       #endif // defined(AUG_TYPE_32_LOOKUP) && defined(LOOKUP)
       #if defined(AUG_TYPE_16_LOOKUP) && defined(LOOKUP)
-    case T_EK_XV + ((56 / 4 - 1) << 4): goto t_ek_xv_56;
-    case T_EK_XV + ((48 / 4 - 1) << 4): goto t_ek_xv_48;
-    case T_EK_XV + ((40 / 4 - 1) << 4): goto t_ek_xv_40;
-    case T_EK_XV + ((32 / 4 - 1) << 4): goto t_ek_xv_32;
-    case T_EK_XV + ((24 / 4 - 1) << 4): goto t_ek_xv_24;
-    case T_EK_XV + ((16 / 4 - 1) << 4): goto t_ek_xv_16;
-    case T_EK_XV + (( 8 / 4 - 1) << 4): goto t_ek_xv_8;
+    case T_EK_XV + ((56 / 4 - 1) << cnBitsTypeMask): goto t_ek_xv_56;
+    case T_EK_XV + ((48 / 4 - 1) << cnBitsTypeMask): goto t_ek_xv_48;
+    case T_EK_XV + ((40 / 4 - 1) << cnBitsTypeMask): goto t_ek_xv_40;
+    case T_EK_XV + ((32 / 4 - 1) << cnBitsTypeMask): goto t_ek_xv_32;
+    case T_EK_XV + ((24 / 4 - 1) << cnBitsTypeMask): goto t_ek_xv_24;
+    case T_EK_XV + ((16 / 4 - 1) << cnBitsTypeMask): goto t_ek_xv_16;
+    case T_EK_XV + (( 8 / 4 - 1) << cnBitsTypeMask): goto t_ek_xv_8;
       #endif // defined(AUG_TYPE_16_LOOKUP) && defined(LOOKUP)
       #if defined(AUG_TYPE_8_LOOKUP) && defined(LOOKUP)
-    case T_EK_XV + ((56 / 8 - 1) << 4): goto t_ek_xv_56;
-    case T_EK_XV + ((48 / 8 - 1) << 4): goto t_ek_xv_48;
-    case T_EK_XV + ((40 / 8 - 1) << 4): goto t_ek_xv_40;
-    case T_EK_XV + ((32 / 8 - 1) << 4): goto t_ek_xv_32;
-    case T_EK_XV + ((24 / 8 - 1) << 4): goto t_ek_xv_24;
-    case T_EK_XV + ((16 / 8 - 1) << 4): goto t_ek_xv_16;
-    case T_EK_XV + (( 8 / 8 - 1) << 4): goto t_ek_xv_8;
+    case T_EK_XV + ((56 / 8 - 1) << cnBitsTypeMask): goto t_ek_xv_56;
+    case T_EK_XV + ((48 / 8 - 1) << cnBitsTypeMask): goto t_ek_xv_48;
+    case T_EK_XV + ((40 / 8 - 1) << cnBitsTypeMask): goto t_ek_xv_40;
+    case T_EK_XV + ((32 / 8 - 1) << cnBitsTypeMask): goto t_ek_xv_32;
+    case T_EK_XV + ((24 / 8 - 1) << cnBitsTypeMask): goto t_ek_xv_24;
+    case T_EK_XV + ((16 / 8 - 1) << cnBitsTypeMask): goto t_ek_xv_16;
+    case T_EK_XV + (( 8 / 8 - 1) << cnBitsTypeMask): goto t_ek_xv_8;
       #endif // defined(AUG_TYPE_8_LOOKUP) && defined(LOOKUP)
       #if defined(AUG_TYPE_8_NEXT_EK_XV) && defined(NEXT)
-    case T_EK_XV + 112: goto t_ek_xv_plus_112;
-    case T_EK_XV +  96: goto t_ek_xv_plus_96;
-    case T_EK_XV +  80: goto t_ek_xv_plus_80;
-    case T_EK_XV +  64: goto t_ek_xv_plus_64;
-    case T_EK_XV +  48: goto t_ek_xv_plus_48;
-    case T_EK_XV +  32: goto t_ek_xv_plus_32;
-    case T_EK_XV +  16: goto t_ek_xv_plus_16;
-    case T_EK_XV +   0: goto t_ek_xv_plus_0;
+    case T_EK_XV + 7 * (1 << cnBitsTypeMask): goto t_ek_xv_plus_112;
+    case T_EK_XV + 6 * (1 << cnBitsTypeMask): goto t_ek_xv_plus_96;
+    case T_EK_XV + 5 * (1 << cnBitsTypeMask): goto t_ek_xv_plus_80;
+    case T_EK_XV + 4 * (1 << cnBitsTypeMask): goto t_ek_xv_plus_64;
+    case T_EK_XV + 3 * (1 << cnBitsTypeMask): goto t_ek_xv_plus_48;
+    case T_EK_XV + 2 * (1 << cnBitsTypeMask): goto t_ek_xv_plus_32;
+    case T_EK_XV + 1 * (1 << cnBitsTypeMask): goto t_ek_xv_plus_16;
+    case T_EK_XV + 0 * (1 << cnBitsTypeMask): goto t_ek_xv_plus_0;
       #else // AUG_TYPE_8_NEXT_EK_XV && NEXT
           #ifndef _AUG_TYPE_X
     CASES_AUG_TYPE(T_EK_XV)
@@ -1944,17 +2002,31 @@ t_skip_to_switch:
           #endif // MASK_NBLR
                 )
         {
-        case  2: assert(nBLR == AugTypeBitsInv(16)); goto t_sw_plus_16;
-        case  3: assert(nBLR == AugTypeBitsInv(32)); goto t_sw_plus_32;
-        default: assert(nBLR == AugTypeBitsInv(48)); goto t_sw_plus_48;
-        case  5: assert(nBLR == AugTypeBitsInv(64)); goto t_sw_plus_64;
-        case  6: assert(nBLR == AugTypeBitsInv(80)); goto t_sw_plus_80;
-        case  7: assert(nBLR == AugTypeBitsInv(96)); goto t_sw_plus_96;
+        case  2:
+            assert(nBLR == AugTypeBitsInv(1 * (1 << cnBitsTypeMask)));
+            goto t_sw_plus_16;
+        case  3:
+            assert(nBLR == AugTypeBitsInv(2 * (1 << cnBitsTypeMask)));
+            goto t_sw_plus_32;
+        default:
+            assert(nBLR == AugTypeBitsInv(3 * (1 << cnBitsTypeMask)));
+            goto t_sw_plus_48;
+        case  5:
+            assert(nBLR == AugTypeBitsInv(4 * (1 << cnBitsTypeMask)));
+            goto t_sw_plus_64;
+        case  6:
+            assert(nBLR == AugTypeBitsInv(5 * (1 << cnBitsTypeMask)));
+            goto t_sw_plus_80;
+        case  7:
+            assert(nBLR == AugTypeBitsInv(6 * (1 << cnBitsTypeMask)));
+            goto t_sw_plus_96;
           #if defined(AUGMENT_TYPE_8_PLUS_4) && cnBitsLeftAtDl3 < 24
         // t_sw_plus_112 is not bl-specific in this case.
         // It would be possible have a bl-specific case, but I don't
         // think it's worth the trouble.
-        case  8: assert(AugTypeBits(nBLR) == 112);   goto t_sw_plus_112;
+        case  8:
+            assert(AugTypeBits(nBLR) == 7 * (1 << cnBitsTypeMask));
+            goto t_sw_plus_112;
           #endif // AUGMENT_TYPE_8_PLUS_4 && cnBitsLeftAtDl3 < 24
         }
       #endif // BL_SPECIFIC_SKIP_JT
@@ -2192,7 +2264,7 @@ t_sw_plus_112:
         if (WROOT_IS_NULL(T_SWITCH, wRoot)) { goto break_from_main_switch; }
       #if cnBitsLeftAtDl3 >= 24
         // Help compiler know nBLR is a constant; does it help?
-        nBLR = AugTypeBitsInv(112);
+        nBLR = AugTypeBitsInv(7 * (1 << cnBitsTypeMask));
       #endif // cnBitsLeftAtDl3 >= 24
         nBL = nBLR;
         nBW = gnBW(qy, nBLR);
@@ -2219,7 +2291,7 @@ t_sw_plus_96:
     {
         if (WROOT_IS_NULL(T_SWITCH, wRoot)) { goto break_from_main_switch; }
         // Help compiler know nBLR is a constant; does it help?
-        nBLR = AugTypeBitsInv(96);
+        nBLR = AugTypeBitsInv(6 * (1 << cnBitsTypeMask));
       #ifndef BL_SPECIFIC_SKIP
         nBL = nBLR;
       #endif // !BL_SPECIFIC_SKIP
@@ -2247,7 +2319,7 @@ t_sw_plus_80:
     {
         if (WROOT_IS_NULL(T_SWITCH, wRoot)) { goto break_from_main_switch; }
         // Help compiler know nBLR is a constant; does it help?
-        nBLR = AugTypeBitsInv(80);
+        nBLR = AugTypeBitsInv(5 * (1 << cnBitsTypeMask));
       #ifndef BL_SPECIFIC_SKIP
         nBL = nBLR;
       #endif // !BL_SPECIFIC_SKIP
@@ -2275,7 +2347,7 @@ t_sw_plus_64:
     {
         if (WROOT_IS_NULL(T_SWITCH, wRoot)) { goto break_from_main_switch; }
         // Help compiler know nBLR is a constant; does it help?
-        nBLR = AugTypeBitsInv(64);
+        nBLR = AugTypeBitsInv(4 * (1 << cnBitsTypeMask));
       #ifndef BL_SPECIFIC_SKIP
         nBL = nBLR;
       #endif // !BL_SPECIFIC_SKIP
@@ -2308,8 +2380,8 @@ t_sw_plus_48:
         if (WROOT_IS_NULL(T_SWITCH, wRoot)) { goto break_from_main_switch; }
       #ifdef AUGMENT_TYPE_8
         // Help compiler know nBLR is a constant; does it help?
-        assert(nBLR == AugTypeBitsInv(48));
-        nBLR = AugTypeBitsInv(48);
+        assert(nBLR == AugTypeBitsInv(3 * (1 << cnBitsTypeMask)));
+        nBLR = AugTypeBitsInv(3 * (1 << cnBitsTypeMask));
           #ifndef BL_SPECIFIC_SKIP
         nBL = nBLR;
           #endif // !BL_SPECIFIC_SKIP
@@ -2352,9 +2424,13 @@ t_sw_plus_48:
         // spans > 32 to <= 16 bits left.
         assert((nBL - 1) & 0x30);
         // 48 or 32
+         #if cnBitsTypeMask == 4
         nAugTypeBits = 32 + (((nBL - 1) & 32) >> 1);
         //nAugTypeBits -= ((~(nBL - 1) & 32) >> 1);
         assert(nAugTypeBits == AugTypeBits(nBL));
+         #else // cnBitsTypeMask == 4
+        nAugTypeBits = AugTypeBits(nBL);
+         #endif // cnBitsTypeMask == 4
       #endif // AUGMENT_TYPE_8
         goto againAugType;
     } // end of t_sw_plus_48
@@ -2364,8 +2440,8 @@ t_sw_plus_32:
         if (WROOT_IS_NULL(T_SWITCH, wRoot)) { goto break_from_main_switch; }
       #ifdef AUGMENT_TYPE_8
         // Help compiler know nBLR is a constant; does it help?
-        assert(nBLR == AugTypeBitsInv(32));
-        nBLR = AugTypeBitsInv(32); // help compiler know nBLR is a constant
+        assert(nBLR == AugTypeBitsInv(2 * (1 << cnBitsTypeMask)));
+        nBLR = AugTypeBitsInv(2 * (1 << cnBitsTypeMask)); // nBLR is a constant
           #ifndef BL_SPECIFIC_SKIP
         nBL = nBLR;
           #endif // !BL_SPECIFIC_SKIP
@@ -2387,8 +2463,12 @@ t_sw_plus_32:
       #ifdef AUGMENT_TYPE_8
         nAugTypeBits = AugTypeBits(nBL);
       #else // AUGMENT_TYPE_8
+          #if cnBitsTypeMask == 4
         nAugTypeBits = 16 + ((nBL - 1) & 16);
         assert(nAugTypeBits == AugTypeBits(nBL));
+          #else // cnBitsTypeMask == 4
+        nAugTypeBits = AugTypeBits(nBL);
+          #endif // cnBitsTypeMask == 4
       #endif // AUGMENT_TYPE_8
         goto againAugType;
     } // end of t_sw_plus_32
@@ -2399,8 +2479,8 @@ t_sw_plus_16:
       // If we can, set nBLR, nBL and nBW to a constant to help compiler.
       // I wonder how much of this the compiler can figure out on its own.
       #ifdef AUGMENT_TYPE_8
-        assert(nBLR == AugTypeBitsInv(16));
-        nBLR = AugTypeBitsInv(16);
+        assert(nBLR == AugTypeBitsInv(1 << cnBitsTypeMask));
+        nBLR = AugTypeBitsInv(1 << cnBitsTypeMask);
           #ifndef BL_SPECIFIC_SKIP
         nBL = nBLR;
           #endif // !BL_SPECIFIC_SKIP
@@ -3176,8 +3256,9 @@ t_list_8: T_LIST_LOOKUP_GUTS(8, pLn, pwRoot, pwLnX, wKey, wRoot, /*suffix*/ 8);
 t_list112: // nDL == 8
     {
       #if cnBitsLeftAtDl3 >= 24 // For AUGMENT_TYPE_8_PLUS_4?
-        assert(nBL == AugTypeBitsInv(112)); assert(nBLR == nBL);
-        nBLR = nBL = AugTypeBitsInv(112);
+        assert(nBL == AugTypeBitsInv(7 * (1 << cnBitsTypeMask)));
+        assert(nBLR == nBL);
+        nBLR = nBL = AugTypeBitsInv(7 * (1 << cnBitsTypeMask));
       #endif // cnBitsLeftAtDl3 >= 24
         T_LIST_LOOKUP_GUTS(nBL, pLn, pwRoot, pwLnX, wKey, wRoot, Word);
     } // end of t_list112
@@ -3192,7 +3273,7 @@ t_list112: // nDL == 8
   #ifdef BL_SPECIFIC_LIST
 t_list96: // nDL == 7
     {
-        nBLR = nBL = AugTypeBitsInv(96);
+        nBLR = nBL = AugTypeBitsInv(6 * (1 << cnBitsTypeMask));
         T_LIST_LOOKUP_GUTS(nBL, pLn, pwRoot, pwLnX, wKey, wRoot, Word);
     } // end of t_list96
   #endif // BL_SPECIFIC_LIST
@@ -3204,7 +3285,7 @@ t_list96: // nDL == 7
   #ifdef BL_SPECIFIC_LIST
 t_list80: // nDL == 6
     {
-        nBLR = nBL = AugTypeBitsInv(80);
+        nBLR = nBL = AugTypeBitsInv(5 * (1 << cnBitsTypeMask));
         T_LIST_LOOKUP_GUTS(nBL, pLn, pwRoot, pwLnX, wKey, wRoot, Word);
     } // end of t_list80
   #endif // BL_SPECIFIC_LIST
@@ -3228,7 +3309,7 @@ t_list48: // nBL > 32
       #endif // else AUGMENT_TYPE_8
     {
       #ifdef BL_SPECIFIC_LIST
-        nBLR = nBL = AugTypeBitsInv(64);
+        nBLR = nBL = AugTypeBitsInv(4 * (1 << cnBitsTypeMask));
       #endif // BL_SPECIFIC_LIST
         T_LIST_LOOKUP_GUTS(nBL, pLn, pwRoot, pwLnX, wKey, wRoot, Word);
     } // end of t_list64
@@ -3240,7 +3321,7 @@ t_list48: // nBL > 32
   #ifdef BL_SPECIFIC_LIST
 t_list48: // nDL == 4
     {
-        nBLR = nBL = AugTypeBitsInv(48);
+        nBLR = nBL = AugTypeBitsInv(3 * (1 << cnBitsTypeMask));
       #if defined(AUGMENT_TYPE_8) && cnBitsLeftAtDl3 > 24
         T_LIST_LOOKUP_GUTS(nBL, pLn, pwRoot, pwLnX, wKey, wRoot, Word);
       #else // AUGMENT_TYPE_8 && cnBitsLeftAtDl3 > 24
@@ -3268,8 +3349,8 @@ t_list16: // nDL == 2
       #endif // AUGMENT_TYPE_8 && !BL_SPECIFIC_LIST
     {
       #ifdef BL_SPECIFIC_LIST
-        assert(nBLR == AugTypeBitsInv(32));
-        nBLR = nBL = AugTypeBitsInv(32);
+        assert(nBLR == AugTypeBitsInv(2 * (1 << cnBitsTypeMask)));
+        nBLR = nBL = AugTypeBitsInv(2 * (1 << cnBitsTypeMask));
       #endif // BL_SPECIFIC_LIST
         T_LIST_LOOKUP_GUTS(nBL, pLn, pwRoot, pwLnX, wKey, wRoot, 32);
     } // end of case t_list32
@@ -3291,8 +3372,8 @@ t_list: // nDL == 1
     {   // 8 < nBL <= 16 for AUGMENT_TYPE && !AUGMENT_TYPE_8
       #if defined(AUGMENT_TYPE_8)
           #if defined(BL_SPECIFIC_LIST) || !defined(AUGMENT_TYPE_8_PLUS_4)
-        assert(nBLR == AugTypeBitsInv(16));
-        nBLR = nBL = AugTypeBitsInv(16);
+        assert(nBLR == AugTypeBitsInv(1 << cnBitsTypeMask));
+        nBLR = nBL = AugTypeBitsInv(1 << cnBitsTypeMask);
           #endif // BL_SPECIFIC_LIST || !AUGMENT_TYPE_8_PLUS_4
       #elif cnBitsLeftAtDl2 > 16
         assert(nBLR == cnBitsInD1);
@@ -4513,7 +4594,7 @@ t_unpacked_bm:
     #define HANDLE_DL2(_nBL)
       #endif // NO_TYPE_IN_XX_SW || HANDLE_DL2_IN_EMBEDDED_KEYS
 
-      #if defined(_AUG_TYPE_X) && defined(LOOKUP)
+      #ifdef _AUG_TYPE_X_EK
         #define _AUG_TYPE_EK
       #elif defined(_AUG_TYPE_8_EK) // AUG_TYPE_64_LOOKUP && LOOKUP
         #define _AUG_TYPE_EK
@@ -4555,7 +4636,7 @@ t_unpacked_bm:
         } \
         goto break_from_main_switch
 
-          #ifdef _AUG_TYPE_X
+          #ifdef _AUG_TYPE_X_EK
 t_ek_56:  T_EK_X(56, wRoot, pwLnX, wKey);
 t_ek_48:  T_EK_X(48, wRoot, pwLnX, wKey);
 t_ek_40:  T_EK_X(40, wRoot, pwLnX, wKey);
@@ -4563,7 +4644,7 @@ t_ek_32:  T_EK_X(32, wRoot, pwLnX, wKey);
 t_ek_24:  T_EK_X(24, wRoot, pwLnX, wKey);
 t_ek_16:  T_EK_X(16, wRoot, pwLnX, wKey);
 t_ek_8:   T_EK_X( 8, wRoot, pwLnX, wKey);
-          #endif // _AUG_TYPE_X
+          #endif // _AUG_TYPE_X_EK
           #ifdef _AUG_TYPE_8_EK
 t_ek_112: assert(0);
 t_ek_96:  T_EK_X(56, wRoot, pwLnX, wKey);

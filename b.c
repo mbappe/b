@@ -12952,6 +12952,16 @@ Initialize(void)
         printf("# nDLR_to_nBW(%d) %d\n", dd, nDLR_to_nBW(dd));
     }
 
+    printf("\n# cnBitsTypeMask %d\n", cnBitsTypeMask);
+    printf("\n# cnTypeMask 0x%02x\n", cnTypeMask);
+  #ifdef SKIP_LINKS
+    assert(T_SKIP_TO_SWITCH <= cnTypeMask);
+  #elif CODE_XX_SW // SKIP_LINKS
+    assert(T_XX_SW <= cnTypeMask);
+  #else // SKIP_LINKS elif CODE_XX_SW
+    assert(T_SWITCH <= cnTypeMask);
+  #endif // SKIP_LINKS elif CODE_XX_SW else
+
     printf("\n");
 
     // Print the type values.

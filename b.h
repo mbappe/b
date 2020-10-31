@@ -110,12 +110,15 @@
 #define cnMallocAlignment  EXP(cnBitsMallocMask)
 #define cnMallocMask  MSK(cnBitsMallocMask)
 
-#if cnBitsMallocMask <= 4
-  #define cnTypeMask  cnMallocMask
-#else // cnBitsMallocMask <= 4
-  // AUGMENT_TYPE doesn't like cnTypeMask > 15
-  #define cnTypeMask  15
-#endif // cnBitsMallocMask <= 4 else
+#ifndef cnBitsTypeMask
+      #if cnBitsMallocMask <= 4
+    #define cnBitsTypeMask cnBitsMallocMask
+      #else // cnBitsMallocMask <= 4
+    // AUGMENT_TYPE doesn't like cnBitsTypeMask > 4
+  #define cnBitsTypeMask  4
+      #endif // cnBitsMallocMask <= 4 else
+#endif // !cnBitsTypeMask
+#define cnTypeMask  (int)MSK(cnBitsTypeMask)
 
 // Shorthand for common parameters.
 // The parameters are all related to each other.
@@ -8382,6 +8385,18 @@ LocateKeyInList16(qpa, int nBLR, Word_t wKey)
           // This ifdef does not appear to make any difference.
           // I suspect the compiler already knows that nBLR == 16.
           #if defined(AUGMENT_TYPE_8) && !defined(AUGMENT_TYPE_8_PLUS_4)
+        PSPLIT_LOCATEKEY(Bucket_t,
+                         uint16_t, 16, psKeys, nPopCnt, sKey, nPos);
+          #elif cnBitsInD1 == 16
+        PSPLIT_LOCATEKEY(Bucket_t,
+                         uint16_t, 16, psKeys, nPopCnt, sKey, nPos);
+          #elif cnBitsInD2 == 16 && cnBitsInD1 <= 8
+        PSPLIT_LOCATEKEY(Bucket_t,
+                         uint16_t, 16, psKeys, nPopCnt, sKey, nPos);
+          #elif cnBitsInD3 == 16 && cnBitsInD2 <= 8
+        PSPLIT_LOCATEKEY(Bucket_t,
+                         uint16_t, 16, psKeys, nPopCnt, sKey, nPos);
+          #elif cnBitsInD3 + cnBitsPerDigit == 16 && cnBitsInD3 <= 8
         PSPLIT_LOCATEKEY(Bucket_t,
                          uint16_t, 16, psKeys, nPopCnt, sKey, nPos);
           #else // AUGMENT_TYPE_8 && !AUGMENT_TYPE_8_PLUS_4

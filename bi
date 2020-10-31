@@ -345,6 +345,33 @@ done
 && ${REGRESS} \
 && DEFINES="-DAUG_TYPE_8_LOOKUP -DBL_SPECIFIC_LIST -DDEBUG" make clean default \
 && ${REGRESS} \
+&& DEFINES="-DAUG_TYPE_64_LOOKUP -DNO_UNPACK_BM_VALUES -DcnBitsTypeMask=3 -DDEBUG" \
+    make clean default \
+&& ${REGRESS} \
+&& DEFINES="-DAUG_TYPE_32_LOOKUP -DNO_SKIP_TO_BM_SW -DcnBitsTypeMask=3 -DDEBUG" \
+    make clean default \
+&& ${REGRESS} \
+&& DEFINES="-DAUG_TYPE_16_LOOKUP -DNO_EK_XV -DcnBitsTypeMask=3 -DDEBUG" \
+    make clean default \
+&& ${REGRESS} \
+&& DEFINES="-DAUG_TYPE_8_LOOKUP -DNO_UNPACK_BM_VALUES -DcnBitsTypeMask=3 -DDEBUG" \
+    make clean default \
+&& ${REGRESS} \
+&& DEFINES="-DAUG_TYPE_32_LOOKUP -DBL_SPECIFIC_LIST -DNO_UNPACK_BM_VALUES -DcnBitsTypeMask=3 \
+-DDEBUG" \
+    make clean default \
+&& ${REGRESS} \
+&& DEFINES="-DAUG_TYPE_64_LOOKUP -DBL_SPECIFIC_LIST -DNO_SKIP_TO_BM_SW -DcnBitsTypeMask=3 \
+-DDEBUG" \
+    make clean default \
+&& ${REGRESS} \
+&& DEFINES="-DAUG_TYPE_8_LOOKUP -DBL_SPECIFIC_LIST -DNO_EK_XV -DcnBitsTypeMask=3 -DDEBUG" \
+    make clean default \
+&& ${REGRESS} \
+&& DEFINES="-DAUG_TYPE_16_LOOKUP -DBL_SPECIFIC_LIST -DNO_UNPACK_BM_VALUES -DcnBitsTypeMask=3 \
+-DDEBUG" \
+    make clean default \
+&& ${REGRESS} \
 && :
 if [ $? != 0 ]; then echo "non-zero exit"; exit 1; fi
 
