@@ -14176,8 +14176,8 @@ if ((nBmWordNum == 0) && (wIndex == 0xff)) {
                         wSkip = wCount - 1;
                     } else {
                         // next is not in here
-                        A(0); // startup
-                        assert(*pwKey & MSK(nBLLoop));
+                        //A(0); // bcheck
+                        //assert(*pwKey & MSK(nBLLoop));
                         wSkip -= wPopCnt;
                     }
                     //A(0); // check -B17
