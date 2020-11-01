@@ -25,9 +25,9 @@ REGRESS=${1:-"regress"}
 # Unfortunately, with clang, -Wno-initializer-overrides is cancelled out
 # by -Wextra if -Wextra occurs after -Wno_initializer-overrides on the
 # command line.
-CCA="clang -DNO_TEST_BY_COUNT"
+CCA=clang
 WFLAGSA_A=-Wno-initializer-overrides
-CCB="gcc -DNO_TEST_BY_COUNT"
+CCB=gcc
 WFLAGSA_B=-Wno-override-init
 CC=$CCA
 WFLAGSA=$WFLAGSA_A
