@@ -1445,13 +1445,13 @@ LogIfdefs(void)
     // NO_SPLAY_KEY_BITS
     // NO_SVALUE
 
-  #ifdef         NO_TEST_NEXT_EMPTY // for turn-on
+  #ifdef         NO_TEST_NEXT_EMPTY // for turn-on; includes PrevEmpty
     printf("#    NO_TEST_NEXT_EMPTY\n");
   #else //       NO_TEST_NEXT_EMPTY
     printf("# No NO_TEST_NEXT_EMPTY\n");
   #endif //      NO_TEST_NEXT_EMPTY else
 
-  #ifdef         NO_TEST_NEXT // for turn-on
+  #ifdef         NO_TEST_NEXT // for turn-on; ignore -v
     printf("#    NO_TEST_NEXT\n");
   #else //       NO_TEST_NEXT
     printf("# No NO_TEST_NEXT\n");
@@ -1462,6 +1462,12 @@ LogIfdefs(void)
   #else //       NO_TEST_NEXT_USING_JUDY_NEXT
     printf("# No NO_TEST_NEXT_USING_JUDY_NEXT\n");
   #endif //      NO_TEST_NEXT_USING_JUDY_NEXT else
+
+  #ifdef         NO_TEST_PREV // to speed -v
+    printf("#    NO_TEST_PREV\n");
+  #else //       NO_TEST_PREV
+    printf("# No NO_TEST_PREV\n");
+  #endif //      NO_TEST_PREV else
 
     // NO_TRIM_EXPANSE
 
@@ -5565,6 +5571,10 @@ TestJudyNext(void *J1, void *JL, PNewSeed_t PSeed, Word_t Elements)
 int
 TestJudyPrev(void *J1, void *JL, PNewSeed_t PSeed, Word_t Elements)
 {
+  #ifdef NO_TEST_PREV
+    (void)J1; (void)JL; (void)PSeed; (void)Elements;
+    DeltanSecL = 0;
+  #else // NO_TEST_PREV
     (void)PSeed; // for TEST_NEXT_USING_JUDY_NEXT
 
     Word_t    elm;
@@ -5764,6 +5774,7 @@ TestJudyPrev(void *J1, void *JL, PNewSeed_t PSeed, Word_t Elements)
         }
         DeltanSecL = DminTime / (double)Elements;
     }
+  #endif // NO_TEST_PREV else
 
 //  perhaps a check should be done here -- if I knew what to expect.
     return (0);
@@ -5894,10 +5905,10 @@ TestJudyNextEmpty(void *J1, void *JL, PNewSeed_t PSeed, Word_t Elements)
 int
 TestJudyPrevEmpty(void *J1, void *JL, PNewSeed_t PSeed, Word_t Elements)
 {
-  #ifdef NO_TEST_NEXT_EMPTY
+  #if defined(NO_TEST_NEXT_EMPTY) || defined(NO_TEST_PREV)
     (void)J1; (void)JL; (void)PSeed; (void)Elements;
     DeltanSecL = 0;
-  #else // NO_TEST_NEXT_EMPTY
+  #else // NO_TEST_NEXT_EMPTY || NO_TEST_PREV
     Word_t    elm;
 
     double    DminTime;
@@ -5996,7 +6007,7 @@ TestJudyPrevEmpty(void *J1, void *JL, PNewSeed_t PSeed, Word_t Elements)
         }
         DeltanSecL = DminTime / (double)Elements;
     }
-  #endif // !NO_TEST_NEXT_EMPTY
+  #endif // NO_TEST_NEXT_EMPTY || NO_TEST_PREV else
     return (0);
 }
 
