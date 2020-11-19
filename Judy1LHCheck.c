@@ -1112,9 +1112,11 @@ TestJudyCount(void *J1, void *JL, Word_t LowIndex, Word_t Elements)
         }
   #endif // !NO_TEST_BY_COUNT
 
+  #ifndef NO_TEST_NEXT
         assert(TstIndexL == TstIndex);
         assert(TstIndex1 == TstIndex);
         Word_t PrevIndex = TstIndex;
+  #endif // !NO_TEST_NEXT
 #if defined(USE_JUDY1_NEXT_IN_COUNT)
         Rc = Judy1Next(J1, &TstIndex1, NULL);
         TstIndex = TstIndex1;
