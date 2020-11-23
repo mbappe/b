@@ -455,6 +455,9 @@ main(int argc, char *argv[])
     else if (sizeof(Word_t) == 4)
         printf("%s 32 Bit version\n", argv[0]);
 
+    // Put date in output.
+    printf("# Date "); int sysret = system("date"); (void)sysret;
+
 //////////////////////////////////////////////////////////////
 // CALCULATE NUMBER OF MEASUREMENT GROUPS
 //////////////////////////////////////////////////////////////

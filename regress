@@ -18,6 +18,9 @@
 
 # Use a -DDEBUG build.
 
+# Put date in output.
+date
+
 if [ "$1" = "1" ]; then
     TIME=b1time
     CHECK=b1check
