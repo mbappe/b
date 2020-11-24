@@ -18,6 +18,9 @@
 # git bisect run, i.e. exit status indicates success or failure.
 # But running it takes too long for it to be used in that way.
 
+# Put date in output.
+date
+
 REGRESS=${1:-"regress"}
 
 # Use -Wno-override-init with gcc for "-DAUGMENT_TYPE -DJUMP_TABLE".
@@ -91,9 +94,6 @@ if [ $? != 0 ]; then echo "non-zero exit"; exit 1; fi
 && : "Non-default features" \
 && : "test for nPopCntLoop > anListPopCntMax[nBLLoop] in Splay" \
 && DEFINES="-DcnListPopCntMax16=8 -DDEBUG" make clean default \
-&& ${REGRESS} \
-&& DEFINES="-DcnListPopCntMax16=8 -DSPLAY_WITH_INSERT -DDEBUG" \
-    make clean default \
 && ${REGRESS} \
 && DEFINES="-DDS_4_WAY -DDEBUG" make clean default \
 && ${REGRESS} \
@@ -206,6 +206,11 @@ done
 && ${REGRESS} \
 && DEFINES="-DSPLAY_WITH_INSERT -DDOUBLE_DOWN -DUSE_LOWER_XX_SW \
 -DNO_EMBED_KEYS -DcnListPopCntMax64=16 -DDEBUG" \
+   make clean default \
+&& ${REGRESS} \
+&& : 'Found a long-standing SPLAY_WITH_INSERT bug with the following test' \
+&& DEFINES="-DSPLAY_WITH_INSERT -DDOUBLE_DOWN -DUSE_LOWER_XX_SW \
+-DNO_EMBED_KEYS -DcnListPopCntMax64=24 -DcnListPopCntMax16=12 -DDEBUG" \
    make clean default \
 && ${REGRESS} \
 && DEFINES="-DDOUBLE_DOWN -DUSE_LOWER_XX_SW -DcnListPopCntMax64=64 \
@@ -331,45 +336,53 @@ done
     make clean default \
 && DEFINES="-DAUG_TYPE_64_LOOKUP -DDEBUG" make clean default \
 && ${REGRESS} \
-&& DEFINES="-DAUG_TYPE_64_LOOKUP -DBL_SPECIFIC_LIST -DDEBUG" make clean default \
+&& DEFINES="-DAUG_TYPE_64_LOOKUP -DBL_SPECIFIC_LIST -DDEBUG" \
+    make clean default \
 && ${REGRESS} \
 && DEFINES="-DAUG_TYPE_32_LOOKUP -DDEBUG" make clean default \
 && ${REGRESS} \
-&& DEFINES="-DAUG_TYPE_32_LOOKUP -DBL_SPECIFIC_LIST -DDEBUG" make clean default \
+&& DEFINES="-DAUG_TYPE_32_LOOKUP -DBL_SPECIFIC_LIST -DDEBUG" \
+    make clean default \
 && ${REGRESS} \
 && DEFINES="-DAUG_TYPE_16_LOOKUP -DDEBUG" make clean default \
 && ${REGRESS} \
-&& DEFINES="-DAUG_TYPE_16_LOOKUP -DBL_SPECIFIC_LIST -DDEBUG" make clean default \
+&& DEFINES="-DAUG_TYPE_16_LOOKUP -DBL_SPECIFIC_LIST -DDEBUG" \
+    make clean default \
 && ${REGRESS} \
 && DEFINES="-DAUG_TYPE_8_LOOKUP -DDEBUG" make clean default \
 && ${REGRESS} \
-&& DEFINES="-DAUG_TYPE_8_LOOKUP -DBL_SPECIFIC_LIST -DDEBUG" make clean default \
-&& ${REGRESS} \
-&& DEFINES="-DAUG_TYPE_64_LOOKUP -DNO_UNPACK_BM_VALUES -DcnBitsTypeMask=3 -DDEBUG" \
+&& DEFINES="-DAUG_TYPE_8_LOOKUP -DBL_SPECIFIC_LIST -DDEBUG" \
     make clean default \
 && ${REGRESS} \
-&& DEFINES="-DAUG_TYPE_32_LOOKUP -DNO_SKIP_TO_BM_SW -DcnBitsTypeMask=3 -DDEBUG" \
+&& DEFINES="-DAUG_TYPE_64_LOOKUP -DNO_UNPACK_BM_VALUES -DcnBitsTypeMask=3 \
+-DDEBUG" \
+    make clean default \
+&& ${REGRESS} \
+&& DEFINES="-DAUG_TYPE_32_LOOKUP -DNO_SKIP_TO_BM_SW -DcnBitsTypeMask=3 \
+-DDEBUG" \
     make clean default \
 && ${REGRESS} \
 && DEFINES="-DAUG_TYPE_16_LOOKUP -DNO_EK_XV -DcnBitsTypeMask=3 -DDEBUG" \
     make clean default \
 && ${REGRESS} \
-&& DEFINES="-DAUG_TYPE_8_LOOKUP -DNO_UNPACK_BM_VALUES -DcnBitsTypeMask=3 -DDEBUG" \
-    make clean default \
-&& ${REGRESS} \
-&& DEFINES="-DAUG_TYPE_32_LOOKUP -DBL_SPECIFIC_LIST -DNO_UNPACK_BM_VALUES -DcnBitsTypeMask=3 \
+&& DEFINES="-DAUG_TYPE_8_LOOKUP -DNO_UNPACK_BM_VALUES -DcnBitsTypeMask=3 \
 -DDEBUG" \
     make clean default \
 && ${REGRESS} \
-&& DEFINES="-DAUG_TYPE_64_LOOKUP -DBL_SPECIFIC_LIST -DNO_SKIP_TO_BM_SW -DcnBitsTypeMask=3 \
--DDEBUG" \
+&& DEFINES="-DAUG_TYPE_32_LOOKUP -DBL_SPECIFIC_LIST -DNO_UNPACK_BM_VALUES \
+-DcnBitsTypeMask=3 -DDEBUG" \
     make clean default \
 && ${REGRESS} \
-&& DEFINES="-DAUG_TYPE_8_LOOKUP -DBL_SPECIFIC_LIST -DNO_EK_XV -DcnBitsTypeMask=3 -DDEBUG" \
+&& DEFINES="-DAUG_TYPE_64_LOOKUP -DBL_SPECIFIC_LIST -DNO_SKIP_TO_BM_SW \
+-DcnBitsTypeMask=3 -DDEBUG" \
     make clean default \
 && ${REGRESS} \
-&& DEFINES="-DAUG_TYPE_16_LOOKUP -DBL_SPECIFIC_LIST -DNO_UNPACK_BM_VALUES -DcnBitsTypeMask=3 \
--DDEBUG" \
+&& DEFINES="-DAUG_TYPE_8_LOOKUP -DBL_SPECIFIC_LIST -DNO_EK_XV \
+-DcnBitsTypeMask=3 -DDEBUG" \
+    make clean default \
+&& ${REGRESS} \
+&& DEFINES="-DAUG_TYPE_16_LOOKUP -DBL_SPECIFIC_LIST -DNO_UNPACK_BM_VALUES \
+-DcnBitsTypeMask=3 -DDEBUG" \
     make clean default \
 && ${REGRESS} \
 && :

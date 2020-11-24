@@ -65,32 +65,126 @@ CountSw(qpa,
         }
     }
   #endif // XX_LISTS
-    if ((wIndex > (unsigned)nLinks / 2)
-          #if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
-            // We don't have a whole link with a pop count at the top.
-            && (nBL < cnBitsPerWord)
-          #endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
-        )
+  #if cnSwCnts == 0
+    #define _NO_SW_CNTS // Some switches must be counted w/o sw_awCnts.
+  #elif defined(CODE_BM_SW)
+    #define _NO_SW_CNTS
+  #elif defined(CODE_XX_SW)
+    #define _NO_SW_CNTS
+  // To do: other types of switches.
+  #endif // cnSwCnts == 0 elif CODE_BM_SW elif CODE_XX_SW
+  #if cnSwCnts != 0 && defined(_NO_SW_CNTS)
+    if (tp_bIsBmSw(nType))
+  #endif // cnSwCnts != 0 && _NO_SW_CNTS
+  #ifdef _NO_SW_CNTS
     {
-        ww = wIndex; wwLimit = nLinks;
-    } else {
-        ww = 0; wwLimit = wIndex;
-    }
-    DBGC(printf("ww " OWx" wwLimit " OWx"\n", ww, wwLimit));
-    wPopCnt = CountSwLoop(qya, ww, wwLimit - ww);
+        if ((wIndex > (unsigned)nLinks / 2)
+          #if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
+                // We don't have a whole link with a pop count at the top.
+                && (nBL < cnBitsPerWord)
+          #endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
+            )
+        {
+            ww = wIndex; wwLimit = nLinks;
+        } else {
+            ww = 0; wwLimit = wIndex;
+        }
+        DBGC(printf("ww " OWx" wwLimit " OWx"\n", ww, wwLimit));
+        wPopCnt = CountSwLoop(qya, ww, wwLimit - ww);
 //printf("# CountSwLoop returned %zd\n", wPopCnt);
-    assert(((int)wIndex < nLinks)
+        assert(((int)wIndex < nLinks)
 #if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
-               || (nBL == cnBitsPerWord)
+                   || (nBL == cnBitsPerWord)
 #endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
-           );
-    if (ww != 0) {
-        assert(wRoot != WROOT_NULL);
-        Word_t wPopCntSw = gwPopCnt(qya, nBLR);
-        DBGC(printf("wPopCntSw 0x%zx wPopCnt 0x%zx\n", wPopCntSw, wPopCnt));
-        wPopCnt = wPopCntSw - wPopCnt;
-        DBGC(printf("wPopCntSw " OWx"\n", wPopCntSw));
+               );
+        if (ww != 0) {
+            assert(wRoot != WROOT_NULL);
+            Word_t wPopCntSw = gwPopCnt(qya, nBLR);
+            DBGC(printf("wPopCntSw 0x%zx wPopCnt 0x%zx\n",
+                        wPopCntSw, wPopCnt));
+            wPopCnt = wPopCntSw - wPopCnt;
+            DBGC(printf("wPopCntSw " OWx"\n", wPopCntSw));
+        }
     }
+  #endif // _NO_SW_CNTS
+  #if cnSwCnts != 0 && defined(_NO_SW_CNTS)
+    else
+  #endif // cnSwCnts != 0 && _NO_SW_CNTS
+  #if cnSwCnts != 0
+    {
+        int nBW = gnBW(qy, nBLR);
+        DBGC(printf("CountSw nBW %d\n", nBW));
+        if (nBLR <= 16) {
+            uint16_t* pusCnts = (uint16_t*)((Switch_t*)pwr)->sw_awCnts;
+            switch ((wIndex >> (nBW - 3)) & 7) {
+            case 0:
+                ww = 0; wwLimit = wIndex;
+                wPopCnt = CountSwLoop(qya, ww, wwLimit - ww);
+                break;
+            case 1:
+                ww = wIndex; wwLimit = nLinks / 4;
+                wPopCnt = pusCnts[0] - CountSwLoop(qya, ww, wwLimit - ww);
+                break;
+            case 2:
+                ww = nLinks / 4; wwLimit = wIndex;
+                wPopCnt = pusCnts[0] + CountSwLoop(qya, ww, wwLimit - ww);
+                break;
+            case 3:
+                ww = wIndex; wwLimit = nLinks / 2;
+                wPopCnt
+                    = pusCnts[0] + pusCnts[1]
+                        - CountSwLoop(qya, ww, wwLimit - ww);
+                break;
+            case 4:
+                ww = nLinks / 2; wwLimit = wIndex;
+                wPopCnt
+                    = pusCnts[0] + pusCnts[1]
+                        + CountSwLoop(qya, ww, wwLimit - ww);
+                break;
+            case 5:
+                ww = wIndex; wwLimit = nLinks * 3 / 4;
+                wPopCnt
+                    = gwPopCnt(qya, nBLR) - pusCnts[3]
+                        - CountSwLoop(qya, ww, wwLimit - ww);
+                break;
+            case 6:
+                ww = nLinks * 3 / 4; wwLimit = wIndex;
+                wPopCnt
+                    = gwPopCnt(qya, nBLR) - pusCnts[3]
+                        + CountSwLoop(qya, ww, wwLimit - ww);
+                break;
+            case 7:
+                ww = wIndex; wwLimit = nLinks;
+                wPopCnt
+                    = gwPopCnt(qya, nBLR)
+                        - CountSwLoop(qya, ww, wwLimit - ww);
+            }
+        } else {
+            switch ((wIndex >> (nBW - 2)) & 3) {
+            case 0:
+                ww = 0; wwLimit = wIndex;
+                wPopCnt = CountSwLoop(qya, ww, wwLimit - ww);
+                break;
+            case 1:
+                ww = wIndex; wwLimit = nLinks / 2;
+                wPopCnt
+                    = ((Switch_t*)pwr)->sw_awCnts[0]
+                        - CountSwLoop(qya, ww, wwLimit - ww);
+                break;
+            case 2:
+                ww = nLinks / 2; wwLimit = wIndex;
+                wPopCnt
+                    = ((Switch_t*)pwr)->sw_awCnts[0]
+                        + CountSwLoop(qya, ww, wwLimit - ww);
+                break;
+            case 3:
+                ww = wIndex; wwLimit = nLinks;
+                wPopCnt
+                    = gwPopCnt(qya, nBLR) - CountSwLoop(qya, ww, wwLimit - ww);
+            }
+        }
+    }
+  #endif // cnSwCnts == 0
     DBGC(printf("\nCountSw wPopCnt %" _fw"u\n", wPopCnt));
     return wPopCnt;
 }
@@ -350,15 +444,25 @@ SwCleanup(qpa, Word_t wKey, int nBLR
 }
 #endif // defined(INSERT) || defined(REMOVE)
 
-// Adjust pop count.
+// Adjust pop count in a switch.
 // Increment for insert on the way down.
 // Decrement for remove on the way down.
 // Also used to undo itself after we discover insert or remove is redundant.
 static inline Word_t
-SwIncr(qpa, int nBLR, int nIncr)
+SwIncr(qpa, int nBLR, int nDigit, int nBW, int nIncr)
 {
-    qva; (void)nBLR; (void)nIncr;
+    qva; (void)nBLR; (void)nDigit; (void)nBW; (void)nIncr;
   #if defined(INSERT) || defined(REMOVE)
+      #if cnSwCnts != 0
+        if (nBLR <= 16) {
+            ((uint16_t*)((Switch_t*)pwr)->sw_awCnts)[nDigit >> (nBW - 2)]
+                += nIncr;
+        } else {
+            if ((nDigit & EXP(nBW - 1)) == 0) {
+                ((Switch_t*)pwr)->sw_awCnts[0] += nIncr;
+            }
+        }
+      #endif // cnSwCnts != 0
       #if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
     if (nBL < cnBitsPerWord)
       #endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
@@ -2634,7 +2738,8 @@ switchTail:;
             }
         } else {
             BJ1(IF_INSERT(wPopCntUp =))
-                SwIncr(qya, nBLR, nIncr); // adjust pop count
+                SwIncr(qya, nBLR, wDigit, nBW, nIncr); // adjust pop count
+            // *pwRoot may have changed so wRoot is out of date
         }
       #endif // defined(INSERT) || defined(REMOVE)
         IF_COUNT(wPopCntSum += CountSw(qya, wDigit, nLinks));
@@ -2738,7 +2843,7 @@ t_xx_sw:
             }
         } else {
             BJ1(IF_INSERT(wPopCntUp =))
-                SwIncr(qya, nBLR, nIncr); // adjust pop count
+                SwIncr(qya, nBLR, wDigit, nBW, nIncr); // adjust pop count
         }
           #endif // INSERT || REMOVE
         IF_COUNT(wPopCntSum += CountSw(qya, wDigit, nLinks));
@@ -5593,8 +5698,13 @@ Judy1Test(Pcvoid_t pcvRoot, Word_t wKey, PJError_t PJError)
 {
 #if (cnDigitsPerWord > 1)
 
+  #ifdef B_JUDYL
     DBGL(printf("\n\n# JudyLGet pcvRoot aka wRoot %p wKey " OWx"\n",
-                (void *)pcvRoot, wKey));
+                (void*)pcvRoot, wKey));
+  #else // B_JUDYL
+    DBGL(printf("\n\n# Judy1Test pcvRoot aka wRoot %p wKey " OWx"\n",
+                (void*)pcvRoot, wKey));
+  #endif // B_JUDYL else
 
     Word_t wRoot = (Word_t)pcvRoot;
     if ((WROOT_NULL != 0) && (wRoot == 0)) {
@@ -5734,12 +5844,13 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
 
   #ifdef B_JUDYL
     Word_t *pwValue;
+    DBGI(printf("\n\n# JudyLIns ppvRoot %p wKey " OWx"\n",
+                (void*)ppvRoot, wKey));
   #else // B_JUDYL
     int status;
-  #endif // B_JUDYL
-
     DBGI(printf("\n\n# Judy1Set ppvRoot %p wKey " OWx"\n",
-                (void *)ppvRoot, wKey));
+                (void*)ppvRoot, wKey));
+  #endif // B_JUDYL else
 
   #if 0
     // This pre-test causes problems if we are running an experiment
@@ -5892,7 +6003,11 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
   #endif // defined(DEBUG)
     }
 
-    DBGI(printf("\n# After Insert(wKey " OWx") Dump\n", wKey));
+  #ifdef B_JUDYL
+    DBGI(printf("\n# After InsertL(wKey " OWx") Dump\n", wKey));
+  #else // B_JUDYL
+    DBGI(printf("\n# After Insert1(wKey " OWx") Dump\n", wKey));
+  #endif // B_JUDYL else
     DBGI(Dump((Word_t *)ppvRoot, wKey, cnBitsPerWord));
     DBGI(printf("\n"));
 
