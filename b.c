@@ -12637,6 +12637,18 @@ Initialize(void)
     printf("# No GCC_VECTORS\n");
 #endif // defined(GCC_VECTORS)
 
+  #ifdef         SW_POP_IN_WR_HB
+    printf("#    SW_POP_IN_WR_HB\n");
+  #else //       SW_POP_IN_WR_HB
+    printf("# No SW_POP_IN_WR_HB\n");
+  #endif //      SW_POP_IN_WR_HB else
+
+  #ifdef         GPC_ALL_SKIP_TO_SW_CASES
+    printf("#    GPC_ALL_SKIP_TO_SW_CASES\n");
+  #else //       GPC_ALL_SKIP_TO_SW_CASES
+    printf("# No GPC_ALL_SKIP_TO_SW_CASES\n");
+  #endif //      GPC_ALL_SKIP_TO_SW_CASES else
+
 #ifdef           NO_PREFETCH_LOCATEKEY_PSPLIT_VAL
     printf("#    NO_PREFETCH_LOCATEKEY_PSPLIT_VAL\n");
 #else //         NO_PREFETCH_LOCATEKEY_PSPLIT_VAL
@@ -12960,11 +12972,6 @@ Initialize(void)
   #else // cnSwCnts
     printf("# No cnSwCnts\n");
   #endif // cnSwCnts else
-  #ifdef SW_POP_IN_WR_HB
-    printf("#    SW_POP_IN_WR_HB\n");
-  #else // SW_POP_IN_WR_HB
-    printf("# No SW_POP_IN_WR_HB\n");
-  #endif // SW_POP_IN_WR_HB else
 
 #ifndef OLD_LIST_WORD_CNT
     for (int nLogBytesPerKey = cnLogBytesPerWord;

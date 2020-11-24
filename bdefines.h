@@ -2,6 +2,24 @@
 #if ( ! defined(_BDEFINES_H_INCLUDED) )
 #define _BDEFINES_H_INCLUDED
 
+// Add one word in Switch_t for subexpanse pop count(s) to improve performance
+// of Count by default.
+#ifndef cnSwCnts
+  #define cnSwCnts  1
+#endif // cnSwCnts
+
+// Enable SW_POP_IN_WR_HB by default.
+#ifndef    NO_SW_POP_IN_WR_HB
+#undef        SW_POP_IN_WR_HB
+#define       SW_POP_IN_WR_HB
+#endif // !NO_SW_POP_IN_WR_HB
+
+// Enable GPC_ALL_SKIP_TO_SW_CASES by default.
+#ifndef    NO_GPC_ALL_SKIP_TO_SW_CASES
+#undef        GPC_ALL_SKIP_TO_SW_CASES
+#define       GPC_ALL_SKIP_TO_SW_CASES
+#endif // !NO_GPC_ALL_SKIP_TO_SW_CASES
+
 #ifdef NEW_NEXT_IS_EXCLUSIVE
   #undef  NEW_NEXT
   #define NEW_NEXT

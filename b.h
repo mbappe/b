@@ -8837,6 +8837,11 @@ GetPopCnt(qpa)
         }
         //__builtin_prefetch(0, 0, 0); // Does .s show a bounds check?
         switch (nType) {
+  #ifdef GPC_ALL_SKIP_TO_SW_CASES
+    #define _GPC_ALL_CASES
+  #elif !defined(LVL_IN_WR_HB) && !defined(LVL_IN_PP)
+    #define _GPC_ALL_CASES
+  #endif // GPC_ALL_SKIP_TO_SW_CASES elif !LVL_IN_WR_HB && !LVL_IN_PP
         case T_SWITCH:
   #ifdef SKIP_LINKS
         case T_SKIP_TO_SWITCH:
@@ -8845,11 +8850,6 @@ GetPopCnt(qpa)
         // extracting nType from wRoot.
         // We have not coded a no-bounds-check version without SKIP_LINKS yet.
         // It's ok to create extra cases.
-      #ifdef GPC_ALL_SKIP_TO_SW_CASES
-        #define _GPC_ALL_CASES
-      #elif !defined(LVL_IN_WR_HB) && !defined(LVL_IN_PP)
-        #define _GPC_ALL_CASES
-      #endif // GPC_ALL_SKIP_TO_SW_CASES elif !LVL_IN_WR_HB && !LVL_IN_PP
       #ifdef _GPC_ALL_CASES
         case T_SKIP_TO_SWITCH +  1:
         case T_SKIP_TO_SWITCH +  2:
@@ -8885,66 +8885,71 @@ GetPopCnt(qpa)
         case T_SKIP_TO_LIST_SW:
   #endif // SKIP_TO_LIST_SW
         {
-#if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
+  #if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
             if (nBL >= cnBitsPerWord) {
                 wPopCnt = SumPopCnt(qya);
             } else
-#endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
+  #endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
             { wPopCnt = gwPopCnt(qya, gnBLR(qy)); }
             break;
         }
-      #if defined(EMBED_KEYS)
-          #ifdef EK_XV
+  #if defined(EMBED_KEYS)
+      #ifndef _GPC_ALL_CASES
+        // How we handle the default case in GetPopCnt seems to make a huge
+        // difference in the performance of Count.
+        default:
+      #endif // !_GPC_ALL_CASES
+      #ifdef EK_XV
         case T_EK_XV:
             wPopCnt = wr_nPopCnt(wRoot, nBL);
             break;
-          #endif // EK_XV
+      #endif // EK_XV
         case T_EMBEDDED_KEYS:
             wPopCnt
                 = ((wr_nType(WROOT_NULL) == T_EMBEDDED_KEYS)
                         && (wRoot == WROOT_NULL))
                     ? 0 : wr_nPopCnt(wRoot, nBL);
             break;
-      #endif // defined(EMBED_KEYS)
+  #endif // defined(EMBED_KEYS)
         case T_LIST:
-      #if defined(UA_PARALLEL_128)
+  #if defined(UA_PARALLEL_128)
         case T_LIST_UA:
-      #endif // defined(UA_PARALLEL_128)
+  #endif // defined(UA_PARALLEL_128)
             wPopCnt = 0;
-      #if ! defined(SEPARATE_T_NULL)
+  #if ! defined(SEPARATE_T_NULL)
             if (pwr != NULL)
-      #endif // ! defined(SEPARATE_T_NULL)
+  #endif // ! defined(SEPARATE_T_NULL)
             {
                 wPopCnt = gnListPopCnt(qy, gnListBLR(qy));
                 assert(wPopCnt != 0);
             }
             break;
-      #ifdef BITMAP
+  #ifdef BITMAP
       #ifdef UNPACK_BM_VALUES
         case T_UNPACKED_BM:
       #endif // UNPACK_BM_VALUES
-          #if defined(SKIP_TO_BITMAP)
+      #if defined(SKIP_TO_BITMAP)
         case T_SKIP_TO_BITMAP:
-              #if defined(PP_IN_LINK)
+          #if defined(PP_IN_LINK)
             // From where should we get pop count for PP_IN_LINK?
             // It exists in the bitmap but also in the link.
             // But there is no link at the top. KISS.
-              #endif // defined(PP_IN_LINK)
-          #endif // defined(SKIP_TO_BITMAP)
+          #endif // defined(PP_IN_LINK)
+      #endif // defined(SKIP_TO_BITMAP)
         case T_BITMAP:
             wPopCnt = gwBitmapPopCnt(qya, gnBLR(qy));
             break;
-      #endif // BITMAP
-      #ifdef SEPARATE_T_NULL
+  #endif // BITMAP
+  #ifdef SEPARATE_T_NULL
         case T_NULL:
             wPopCnt = 0;
             break;
-      #endif // SEPARATE_T_NULL
-      #ifdef XX_LISTS
+  #endif // SEPARATE_T_NULL
+  #ifdef XX_LISTS
         case T_XX_LIST:
             assert(0); // Our parameters are inadequate. Use GetPopCntX.
             // break;
-      #endif // XX_LISTS
+  #endif // XX_LISTS
         }
         if (pwr != NULL) {
             DBGC(printf("GetPopCnt %zd\n", wPopCnt));

@@ -2981,6 +2981,8 @@ t_bm_sw:
       #endif // ! defined(COUNT)
       #if defined(BM_SW_FOR_REAL)
             char* pcPrefetch; (void)pcPrefetch;
+// Why are we prefetching here if !LOOKUP?
+// Why are we prefetching here if !B_JUDYL?
           #ifndef OFFSET_IN_SW_BM_WORD
             pcPrefetch = (void*)PWR_pwBm(&pLn->ln_wRoot, pwr, nBW);
             PREFETCH(pcPrefetch);
