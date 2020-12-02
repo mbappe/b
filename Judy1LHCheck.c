@@ -455,8 +455,9 @@ main(int argc, char *argv[])
     else if (sizeof(Word_t) == 4)
         printf("%s 32 Bit version\n", argv[0]);
 
-    // Put date in output.
-    printf("# Date "); int sysret = system("date"); (void)sysret;
+    // Put run date (not build date) in output.
+    printf("# Run date "); fflush(stdout);
+    int sysret = system("date"); (void)sysret;
 
 //////////////////////////////////////////////////////////////
 // CALCULATE NUMBER OF MEASUREMENT GROUPS
@@ -936,6 +937,7 @@ TestJudyCount(void *J1, void *JL, Word_t LowIndex, Word_t Elements)
     Count1 = Judy1Count(J1, 1, -(Word_t)1, NULL);
     if (Count1 != TotalPop) {
         printf("TotalPop %zd\n", TotalPop);
+        Judy1Dump((Word_t)J1, sizeof(Word_t) * 8, 0);
         FAILURE("Judy1Count(1, -1)", Count1);
     }
     CountL = JudyLCount(JL, 1, -(Word_t)1, NULL);
@@ -1050,6 +1052,7 @@ TestJudyCount(void *J1, void *JL, Word_t LowIndex, Word_t Elements)
     // LowIndex is not counted in wLowCount.
     Word_t wLowCount
         = (LowIndex == 0) ? 0 : Judy1Count(J1, 0, LowIndex - 1, NULL);
+    // It is a problem that there is no validation that wLowCount is correct.
   #endif // !NO_TEST_BY_COUNT
 
     for (elm = 0; elm < Elements; elm++)
@@ -1077,6 +1080,7 @@ TestJudyCount(void *J1, void *JL, Word_t LowIndex, Word_t Elements)
             printf("Count1 = %" PRIuPTR", CountL = %" PRIuPTR
                    ", should be: elm + 1 = %" PRIuPTR"\n",
                    Count1, CountL, elm + 1);
+            printf("LowIndex 0x%zx TstIndex 0x%zx\n", LowIndex, TstIndex);
             if (Count1 != elm + 1) {
                 Judy1Dump((Word_t)J1, sizeof(Word_t) * 8, 0);
             }
@@ -1092,7 +1096,10 @@ TestJudyCount(void *J1, void *JL, Word_t LowIndex, Word_t Elements)
         Word_t wByCnt = Count1;
         int retBy = Judy1ByCount(J1, wByCnt, &wByKey, NULL);
         if (retBy != 1) {
-            FAILURE("ByCount != -1; wByCnt", wByCnt);
+            printf("LowIndex 0x%zx TstIndex 0x%zx Count1 %zd\n",
+                   LowIndex, TstIndex, Count1);
+            printf("wByCnt %zd wByKey 0x%zx\n", wByCnt, wByKey);
+            FAILURE("ByCount != 1; elm", elm);
         }
         if (wByKey != TstIndex) {
             printf("LowIndex 0x%zx TstIndex 0x%zx Count1 %zd\n",
@@ -1104,7 +1111,11 @@ TestJudyCount(void *J1, void *JL, Word_t LowIndex, Word_t Elements)
         wByCnt += wLowCount;
         retBy = Judy1ByCount(J1, wByCnt, &wByKey, NULL);
         if (retBy != 1) {
-            FAILURE("ByCount != -1; wByCnt", wByCnt);
+            printf("wLowCount %zd\n", wLowCount);
+            printf("LowIndex 0x%zx TstIndex 0x%zx Count1 %zd\n",
+                   LowIndex, TstIndex, Count1);
+            printf("wByCnt %zd wByKey 0x%zx\n", wByCnt, wByKey);
+            FAILURE("ByCount = -1; elm", elm);
         }
         if (wByKey != TstIndex) {
             printf("wLowCount %zd\n", wLowCount);

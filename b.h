@@ -4021,7 +4021,7 @@ gwBitmapPopCnt(qpa, int nBLR)
                           cnBitsPerWord - cnBitsVirtAddr, cnBitsVirtAddr);
         } else {
             wPopCnt = BJL(gpwBitmapValues(qy, nBLR)[-1])
-                      BJ1(pwr[BitmapWordCnt(nBLR, -1 /* unused */) - 1]);
+                      BJ1(pwr[BitmapWordCnt(nBLR, 0 /* unused */) - 1]);
             //return wPopCnt;
         }
     } else {

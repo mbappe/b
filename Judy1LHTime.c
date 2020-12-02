@@ -2582,8 +2582,9 @@ eopt:
     printf("# BValue = %" PRIuPTR"\n", BValue);
     printf("# Bpercent = %20.18f\n", Bpercent);
 
-    // Put date in output.
-    printf("# Date "); int sysret = system("date"); (void)sysret;
+    // Put run date (not build date) in output.
+    printf("# Run date "); fflush(stdout);
+    int sysret = system("date"); (void)sysret;
 
     printf("# XLABEL Array Population\n");
     printf("# YLABEL Nano-Seconds -or- ???\n");

@@ -30,7 +30,6 @@ CountSw(qpa,
     DBGC(printf("\n# CountSw nBL %d nType %d nBLR %d wIndex %zd nLinks %d\n",
                 nBL, nType, nBLR, wIndex, nLinks));
     Word_t wPopCnt = 0;
-    Word_t ww, wwLimit;
     Link_t *pLinks =
 #if defined(CODE_BM_SW)
         tp_bIsBmSw(nType) ? pwr_pLinks((BmSwitch_t *)pwr) :
@@ -78,6 +77,7 @@ CountSw(qpa,
   #endif // cnSwCnts != 0 && _NO_SW_CNTS
   #ifdef _NO_SW_CNTS
     {
+        Word_t ww, wwLimit;
         if ((wIndex > (unsigned)nLinks / 2)
           #if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
                 // We don't have a whole link with a pop count at the top.
@@ -113,74 +113,82 @@ CountSw(qpa,
   #if cnSwCnts != 0
     {
         int nBW = gnBW(qy, nBLR);
+        assert(nLinks == (int)EXP(nBW));
         DBGC(printf("CountSw nBW %d\n", nBW));
         if (nBLR <= 16) {
-            uint16_t* pusCnts = (uint16_t*)((Switch_t*)pwr)->sw_awCnts;
-            switch ((wIndex >> (nBW - 3)) & 7) {
-            case 0:
-                ww = 0; wwLimit = wIndex;
-                wPopCnt = CountSwLoop(qya, ww, wwLimit - ww);
-                break;
-            case 1:
-                ww = wIndex; wwLimit = nLinks / 4;
-                wPopCnt = pusCnts[0] - CountSwLoop(qya, ww, wwLimit - ww);
-                break;
-            case 2:
-                ww = nLinks / 4; wwLimit = wIndex;
-                wPopCnt = pusCnts[0] + CountSwLoop(qya, ww, wwLimit - ww);
-                break;
-            case 3:
-                ww = wIndex; wwLimit = nLinks / 2;
-                wPopCnt
-                    = pusCnts[0] + pusCnts[1]
-                        - CountSwLoop(qya, ww, wwLimit - ww);
-                break;
-            case 4:
-                ww = nLinks / 2; wwLimit = wIndex;
-                wPopCnt
-                    = pusCnts[0] + pusCnts[1]
-                        + CountSwLoop(qya, ww, wwLimit - ww);
-                break;
-            case 5:
-                ww = wIndex; wwLimit = nLinks * 3 / 4;
-                wPopCnt
-                    = gwPopCnt(qya, nBLR) - pusCnts[3]
-                        - CountSwLoop(qya, ww, wwLimit - ww);
-                break;
-            case 6:
-                ww = nLinks * 3 / 4; wwLimit = wIndex;
-                wPopCnt
-                    = gwPopCnt(qya, nBLR) - pusCnts[3]
-                        + CountSwLoop(qya, ww, wwLimit - ww);
-                break;
-            case 7:
-                ww = wIndex; wwLimit = nLinks;
-                wPopCnt
-                    = gwPopCnt(qya, nBLR)
-                        - CountSwLoop(qya, ww, wwLimit - ww);
+            // Four subexpanse counts per word.
+            int nShift = (nBW > cnLogSwCnts + 2) ? (nBW - cnLogSwCnts - 2) : 0;
+            // Would like to resolve this test at compile time if possible.
+            if (nShift == 0) {
+                for (int ii = 0; ii < (int)wIndex; ++ii) {
+                    wPopCnt += ((uint16_t*)((Switch_t*)pwr)->sw_awCnts)[ii];
+                }
+            } else {
+                int nCntNum = (((wIndex << cnLogSwCnts) + (1 << (nBW - 3)))
+                                   >> (nBW - 2));
+                int nCum = 0;
+                for (int ii = 0; ii < nCntNum; ++ii) {
+                    nCum += ((uint16_t*)((Switch_t*)pwr)->sw_awCnts)[ii];
+                }
+                int xx = nCntNum << nShift;
+                // If nShift is close to nBW then it may not be worth the
+                // trouble of figuring out if the 2nd half is shorter than
+                // the first half.
+                if ((wIndex >> (nShift - 1)) & 1) { // subtract
+                    wPopCnt = nCum - CountSwLoop(qya, wIndex, xx - wIndex);
+                } else {
+                    wPopCnt = nCum + CountSwLoop(qya, xx, wIndex - xx);
+                }
+            }
+        } else if (nBLR <= 32) {
+            // Two subexpanse counts per word.
+            int nShift = (nBW > cnLogSwCnts + 1) ? (nBW - cnLogSwCnts - 1) : 0;
+            if (nShift == 0) {
+                for (int ii = 0; ii < (int)wIndex; ++ii) {
+                    wPopCnt += ((uint32_t*)((Switch_t*)pwr)->sw_awCnts)[ii];
+                }
+            } else {
+                int nCntNum = (((wIndex << cnLogSwCnts) + (1 << (nBW - 2)))
+                                   >> (nBW - 1));
+                Word_t wCum = 0;
+                for (int i = 0; i < nCntNum; ++i) {
+                    wCum += ((uint32_t*)((Switch_t*)pwr)->sw_awCnts)[i];
+                }
+                int xx = nCntNum << nShift;
+                if ((wIndex >> (nShift - 1)) & 1) { // subtract from
+                    wPopCnt = wCum - CountSwLoop(qya, wIndex, xx - wIndex);
+                } else {
+                    wPopCnt = wCum + CountSwLoop(qya, xx, wIndex - xx);
+                }
             }
         } else {
-            switch ((wIndex >> (nBW - 2)) & 3) {
-            case 0:
-                ww = 0; wwLimit = wIndex;
-                wPopCnt = CountSwLoop(qya, ww, wwLimit - ww);
-                break;
-            case 1:
-                ww = wIndex; wwLimit = nLinks / 2;
-                wPopCnt
-                    = ((Switch_t*)pwr)->sw_awCnts[0]
-                        - CountSwLoop(qya, ww, wwLimit - ww);
-                break;
-            case 2:
-                ww = nLinks / 2; wwLimit = wIndex;
-                wPopCnt
-                    = ((Switch_t*)pwr)->sw_awCnts[0]
-                        + CountSwLoop(qya, ww, wwLimit - ww);
-                break;
-            case 3:
-                ww = wIndex; wwLimit = nLinks;
-                wPopCnt
-                    = gwPopCnt(qya, nBLR) - CountSwLoop(qya, ww, wwLimit - ww);
+            // One subexpanse count per word.
+            int nShift = (nBW > cnLogSwCnts) ? (nBW - cnLogSwCnts) : 0;
+            if (nShift == 0) {
+                for (int ii = 0; ii < (int)wIndex; ++ii) {
+                    wPopCnt += ((Switch_t*)pwr)->sw_awCnts[ii];
+                }
+            } else {
+                int nCntNum = (((wIndex << cnLogSwCnts) + (1 << (nBW - 1)))
+                                   >> (nBW - 0));
+                Word_t wCum = 0;
+                for (int i = 0; i < nCntNum; ++i) {
+                    wCum += ((Switch_t*)pwr)->sw_awCnts[i];
+                }
+      #if cnSwCnts == 1
+                if (nCntNum) {
+                    wPopCnt = wCum + CountSwLoop(qya,
+                                                 nLinks/2, wIndex - nLinks/2);
+                } else
+      #endif // cnSwCnts == 1
+                {
+                    int xx = nCntNum << nShift;
+                    if ((wIndex >> (nShift - 1)) & 1) { // subtract
+                        wPopCnt = wCum - CountSwLoop(qya, wIndex, xx - wIndex);
+                    } else {
+                        wPopCnt = wCum + CountSwLoop(qya, xx, wIndex - xx);
+                    }
+                }
             }
         }
     }
@@ -454,12 +462,20 @@ SwIncr(qpa, int nBLR, int nDigit, int nBW, int nIncr)
     qva; (void)nBLR; (void)nDigit; (void)nBW; (void)nIncr;
   #if defined(INSERT) || defined(REMOVE)
       #if cnSwCnts != 0
+        Word_t* pwCnts = ((Switch_t*)pwr)->sw_awCnts;
         if (nBLR <= 16) {
-            ((uint16_t*)((Switch_t*)pwr)->sw_awCnts)[nDigit >> (nBW - 2)]
-                += nIncr;
+            int nShift = (nBW > cnLogSwCnts + 2) ? (nBW - cnLogSwCnts - 2) : 0;
+            ((uint16_t*)pwCnts)[nDigit >> nShift] += nIncr;
+        } else if (nBLR <= 32) {
+            int nShift = (nBW > cnLogSwCnts + 1) ? (nBW - cnLogSwCnts - 1) : 0;
+            ((uint32_t*)pwCnts)[nDigit >> nShift] += nIncr;
         } else {
-            if ((nDigit & EXP(nBW - 1)) == 0) {
-                ((Switch_t*)pwr)->sw_awCnts[0] += nIncr;
+          #if cnSwCnts == 1
+            if (!(nDigit >> (nBW - 1)))
+          #endif // cnSwCnts == 1
+            {
+                int nShift = (nBW > cnLogSwCnts) ? (nBW - cnLogSwCnts) : 0;
+                pwCnts[nDigit >> nShift] += nIncr;
             }
         }
       #endif // cnSwCnts != 0
@@ -2618,10 +2634,12 @@ t_sw_plus_16:
       #ifdef BITMAP
         // Can't assume embedded bitmap for JudyL. Might be T_EMBEDDED_KEYS,
         // T_EK_XV or T_UNPACKED_BM.
+          #if defined(PACK_BM_VALUES) || !defined(B_JUDYL)
         if (cbEmbeddedBitmap && (nBL <= cnLogBitsPerLink)) {
             // nType and pwr have not been updated.
             goto t_bitmap;
         }
+          #endif // PACK_BM_VALUES || !B_JUDYL
           #ifdef CHECK_TYPE_FOR_EBM
         if ((nType = wr_nType(wRoot)) == T_BITMAP) {
             goto t_bitmap;
@@ -2858,7 +2876,9 @@ t_xx_sw:
         IF_SKIP_PREFIX_CHECK(IF_LOOKUP(pwrUp = pwr));
         SwAdvance(pqya, swapynew, nBW, &nBLR);
           #ifdef BITMAP
+          #if defined(PACK_BM_VALUES) || !defined(B_JUDYL)
         if (cbEmbeddedBitmap && (nBL <= cnLogBitsPerLink)) { goto t_bitmap; }
+          #endif // PACK_BM_VALUES || !B_JUDYL
           #endif // BITMAP
 // End of SwTailCommon.
         // Handle XX_SW-specific special cases that don't go back to the top.
@@ -3266,7 +3286,9 @@ t_list_sw:
           #ifdef LOOKUP
         IF_LOOKUP(IF_SKIP_PREFIX_CHECK(pwrUp = pwr));
         SwAdvance(pqya, swapynew, nBW, &nBLR);
+          #if defined(PACK_BM_VALUES) || !defined(B_JUDYL)
         if (cbEmbeddedBitmap && (nBL <= cnLogBitsPerLink)) { goto t_bitmap; }
+          #endif // PACK_BM_VALUES || !B_JUDYL
         goto again;
           #else // LOOKUP
         goto switchTail;

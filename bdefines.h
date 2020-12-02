@@ -5,8 +5,28 @@
 // Add one word in Switch_t for subexpanse pop count(s) to improve performance
 // of Count by default.
 #ifndef cnSwCnts
-  #define cnSwCnts  1
+  #define cnSwCnts  16
 #endif // cnSwCnts
+#if cnSwCnts == 1
+  #define cnLogSwCnts  0
+#elif cnSwCnts == 2
+  #define cnLogSwCnts  1
+#elif cnSwCnts == 4
+  #define cnLogSwCnts  2
+#elif cnSwCnts == 8
+  #define cnLogSwCnts  3
+#elif cnSwCnts == 16
+  #define cnLogSwCnts  4
+#elif cnSwCnts == 32
+  #define cnLogSwCnts  5
+#elif cnSwCnts == 64
+  #define cnLogSwCnts  6
+#elif cnSwCnts == 0
+  #undef cnSwCnts
+  #undef cnLogSwCnts
+#else
+  #error cnSwCnts must be a power of 2 less than 4
+#endif
 
 // Enable SW_POP_IN_WR_HB by default.
 #ifndef    NO_SW_POP_IN_WR_HB

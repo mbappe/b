@@ -77,6 +77,9 @@ if [ $? != 0 ]; then echo "non-zero exit"; exit 1; fi
 && : "Done with biggest hammers" \
 && DEFINES="-DNO_UNPACK_BM_VALUES -DDEBUG" make clean default \
 && ${REGRESS} \
+&& DEFINES="-DNO_PACK_BM_VALUES -DDEBUG" make clean default \
+&& ${REGRESS} \
+&& : '"DEFINES="-DSEPARATE_T_NULL -DDEBUG" make clean default' \
 && DEFINES="-DNO_SKIP_TO_BM_SW -DDEBUG" make clean default \
 && ${REGRESS} \
 && DEFINES="-DNO_SKIP_TO_BITMAP -DDEBUG" make clean default \
@@ -88,6 +91,8 @@ if [ $? != 0 ]; then echo "non-zero exit"; exit 1; fi
 && DEFINES="-DNO_SW_POP_IN_WR_HB -DDEBUG" make clean default \
 && ${REGRESS} \
 && DEFINES="-DNO_GPC_ALL_SKIP_TO_SW_CASES -DDEBUG" make clean default \
+&& ${REGRESS} \
+&& DEFINES="-DcnSwCnts=1 -DDEBUG" make clean default \
 && ${REGRESS} \
 && DEFINES="-DcnSwCnts=0 -DDEBUG" make clean default \
 && ${REGRESS} \
