@@ -126,7 +126,7 @@ CountSw(qpa,
                 }
             } else
       #else // CODE_XX_SW
-            assert(nBW > cnLogSwCnts + 2);
+            assert(nBW >= cnLogSwCnts + 2);
             int nShift = nBW - cnLogSwCnts - 2;
       #endif // CODE_XX_SW else
             {
@@ -157,7 +157,7 @@ CountSw(qpa,
                 }
             } else
       #else // CODE_XX_SW
-            assert(nBW > cnLogSwCnts + 1);
+            assert(nBW >= cnLogSwCnts + 1);
             int nShift = nBW - cnLogSwCnts - 1;
       #endif // CODE_XX_SW else
             {
@@ -185,7 +185,7 @@ CountSw(qpa,
                 }
             } else
       #else // CODE_XX_SW
-            assert(nBW > cnLogSwCnts);
+            assert(nBW >= cnLogSwCnts);
             int nShift = nBW - cnLogSwCnts;
       #endif // CODE_XX_SW else
             {

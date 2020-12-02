@@ -4775,7 +4775,6 @@ lastDigit32:;
                 assert(pLnLoop->ln_wRoot == WROOT_NULL);
                 int nPopCntLoop = nn - nnStart; (void)nPopCntLoop;
   #if cnSwCnts != 0
-                Word_t* pwCnts = ((Switch_t*)pwr)->sw_awCnts;
                 if (nBLR <= 16) {
 #if 1
                     int nShift = (nBW > cnLogSwCnts + 2)
@@ -5039,7 +5038,6 @@ lastDigit:;
                 assert(pLnLoop->ln_wRoot == WROOT_NULL);
                 int nPopCntLoop = nn - nnStart; (void)nPopCntLoop;
   #if cnSwCnts != 0
-                Word_t* pwCnts = ((Switch_t*)pwr)->sw_awCnts;
                 if (nBLR <= 16) {
 #if 1
                     int nShift = (nBW > cnLogSwCnts + 2)
@@ -5517,6 +5515,9 @@ SplayWithInsert(qpa, Word_t *pwRootOld, int nBLOld, Word_t wKey, int nPos)
     int nLinkCnt = 0;
   #endif // BM_SW_FOR_REAL
     int nIndex;
+  #if cnSwCnts != 0
+    Word_t* pwCnts = ((Switch_t*)pwr)->sw_awCnts;
+  #endif // cnSwCnts != 0
 #if defined(COMPRESSED_LISTS)
     if (nBLROld <= (int)sizeof(uint8_t) * 8) {
         uint8_t *pcKeys = ls_pcKeysNATX(pwrOld, nPopCnt);
@@ -5562,7 +5563,6 @@ lastDigit8:;
 #if 1
                 int nShift = (nBW > cnLogSwCnts + 2)
                                ? (nBW - cnLogSwCnts - 2) : 0;
-                Word_t* pwCnts = ((Switch_t*)pwr)->sw_awCnts;
                 ((uint16_t*)pwCnts)[nDigit >> nShift] += nPopCntLoop;
 #else
                 ((uint16_t*)((Switch_t*)pwr)->sw_awCnts)
@@ -5765,7 +5765,6 @@ lastDigit16:;
 #if 1
                 int nShift = (nBW > cnLogSwCnts + 2)
                                ? (nBW - cnLogSwCnts - 2) : 0;
-                Word_t* pwCnts = ((Switch_t*)pwr)->sw_awCnts;
                 ((uint16_t*)pwCnts)[nDigit >> nShift] += nPopCntLoop;
 #else
                 ((uint16_t*)((Switch_t*)pwr)->sw_awCnts)
@@ -5998,7 +5997,6 @@ lastDigit32:;
                 assert(pLnLoop->ln_wRoot == WROOT_NULL);
                 int nPopCntLoop = nn - nnStart; (void)nPopCntLoop;
   #if cnSwCnts != 0
-                Word_t* pwCnts = ((Switch_t*)pwr)->sw_awCnts;
                 if (nBLR <= 16) {
 #if 1
                     int nShift = (nBW > cnLogSwCnts + 2)
@@ -6277,7 +6275,6 @@ lastDigit:;
                 assert(pLnLoop->ln_wRoot == WROOT_NULL);
                 int nPopCntLoop = nn - nnStart; (void)nPopCntLoop;
   #if cnSwCnts != 0
-                Word_t* pwCnts = ((Switch_t*)pwr)->sw_awCnts;
                 if (nBLR <= 16) {
                     ((uint16_t*)pwCnts)[nDigit >> (nBW - cnLogSwCnts - 2)]
                         += nPopCntLoop;
