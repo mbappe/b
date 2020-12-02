@@ -4301,7 +4301,8 @@ t_bitmap:
                                                   - cnLogBitsPerWord)) + jj]);
                         }
                         Word_t wBmMask
-                            = ~((1 << (wKey & (cnBitsPerWord - 1))) - 1);
+                            = ~(((Word_t)1
+                                << (wKey & (cnBitsPerWord - 1))) - 1);
                         wPopCnt -= __builtin_popcountll(pwBitmap[nWordOffset]
                                                             & wBmMask);
                     } else
@@ -4313,7 +4314,7 @@ t_bitmap:
                                                   - cnLogBitsPerWord)) + jj]);
                         }
                         Word_t wBmMask
-                            = (1 << (wKey & (cnBitsPerWord - 1))) - 1;
+                            = ((Word_t)1 << (wKey & (cnBitsPerWord - 1))) - 1;
                         wPopCnt += __builtin_popcountll(pwBitmap[nWordOffset]
                                                             & wBmMask);
                     }
