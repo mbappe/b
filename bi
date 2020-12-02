@@ -96,6 +96,8 @@ if [ $? != 0 ]; then echo "non-zero exit"; exit 1; fi
 && ${REGRESS} \
 && DEFINES="-DcnSwCnts=0 -DDEBUG" make clean default \
 && ${REGRESS} \
+&& DEFINES="-DcnLogBmlfBitsPerCnt=15 -DDEBUG" make clean default \
+&& ${REGRESS} \
 && : "turn off 2-digit bitmap conversion in Judy1" \
 && DEFINES="-Dcn2dBmMaxWpkPercent=0 -DDEBUG" make clean default \
 && : "Combinations" \
