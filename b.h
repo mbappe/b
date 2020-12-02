@@ -3829,25 +3829,35 @@ swBitmapPrefix(qp, int nBLR, Word_t wPrefix)
 // A bigger cnLogBmWordsX means a bigger words per key is allowed.
 #define cnLogBmWordsX  4
 
+#if cn2dBmMaxWpkPercent != 0 // implies !B_JUDYL
+  #ifndef cnLogBmlfBitsPerCnt
+    #define cnLogBmlfBitsPerCnt  10
+  #endif // cnLogBmlfBitsPerCnt
+  #define cnLogBmlfCnts  (cnBitsLeftAtDl2 - cnLogBmlfBitsPerCnt)
+  #define cnBmlfCnts  (1 << cnLogBmlfCnts)
+  #if cnLogBmlfBitsPerCnt <= 7
+    #define cnBmlfBytesPerCnt  1
+  #else // cnLogBmlfBitsPerCnt <= 7
+    #define cnBmlfBytesPerCnt  2
+  #endif // cnLogBmlfBitsPerCnt <= 7 else
+  // Words in bitmap / words per one-byte count / counts per word
+  // 64k bits in bitmap / 128 bits per one-byte count / 8 counts per word
+  #define cnWordsBm2Cnts \
+      ((int)MAX(1, (cnBmlfBytesPerCnt << cnLogBmlfCnts) / sizeof(Word_t)))
+  #ifndef NO_BMLF_COUNT_CNTS_BACKWARD
+    #undef  BMLF_COUNT_CNTS_BACKWARD
+    #define BMLF_COUNT_CNTS_BACKWARD
+  #endif // !NO_BMLF_COUNT_CNTS_BACKWARD
+  // BMLF_COUNT_BITS_BACKWARD is not default.
+#endif // cn2dBmMaxWpkPercent != 0
+
 static Word_t
 BitmapWordsMin(int nBLR, Word_t wPopCnt)
 {
     (void)nBLR; (void)wPopCnt;
-    // Number of words in BmLeaf_t plus the bitmap.
+    // Words in header.
     Word_t wWords = sizeof(BmLeaf_t) / sizeof(Word_t);
-  #ifdef BM_POP_IN_WR_HB
-    // May not be able to respect BM_POP_IN_WR_HB in all cases so we allocate
-    // an extra word, e.g. skip to nBLR > cnBitsCnt, and
-    // 2-digit bitmap with cnBitsLeftAtDl2 > cnBitsPerWord - cnBitsVirtAddr.
-      #ifdef SKIP_TO_BITMAP
-    if (nBLR > cnBitsCnt)
-      #else // SKIP_TO_BITMAP
-    if (nBLR > cnBitsPerWord - cnBitsVirtAddr)
-      #endif // SKIP_TO_BITMAP
-    {
-        ++wWords; // May not be able to respect BM_POP_IN_WR_HB.
-    }
-  #endif // BM_POP_IN_WR_HB
+    // Words in bitmap proper.
   #ifndef _BMLF_BM_IN_LNX
       #ifndef B_JUDYL
     if (cbEmbeddedBitmap) {
@@ -3885,6 +3895,26 @@ BitmapWordsMin(int nBLR, Word_t wPopCnt)
     }
       #endif // ifndef B_JUDYL
   #endif // ifndef _BMLF_BM_IN_LNX
+    // Extra word for pop in case pop doesn't always fit in wRoot.
+  #ifdef BM_POP_IN_WR_HB
+    // May not be able to respect BM_POP_IN_WR_HB in all cases so we allocate
+    // an extra word, e.g. skip to nBLR > cnBitsCnt, and
+    // 2-digit bitmap with cnBitsLeftAtDl2 > cnBitsPerWord - cnBitsVirtAddr.
+      #ifdef SKIP_TO_BITMAP
+    if (nBLR > cnBitsCnt)
+      #else // SKIP_TO_BITMAP
+    if (nBLR > cnBitsPerWord - cnBitsVirtAddr)
+      #endif // SKIP_TO_BITMAP
+    {
+        ++wWords; // May not be able to respect BM_POP_IN_WR_HB.
+    }
+  #endif // BM_POP_IN_WR_HB
+    // Words for subexpanse counts.
+  #if cn2dBmMaxWpkPercent != 0 // implies !B_JUDYL
+    if (nBLR == cnBitsLeftAtDl2) {
+        wWords += cnWordsBm2Cnts;
+    }
+  #endif // cn2dBmMaxWpkPercent != 0
   #ifdef B_JUDYL
       #if defined(PACK_BM_VALUES) && !defined(BMLF_INTERLEAVE)
     wWords += wPopCnt; // space for hdr + values
@@ -3987,6 +4017,25 @@ BitmapWordCnt(int nBLR, Word_t wPopCnt)
     return CalcBitmapWordCnt(nBLR, wPopCnt);
 }
 
+#ifdef BM_POP_IN_WR_HB
+static Word_t*
+gpwBitmapPopCnt(qpa, int nBLR)
+{
+    qva;
+  #ifdef B_JUDYL
+    return &gpwBitmapValues(qy, nBLR)[-1];
+  #else // B_JUDYL
+    int nBitmapWordCnt = BitmapWordCnt(nBLR, /*wPopCnt*/ 0);
+      #if cn2dBmMaxWpkPercent != 0
+    if (nBLR == cnBitsLeftAtDl2) {
+       return &pwr[nBitmapWordCnt - cnWordsBm2Cnts - 1];
+    } else
+      #endif // cn2dBmMaxWpkPercent != 0
+    { return &pwr[nBitmapWordCnt - 1]; }
+  #endif // B_JUDYL else
+}
+#endif // BM_POP_IN_WR_HB
+
 static Word_t
 gwBitmapPopCnt(qpa, int nBLR)
 {
@@ -4020,9 +4069,7 @@ gwBitmapPopCnt(qpa, int nBLR)
                 = GetBits(*pwRoot,
                           cnBitsPerWord - cnBitsVirtAddr, cnBitsVirtAddr);
         } else {
-            wPopCnt = BJL(gpwBitmapValues(qy, nBLR)[-1])
-                      BJ1(pwr[BitmapWordCnt(nBLR, 0 /* unused */) - 1]);
-            //return wPopCnt;
+            wPopCnt = *gpwBitmapPopCnt(qya, nBLR);
         }
     } else {
         wPopCnt = GetBits(*pwRoot, cnBitsCnt, cnLsbCnt);
@@ -4112,8 +4159,7 @@ swBitmapPopCnt(qpa, int nBLR, Word_t wPopCnt)
                     cnBitsPerWord - cnBitsVirtAddr, cnBitsVirtAddr, wPopCnt);
         } else {
 // Remember skip to non-skip and vice-versa has to move pop count.
-            BJL(gpwBitmapValues(qy, nBLR)[-1])
-            BJ1(pwr[BitmapWordCnt(nBLR, 0 /* unused */) - 1]) = wPopCnt;
+            *gpwBitmapPopCnt(qya, nBLR) = wPopCnt;
         }
     } else {
         SetBits(pwRoot, cnBitsCnt, cnLsbCnt, wPopCnt);
@@ -4140,6 +4186,27 @@ swBitmapPopCnt(qpa, int nBLR, Word_t wPopCnt)
       #endif // #else !defined(SKIP_TO_BITMAP) || defined(PREFIX_WORD_...)
   #endif // #else _BM_POP_IN_LINK_X
 }
+
+#if cn2dBmMaxWpkPercent != 0
+  #if cnBmlfBytesPerCnt == 1
+static uint8_t*
+gpxBitmapCnts(qpa, int nBLR)
+{
+    qva;
+    // wPopCnt arg to BitmapWordCnt is n/a for B_JUDY1.
+    return (uint8_t*)&pwr[BitmapWordCnt(nBLR, 0) - cnWordsBm2Cnts];
+}
+  #else // cnBmlfBytesPerCnt == 1
+static uint16_t*
+gpxBitmapCnts(qpa, int nBLR)
+{
+    qva;
+    // wPopCnt arg to BitmapWordCnt is n/a for B_JUDY1.
+    return (uint16_t*)&pwr[BitmapWordCnt(nBLR, 0) - cnWordsBm2Cnts];
+}
+  #endif // cnBmlfBytesPerCnt == 1 else
+
+#endif // cn2dBmMaxWpkPercent != 0
 
 #endif // defined(BITMAP)
 

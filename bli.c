@@ -117,13 +117,19 @@ CountSw(qpa,
         DBGC(printf("CountSw nBW %d\n", nBW));
         if (nBLR <= 16) {
             // Four subexpanse counts per word.
+      #ifdef CODE_XX_SW
             int nShift = (nBW > cnLogSwCnts + 2) ? (nBW - cnLogSwCnts - 2) : 0;
             // Would like to resolve this test at compile time if possible.
             if (nShift == 0) {
                 for (int ii = 0; ii < (int)wIndex; ++ii) {
                     wPopCnt += ((uint16_t*)((Switch_t*)pwr)->sw_awCnts)[ii];
                 }
-            } else {
+            } else
+      #else // CODE_XX_SW
+            assert(nBW > cnLogSwCnts + 2);
+            int nShift = nBW - cnLogSwCnts - 2;
+      #endif // CODE_XX_SW else
+            {
                 int nCntNum = (((wIndex << cnLogSwCnts) + (1 << (nBW - 3)))
                                    >> (nBW - 2));
                 int nCum = 0;
@@ -142,12 +148,19 @@ CountSw(qpa,
             }
         } else if (nBLR <= 32) {
             // Two subexpanse counts per word.
+      #ifdef CODE_XX_SW
+            // Would like to resolve this test at compile time if possible.
             int nShift = (nBW > cnLogSwCnts + 1) ? (nBW - cnLogSwCnts - 1) : 0;
             if (nShift == 0) {
                 for (int ii = 0; ii < (int)wIndex; ++ii) {
                     wPopCnt += ((uint32_t*)((Switch_t*)pwr)->sw_awCnts)[ii];
                 }
-            } else {
+            } else
+      #else // CODE_XX_SW
+            assert(nBW > cnLogSwCnts + 1);
+            int nShift = nBW - cnLogSwCnts - 1;
+      #endif // CODE_XX_SW else
+            {
                 int nCntNum = (((wIndex << cnLogSwCnts) + (1 << (nBW - 2)))
                                    >> (nBW - 1));
                 Word_t wCum = 0;
@@ -163,12 +176,19 @@ CountSw(qpa,
             }
         } else {
             // One subexpanse count per word.
+      #ifdef CODE_XX_SW
+            // Would like to resolve this test at compile time if possible.
             int nShift = (nBW > cnLogSwCnts) ? (nBW - cnLogSwCnts) : 0;
             if (nShift == 0) {
                 for (int ii = 0; ii < (int)wIndex; ++ii) {
                     wPopCnt += ((Switch_t*)pwr)->sw_awCnts[ii];
                 }
-            } else {
+            } else
+      #else // CODE_XX_SW
+            assert(nBW > cnLogSwCnts);
+            int nShift = nBW - cnLogSwCnts;
+      #endif // CODE_XX_SW else
+            {
                 int nCntNum = (((wIndex << cnLogSwCnts) + (1 << (nBW - 1)))
                                    >> (nBW - 0));
                 Word_t wCum = 0;
@@ -4244,6 +4264,61 @@ t_bitmap:
           #else // _BMLF_BM_IN_LNX
                 Word_t *pwBitmap = ((BmLeaf_t*)pwr)->bmlf_awBitmap;
           #endif // else _BMLF_BM_IN_LNX
+          #if cn2dBmMaxWpkPercent != 0
+                if (nBLR == cnBitsLeftAtDl2) {
+                    int nCntNum = (wKey & MSK(cnBitsLeftAtDl2))
+                                    >> cnLogBmlfBitsPerCnt;
+                    wPopCnt = 0;
+              #ifdef BMLF_COUNT_CNTS_BACKWARD
+                    if (wKey & EXP(nBLR - 1)) {
+                        wPopCnt = gwBitmapPopCnt(qya, nBLR);
+                        for (int ii = nCntNum;
+                             ii < (int)EXP(cnBitsLeftAtDl2)
+                                    >> cnLogBmlfBitsPerCnt;
+                             ++ii)
+                        {
+                            wPopCnt -= gpxBitmapCnts(qya, nBLR)[ii];
+                        }
+                    } else
+              #endif // BMLF_COUNT_CNTS_BACKWARD
+                    {
+                        for (int ii = 0; ii < nCntNum; ++ii) {
+                            wPopCnt += gpxBitmapCnts(qya, nBLR)[ii];
+                        }
+                    }
+                    int nWordNum = nWordOffset
+                        & MSK(cnLogBmlfBitsPerCnt - cnLogBitsPerWord);
+              #ifdef BMLF_COUNT_BITS_BACKWARD
+                    if (wKey & EXP(cnLogBmlfBitsPerCnt - cnLogBitsPerWord - 1))
+                    {
+                        wPopCnt += gpxBitmapCnts(qya, nBLR)[nCntNum];
+                        for (int jj = nWordNum + 1;
+                             jj < (int)EXP(cnLogBmlfBitsPerCnt)
+                                    / cnBitsPerWord; ++jj)
+                        {
+                            wPopCnt -= __builtin_popcountll(pwBitmap
+                                [(nCntNum << (cnLogBmlfBitsPerCnt
+                                                  - cnLogBitsPerWord)) + jj]);
+                        }
+                        Word_t wBmMask
+                            = ~((1 << (wKey & (cnBitsPerWord - 1))) - 1);
+                        wPopCnt -= __builtin_popcountll(pwBitmap[nWordOffset]
+                                                            & wBmMask);
+                    } else
+              #endif // BMLF_COUNT_BITS_BACKWARD
+                    {
+                        for (int jj = 0; jj < nWordNum; ++jj) {
+                            wPopCnt += __builtin_popcountll(pwBitmap
+                                [(nCntNum << (cnLogBmlfBitsPerCnt
+                                                  - cnLogBitsPerWord)) + jj]);
+                        }
+                        Word_t wBmMask
+                            = (1 << (wKey & (cnBitsPerWord - 1))) - 1;
+                        wPopCnt += __builtin_popcountll(pwBitmap[nWordOffset]
+                                                            & wBmMask);
+                    }
+                } else
+          #endif // cn2dBmMaxWpkPercent != 0
                 if ((nBLR > 8) && (wKey & EXP(nBLR - 1))) {
                     wPopCnt = gwBitmapPopCnt(qya, nBLR);
                     if (wPopCnt == 0) {

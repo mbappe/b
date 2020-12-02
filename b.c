@@ -2252,10 +2252,22 @@ dumpBmTail:;
                    );
           #endif // BMLF_POP_COUNT_8 elif BMLF_POP_COUNT_1 else
       #endif // BMLF_CNTS
+      #if cn2dBmMaxWpkPercent != 0
+        if (nBLR == cnBitsLeftAtDl2) {
+            printf("\n pxCnts %p\n", gpxBitmapCnts(qya, nBLR));
+            for (int ww = 0; ww < cnWordsBm2Cnts; ++ww) {
+                if ((ww != 0) && (ww % 4) == 0) {
+                    printf("\n");
+                }
+                printf(" 0x%016zx", ((Word_t*)gpxBitmapCnts(qya, nBLR))[ww]);
+            }
+        }
+      #endif // cn2dBmMaxWpkPercent != 0
       #ifdef _BMLF_BM_IN_LNX
         printf(" " OWx, *pwLnX);
       #else // _BMLF_BM_IN_LNX
         Word_t *pwBitmap = pBmLeaf->bmlf_awBitmap;
+        printf("\n pwBitmap %p", pwBitmap);
         Word_t wPopCntL = 0;
         for (Word_t ww = 0; (int)ww < nWords; ++ww) {
             if ((ww != 0) && (ww % 4) == 0) {
@@ -3644,6 +3656,9 @@ embeddedKeys:;
                     SetBit(&pwBitmap[ww * EXP(nBLLn - cnLogBitsPerWord)],
                            nBitNum);
               #endif // else (cnBitsInD1 < cnLogBitsPerWord)
+                    Word_t wKeySuffix = (ww << nBLLn) + nBitNum;
+                    ++gpxBitmapCnts(qya, nBLR)[
+                        wKeySuffix >> cnLogBmlfBitsPerCnt];
                 }
                 continue;
             }
@@ -3653,6 +3668,16 @@ embeddedKeys:;
                 memcpy(&((uint8_t*)pwBitmap)[
                            ww * EXP(nBLLn - cnLogBitsPerByte)],
                        pwBitmapLn, EXP(nBLLn - cnLogBitsPerByte));
+                for (int nW = 0;
+                     nW < (int)EXP(cnBitsInD1) / cnBitsPerWord; ++nW)
+                {
+                    int nPopCnt = __builtin_popcountll(pwBitmapLn[nW]);
+                    gpxBitmapCnts(qya, nBLR)
+                            [((ww << nBLLn)
+                                + (nW << cnLogBitsPerWord))
+                                    >> cnLogBmlfBitsPerCnt]
+                        += nPopCnt;
+                }
                 Word_t wPopCntLn = gwBitmapPopCnt(qyax(Ln), nBLLn);
                 OldBitmap(pwrLn, nBLLn, wPopCntLn);
                 continue;
@@ -3663,13 +3688,16 @@ embeddedKeys:;
                 int nBLRLn = gnListBLR(qyx(Ln));
                 assert((ww & NBPW_MSK(nBLRLn - nBLLn)) == 0);
                 int nPopCntLn = PWR_xListPopCnt(pwRootLn, pwrLn, nBLRLn);
+                Word_t wKeySuffix;
               #ifdef COMPRESSED_LISTS
                 if (nBLRLn <= 8) {
                     uint8_t *pcKeysLn = ls_pcKeysNATX(pwrLn, nPopCntLn);
                     for (int nn = 0; nn < nPopCntLn; nn++) {
-                        SetBit(pwBitmap,
-                               (ww << nBLLn)
-                                   + (pcKeysLn[nn] & NZ_MSK(nBLRLn)));
+                        wKeySuffix
+                            = (ww << nBLLn) + (pcKeysLn[nn] & NZ_MSK(nBLRLn));
+                        SetBit(pwBitmap, wKeySuffix);
+                        ++gpxBitmapCnts(qya, nBLR)[
+                            wKeySuffix >> cnLogBmlfBitsPerCnt];
                     }
                 } else
                   #if (cnBitsPerWord == 64)
@@ -3681,9 +3709,11 @@ embeddedKeys:;
                   #endif // (cnBitsPerWord == 32)
                     uint16_t *psKeysLn = ls_psKeysNATX(pwrLn, nPopCntLn);
                     for (int nn = 0; nn < nPopCntLn; nn++) {
-                        SetBit(pwBitmap,
-                               (ww << nBLLn)
-                                   + (psKeysLn[nn] & NZ_MSK(nBLRLn)));
+                        wKeySuffix
+                            = (ww << nBLLn) + (psKeysLn[nn] & NZ_MSK(nBLRLn));
+                        SetBit(pwBitmap, wKeySuffix);
+                        ++gpxBitmapCnts(qya, nBLR)[
+                            wKeySuffix >> cnLogBmlfBitsPerCnt];
                     }
                 }
                   #if (cnBitsPerWord == 64)
@@ -3691,17 +3721,22 @@ embeddedKeys:;
                     assert(nBLRLn <= 32);
                     uint32_t *piKeysLn = ls_piKeysNATX(pwrLn, nPopCntLn);
                     for (int nn = 0; nn < nPopCntLn; nn++) {
-                        SetBit(pwBitmap,
-                               (ww << nBLLn)
-                                   + (piKeysLn[nn] & NZ_MSK(nBLRLn)));
+                        wKeySuffix
+                            = (ww << nBLLn) + (piKeysLn[nn] & NZ_MSK(nBLRLn));
+                        SetBit(pwBitmap, wKeySuffix);
+                        ++gpxBitmapCnts(qya, nBLR)[
+                            wKeySuffix >> cnLogBmlfBitsPerCnt];
                     }
                 }
                   #endif // (cnBitsPerWord == 64)
               #else // COMPRESSED_LISTS
                 Word_t *pwKeysLn = ls_pwKeysNATX(pwrLn, nPopCntLn);
                 for (int nn = 0; nn < nPopCntLn; nn++) {
-                    SetBit(pwBitmap,
-                           (ww << nBLLn) + (pwKeysLn[nn] & NZ_MSK(nBLRLn)));
+                    wKeySuffix
+                        = (ww << nBLLn) + (pwKeysLn[nn] & NZ_MSK(nBLRLn));
+                    SetBit(pwBitmap, wKeySuffix);
+                    ++gpxBitmapCnts(qya, nBLR)[
+                        wKeySuffix >> cnLogBmlfBitsPerCnt];
                 }
               #endif // COMPRESSED_LISTS
                 assert(nPopCntLn != 0);
@@ -3828,6 +3863,13 @@ InsertAllAtBitmap(qpa, qpx(Old), int nStart, int nPopCnt)
         // Streamlined version of InsertAtBitmap.
         // The bitmap has already been sized.
         SetBit(pwBitmap, wKeyLoop);
+  #if cn2dBmMaxWpkPercent != 0
+        int nBLR = gnBLR(qy);
+        if (nBLR == cnBitsLeftAtDl2) {
+            ++gpxBitmapCnts(qya, nBLR)[
+                (wKeyLoop & MSK(nBLR)) >> cnLogBmlfBitsPerCnt];
+        }
+  #endif // cn2dBmMaxWpkPercent != 0
   #ifdef B_JUDYL
         if (BM_UNPACKED(wRoot)) {
   #ifdef BMLF_INTERLEAVE
@@ -4733,6 +4775,7 @@ lastDigit32:;
                 assert(pLnLoop->ln_wRoot == WROOT_NULL);
                 int nPopCntLoop = nn - nnStart; (void)nPopCntLoop;
   #if cnSwCnts != 0
+                Word_t* pwCnts = ((Switch_t*)pwr)->sw_awCnts;
                 if (nBLR <= 16) {
 #if 1
                     int nShift = (nBW > cnLogSwCnts + 2)
@@ -4996,6 +5039,7 @@ lastDigit:;
                 assert(pLnLoop->ln_wRoot == WROOT_NULL);
                 int nPopCntLoop = nn - nnStart; (void)nPopCntLoop;
   #if cnSwCnts != 0
+                Word_t* pwCnts = ((Switch_t*)pwr)->sw_awCnts;
                 if (nBLR <= 16) {
 #if 1
                     int nShift = (nBW > cnLogSwCnts + 2)
@@ -10221,6 +10265,11 @@ done:
       #endif // PACK_BM_VALUES
   #endif // BMLF_CNTS
     SetBit(pwBitmap, wKey & MSK(nBLR));
+  #if cn2dBmMaxWpkPercent != 0
+    if (nBLR == cnBitsLeftAtDl2) {
+        ++gpxBitmapCnts(qya, nBLR)[(wKey & MSK(nBLR)) >> cnLogBmlfBitsPerCnt];
+    }
+  #endif // cn2dBmMaxWpkPercent != 0
   #ifdef BMLF_INTERLEAVE
     int nBmPartBmWords;
     Word_t wKeyLeft;
@@ -10991,6 +11040,11 @@ done:
             swBitmapPopCnt(qya, nBLR, wPopCnt);
         }
         ClrBit(pwBitmap, wKey & MSK(nBLR));
+  #if cn2dBmMaxWpkPercent != 0
+    if (nBLR == cnBitsLeftAtDl2) {
+        --gpxBitmapCnts(qya, nBLR)[(wKey & MSK(nBLR)) >> cnLogBmlfBitsPerCnt];
+    }
+  #endif // cn2dBmMaxWpkPercent != 0
   #ifdef BMLF_CNTS
         if (BM_UNPACKED(wRoot)) { }
       #ifdef PACK_BM_VALUES
@@ -13132,6 +13186,18 @@ Initialize(void)
 #else //         NO_UNPACK_BM_VALUES
     printf("# No NO_UNPACK_BM_VALUES\n");
 #endif // #else  NO_UNPACK_BM_VALUES
+
+#ifdef           BMLF_COUNT_CNTS_BACKWARD
+    printf("#    BMLF_COUNT_CNTS_BACKWARD\n");
+#else //         BMLF_COUNT_CNTS_BACKWARD
+    printf("# No BMLF_COUNT_CNTS_BACKWARD\n");
+#endif // #else  BMLF_COUNT_CNTS_BACKWARD
+
+#ifdef           BMLF_COUNT_BITS_BACKWARD
+    printf("#    BMLF_COUNT_BITS_BACKWARD\n");
+#else //         BMLF_COUNT_BITS_BACKWARD
+    printf("# No BMLF_COUNT_BITS_BACKWARD\n");
+#endif // #else  BMLF_COUNT_BITS_BACKWARD
 
 #if defined(NO_EK_CALC_POP)
     printf("#    NO_EK_CALC_POP\n");
