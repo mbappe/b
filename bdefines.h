@@ -128,6 +128,12 @@
 
 #define cnBitsLeftAtDl3     (cnBitsLeftAtDl2 + cnBitsInD3)
 
+#if cnBitsPerDigit == cnBitsInD3 && cnBitsInD3 == cnBitsInD2
+#if cnBitsInD2 == cnBitsInD1 && (cnBitsPerWord % cnBitsPerDigit) == 0
+  #define _CONSTANT_NBW
+#endif // BitsInD2 == BitsInD1 && (BitsPerWord % BitsPerDigit) == 0
+#endif // cnBitsPerDigit == cnBitsInD3 && cnBitsInD3 == cnBitsInD2
+
 // Default is -DCOMPRESSED_LISTS.
 #ifndef    NO_COMPRESSED_LISTS
   #undef      COMPRESSED_LISTS
