@@ -4075,7 +4075,7 @@ gwBitmapPopCnt(qpa, int nBLR)
         wPopCnt = GetBits(*pwRoot, cnBitsCnt, cnLsbCnt);
     }
     if (wPopCnt == 0) {
-        DBGI(printf("\n# gwBitmapPopCnt 0 ==> full\n"));
+        //DBGI(printf("\n# gwBitmapPopCnt 0 ==> full\n"));
       #if !defined(EMBED_KEYS) || defined(POP_CNT_MAX_IS_KING)
         // Assuming gwBitmapPopCnt is never called with zero bits set may be a
         // problem for ListPopCntMaxDl1 == 0 and no embedded keys.
