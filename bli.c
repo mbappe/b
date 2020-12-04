@@ -212,7 +212,7 @@ CountSw(qpa,
             }
         }
     }
-  #endif // cnSwCnts == 0
+  #endif // cnSwCnts != 0
     DBGC(printf("\nCountSw wPopCnt %" _fw"u\n", wPopCnt));
     return wPopCnt;
 }
@@ -3643,16 +3643,16 @@ t_list:
               #endif // B_JUDYL && !PACK_L1_VALUES
                     SEARCH_LIST(, qya, nBLR, wKey)) >= 0)
           #endif // AUGMENT_TYPE && !AUGMENT_TYPE_NOT else
-      #elif defined(NEXT)
+      #elif defined(NEXT) // LOOKUP
         if ((nPos = LocateGeKeyInList(qya, nBLR, &wKey)) >= 0)
-      #elif defined(COUNT)
+      #elif defined(COUNT) // LOOKUP elif NEXT
         if ((nPos = nBLR <= 32
                   ? LocateGeKeyInList(qya, nBLR, &wKey)
                   : SearchList(qya, nBLR, wKey))
             >= 0)
-      #else // LOOKUP elif NEXT
+      #else // LOOKUP elif NEXT elif COUNT
         if ((nPos = SearchList(qya, nBLR, wKey)) >= 0)
-      #endif // LOOKUP elif NEXT else
+      #endif // LOOKUP elif NEXT elif COUNT else
         {
             SMETRICS_POP(j__SearchPopulation += gnListPopCnt(qy, nBLR));
             SMETRICS_GET(++j__GetCalls);
