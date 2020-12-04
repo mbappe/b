@@ -339,7 +339,8 @@ b: btime bcheck
 # Will need to add -no-pie here to link to non-fpic objects in newer
 # compilers where -pie is default.
 btime: Judy1LHTime.c libb.a
-	$(CC) $(CFLAGS) -DMIKEY_1 -DMIKEY_L $(DEFINES) -o $@ $^ -lm
+	$(CC) $(CFLAGS) -DJUDY1_DUMP -DJUDYL_DUMP -DMIKEY_1 -DMIKEY_L \
+ $(DEFINES) -o $@ $^ -lm
 
 # Need -lm on Ubuntu. Appears to be unnecessary on macOS.
 bcheck: Judy1LHCheck.c libb.a
