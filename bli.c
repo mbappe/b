@@ -3643,7 +3643,7 @@ t_list:
               #endif // B_JUDYL && !PACK_L1_VALUES
                     SEARCH_LIST(, qya, nBLR, wKey)) >= 0)
           #endif // AUGMENT_TYPE && !AUGMENT_TYPE_NOT else
-      #elif defined(NEXT)
+      #elif defined(NEXT) || defined(COUNT)
         if ((nPos = LocateGeKeyInList(qya, nBLR, &wKey)) >= 0)
       #else // LOOKUP elif NEXT
         if ((nPos = SearchList(qya, nBLR, wKey)) >= 0)
