@@ -5834,6 +5834,12 @@ TestJudyNextEmpty(void *J1, void *JL, PNewSeed_t PSeed, Word_t Elements)
                             || (J1Key != J1KeyBefore)))
                     {
                         printf("\n");
+                        printf("J1KeyBefore %zd 0x%zx\n",
+                               J1KeyBefore, J1KeyBefore);
+                        printf("Count %zd 0x%zx -J1KeyBefore %zd 0x%zx\n",
+                               Judy1Count(J1, J1KeyBefore, -1, PJE0),
+                               Judy1Count(J1, J1KeyBefore, -1, PJE0),
+                               J1KeyBefore, J1KeyBefore);
                         Judy1Dump((Word_t)J1, sizeof(Word_t) * 8, 0);
                         FAILURE("Judy1NextEmpty Rcode != 1 Key", J1KeyBefore);
                     }
