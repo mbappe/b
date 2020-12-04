@@ -3514,6 +3514,8 @@ InsertCleanup(qpa, Word_t wKey)
   #else // defined(B_JUDYL) && defined(EMBED_KEYS)
             InflateBmSw(qya, wKey, nBLR);
   #endif // #else defined(B_JUDYL) && defined(EMBED_KEYS)
+            DBGI(printf("\n## After InflateBmSw\n"));
+            DBGI(Dump(pwRootLast, /*wPrefix*/ wKey, cnBitsPerWord));
         }
     }
 #endif // defined(CODE_BM_SW)
@@ -3669,7 +3671,7 @@ embeddedKeys:;
                            ww * EXP(nBLLn - cnLogBitsPerByte)],
                        pwBitmapLn, EXP(nBLLn - cnLogBitsPerByte));
                 for (int nW = 0;
-                     nW < (int)EXP(cnBitsInD1) / cnBitsPerWord; ++nW)
+                     nW < MAX((int)EXP(cnBitsInD1) / cnBitsPerWord, 1); ++nW)
                 {
                     int nPopCnt = __builtin_popcountll(pwBitmapLn[nW]);
                     gpxBitmapCnts(qya, nBLR)
@@ -3779,6 +3781,8 @@ embeddedKeys:;
         }
         assert(count == (int)wPopCnt);
           #endif // defined(DEBUG)
+        DBGI(printf("\n## After Converting BM leaf\n"));
+        DBGI(Dump(pwRootLast, /*wPrefix*/ wKey, cnBitsPerWord));
     }
       #endif // (cn2dBmMaxWpkPercent != 0)
   #endif // BITMAP
