@@ -64,6 +64,22 @@ then
     exit 1
 fi
 
+cmd="${TIME} -B17 -W0 -l -1LgCv"
+echo $cmd
+$cmd > /dev/null
+if [ $? != 0 ]
+then
+    exit 1
+fi
+
+cmd="${TIME} -W0 -l -1LgCv -n1000000"
+echo $cmd
+$cmd > /dev/null
+if [ $? != 0 ]
+then
+    exit 1
+fi
+
 # Test keys going from small negative numbers to small positive numbers
 # relative to a particular BValue and vice versa.
 for Judy in 1 R # L
