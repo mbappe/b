@@ -371,7 +371,7 @@ libbL.a: $(LIBBL_OBJS)
 1: b1time b1check
 
 b1time: Judy1LHTime.c libb1.a ${LIBJUDY}
-	$(CC) $(CFLAGS) -DMIKEY_1 $(DEFINES) -o $@ $^ -lm
+	$(CC) $(CFLAGS) -DJUDY1_DUMP -DMIKEY_1 $(DEFINES) -o $@ $^ -lm
 
 b1check: Judy1LHCheck.c libb1.a ${LIBJUDY}
 	$(CC) $(CFLAGS) -DJUDY1_DUMP -DMIKEY_1 $(DEFINES) -o $@ $^ -lm
@@ -381,7 +381,7 @@ b1check: Judy1LHCheck.c libb1.a ${LIBJUDY}
 L: bLtime bLcheck
 
 bLtime: Judy1LHTime.c libbL.a ${LIBJUDY}
-	$(CC) $(CFLAGS) -DMIKEY_L $(DEFINES) -o $@ $^ -lm
+	$(CC) $(CFLAGS) -DJUDYL_DUMP -DMIKEY_L $(DEFINES) -o $@ $^ -lm
 
 bLcheck: Judy1LHCheck.c libbL.a ${LIBJUDY}
 	$(CC) $(CFLAGS) -DJUDYL_DUMP -DMIKEY_L $(DEFINES) -o $@ $^ -lm
