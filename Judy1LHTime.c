@@ -5223,8 +5223,27 @@ TestJudyCount(void *J1, void *JL, PNewSeed_t PSeed, Word_t Elements)
                         printf("Count1 %zd TstKey 0x%zx TstKey2 0x%zx\n",
                                Count1, TstKey, TstKey2);
                         printf("Elements %zd\n", Elements);
+                        Judy1Dump((Word_t)J1, sizeof(Word_t) * 8, 0);
                         FAILURE("J1C at", elm);
                     }
+  #ifdef REGRESS // Validate Count.
+                    if (TstKey2 > TstKey + 1) {
+                        Word_t TstKeyA = TstKey + (TstKey2 - TstKey) / 3;
+                        Word_t Count1A = Judy1Count(J1, TstKey, TstKeyA, PJE0);
+                        Word_t Count1B
+                            = Judy1Count(J1, TstKeyA + 1, TstKey2, PJE0);
+                        if (Count1 != Count1A + Count1B) {
+                            printf("\n");
+                            printf("Count1 %zd TstKey 0x%zx TstKey2 0x%zx\n",
+                                   Count1, TstKey, TstKey2);
+                            printf("TstKeyA 0x%zx Count1A %zd Count1B %zd\n",
+                                   TstKeyA, Count1A, Count1B);
+                            printf("Elements %zd\n", Elements);
+                            Judy1Dump((Word_t)J1, sizeof(Word_t) * 8, 0);
+                            FAILURE("J1C at", elm);
+                        }
+                    }
+  #endif // REGRESS
 #endif // TEST_COUNT_USING_JUDY_NEXT
                 }
 #ifdef TEST_COUNT_USING_JUDY_NEXT
