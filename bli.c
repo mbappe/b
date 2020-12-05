@@ -3645,7 +3645,7 @@ t_list:
           #endif // AUGMENT_TYPE && !AUGMENT_TYPE_NOT else
       #elif defined(NEXT) // LOOKUP
         if ((nPos = LocateGeKeyInList(qya, nBLR, &wKey)) >= 0)
-      #elif defined(COUNT) // LOOKUP elif NEXT
+      #elif 0 // defined(COUNT) // LOOKUP elif NEXT
         if ((nPos = nBLR <= 32
                   ? LocateGeKeyInList(qya, nBLR, &wKey)
                   : SearchList(qya, nBLR, wKey))
