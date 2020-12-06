@@ -2253,6 +2253,7 @@ dumpBmTail:;
           #endif // BMLF_POP_COUNT_8 elif BMLF_POP_COUNT_1 else
       #endif // BMLF_CNTS
       #if cn2dBmMaxWpkPercent != 0
+      #if cnWordsBm2Cnts != 0
         if (nBLR == cnBitsLeftAtDl2) {
             printf("\n pxCnts %p\n", gpxBitmapCnts(qya, nBLR));
             for (int ww = 0; ww < cnWordsBm2Cnts; ++ww) {
@@ -2262,6 +2263,7 @@ dumpBmTail:;
                 printf(" 0x%016zx", ((Word_t*)gpxBitmapCnts(qya, nBLR))[ww]);
             }
         }
+      #endif // cnWordsBm2Cnts != 0
       #endif // cn2dBmMaxWpkPercent != 0
       #ifdef _BMLF_BM_IN_LNX
         printf(" " OWx, *pwLnX);
@@ -3658,9 +3660,11 @@ embeddedKeys:;
                     SetBit(&pwBitmap[ww * EXP(nBLLn - cnLogBitsPerWord)],
                            nBitNum);
               #endif // else (cnBitsInD1 < cnLogBitsPerWord)
+              #if cnWordsBm2Cnts != 0
                     Word_t wKeySuffix = (ww << nBLLn) + nBitNum;
                     ++gpxBitmapCnts(qya, nBLR)[
                         wKeySuffix >> cnLogBmlfBitsPerCnt];
+              #endif // cnWordsBm2Cnts != 0
                 }
                 continue;
             }
@@ -3673,12 +3677,14 @@ embeddedKeys:;
                 for (int nW = 0;
                      nW < MAX((int)EXP(cnBitsInD1) / cnBitsPerWord, 1); ++nW)
                 {
+          #if cnWordsBm2Cnts != 0
                     int nPopCnt = __builtin_popcountll(pwBitmapLn[nW]);
                     gpxBitmapCnts(qya, nBLR)
                             [((ww << nBLLn)
                                 + (nW << cnLogBitsPerWord))
                                     >> cnLogBmlfBitsPerCnt]
                         += nPopCnt;
+          #endif // cnWordsBm2Cnts != 0
                 }
                 Word_t wPopCntLn = gwBitmapPopCnt(qyax(Ln), nBLLn);
                 OldBitmap(pwrLn, nBLLn, wPopCntLn);
@@ -3698,8 +3704,10 @@ embeddedKeys:;
                         wKeySuffix
                             = (ww << nBLLn) + (pcKeysLn[nn] & NZ_MSK(nBLRLn));
                         SetBit(pwBitmap, wKeySuffix);
+                  #if cnWordsBm2Cnts != 0
                         ++gpxBitmapCnts(qya, nBLR)[
                             wKeySuffix >> cnLogBmlfBitsPerCnt];
+                  #endif // cnWordsBm2Cnts != 0
                     }
                 } else
                   #if (cnBitsPerWord == 64)
@@ -3714,8 +3722,10 @@ embeddedKeys:;
                         wKeySuffix
                             = (ww << nBLLn) + (psKeysLn[nn] & NZ_MSK(nBLRLn));
                         SetBit(pwBitmap, wKeySuffix);
+                  #if cnWordsBm2Cnts != 0
                         ++gpxBitmapCnts(qya, nBLR)[
                             wKeySuffix >> cnLogBmlfBitsPerCnt];
+                  #endif // cnWordsBm2Cnts != 0
                     }
                 }
                   #if (cnBitsPerWord == 64)
@@ -3726,8 +3736,10 @@ embeddedKeys:;
                         wKeySuffix
                             = (ww << nBLLn) + (piKeysLn[nn] & NZ_MSK(nBLRLn));
                         SetBit(pwBitmap, wKeySuffix);
+                      #if cnWordsBm2Cnts != 0
                         ++gpxBitmapCnts(qya, nBLR)[
                             wKeySuffix >> cnLogBmlfBitsPerCnt];
+                      #endif // cnWordsBm2Cnts != 0
                     }
                 }
                   #endif // (cnBitsPerWord == 64)
@@ -3737,8 +3749,10 @@ embeddedKeys:;
                     wKeySuffix
                         = (ww << nBLLn) + (pwKeysLn[nn] & NZ_MSK(nBLRLn));
                     SetBit(pwBitmap, wKeySuffix);
+                  #if cnWordsBm2Cnts != 0
                     ++gpxBitmapCnts(qya, nBLR)[
                         wKeySuffix >> cnLogBmlfBitsPerCnt];
+                  #endif // cnWordsBm2Cnts != 0
                 }
               #endif // COMPRESSED_LISTS
                 assert(nPopCntLn != 0);
@@ -3870,8 +3884,10 @@ InsertAllAtBitmap(qpa, qpx(Old), int nStart, int nPopCnt)
   #if cn2dBmMaxWpkPercent != 0
         int nBLR = gnBLR(qy);
         if (nBLR == cnBitsLeftAtDl2) {
+      #if cnWordsBm2Cnts != 0
             ++gpxBitmapCnts(qya, nBLR)[
                 (wKeyLoop & MSK(nBLR)) >> cnLogBmlfBitsPerCnt];
+      #endif // cnWordsBm2Cnts != 0
         }
   #endif // cn2dBmMaxWpkPercent != 0
   #ifdef B_JUDYL
@@ -10268,7 +10284,9 @@ done:
     SetBit(pwBitmap, wKey & MSK(nBLR));
   #if cn2dBmMaxWpkPercent != 0
     if (nBLR == cnBitsLeftAtDl2) {
+      #if cnWordsBm2Cnts != 0
         ++gpxBitmapCnts(qya, nBLR)[(wKey & MSK(nBLR)) >> cnLogBmlfBitsPerCnt];
+      #endif // cnWordsBm2Cnts != 0
     }
   #endif // cn2dBmMaxWpkPercent != 0
   #ifdef BMLF_INTERLEAVE
@@ -11043,7 +11061,9 @@ done:
         ClrBit(pwBitmap, wKey & MSK(nBLR));
   #if cn2dBmMaxWpkPercent != 0
     if (nBLR == cnBitsLeftAtDl2) {
+      #if cnWordsBm2Cnts != 0
         --gpxBitmapCnts(qya, nBLR)[(wKey & MSK(nBLR)) >> cnLogBmlfBitsPerCnt];
+      #endif // cnWordsBm2Cnts != 0
     }
   #endif // cn2dBmMaxWpkPercent != 0
   #ifdef BMLF_CNTS

@@ -117,7 +117,7 @@ CountSw(qpa,
         DBGC(printf("CountSw nBW %d\n", nBW));
         if (nBLR <= 16) {
             // Four subexpanse counts per word.
-      #if defined(CODE_XX_SW) || !defined(_CONSTANT_NBW)
+      #if !defined(_CONSTANT_NBW) || cnBitsPerDigit < cnLogSwCnts + 2
             int nShift = (nBW > cnLogSwCnts + 2) ? (nBW - cnLogSwCnts - 2) : 0;
             // Would like to resolve this test at compile time if possible.
             if (nShift == 0) {
@@ -125,10 +125,10 @@ CountSw(qpa,
                     wPopCnt += ((uint16_t*)((Switch_t*)pwr)->sw_awCnts)[ii];
                 }
             } else
-      #else // CODE_XX_SW || !_CONSTANT_NBW
+      #else // !_CONSTANT_NBW || cnBitsPerDigit < cnLogSwCnts + 2
             assert(nBW >= cnLogSwCnts + 2);
             int nShift = nBW - cnLogSwCnts - 2;
-      #endif // CODE_XX_SW || !_CONSTANT_NBW else
+      #endif // !_CONSTANT_NBW || cnBitsPerDigit < cnLogSwCnts + 2 else
             {
                 int nCntNum = (((wIndex << cnLogSwCnts) + (1 << (nBW - 3)))
                                    >> (nBW - 2));
@@ -148,7 +148,7 @@ CountSw(qpa,
             }
         } else if (nBLR <= 32) {
             // Two subexpanse counts per word.
-      #if defined(CODE_XX_SW) || !defined(_CONSTANT_NBW)
+      #if !defined(_CONSTANT_NBW) || cnBitsPerDigit < cnLogSwCnts + 1
             // Would like to resolve this test at compile time if possible.
             int nShift = (nBW > cnLogSwCnts + 1) ? (nBW - cnLogSwCnts - 1) : 0;
             if (nShift == 0) {
@@ -156,10 +156,10 @@ CountSw(qpa,
                     wPopCnt += ((uint32_t*)((Switch_t*)pwr)->sw_awCnts)[ii];
                 }
             } else
-      #else // CODE_XX_SW || !_CONSTANT_NBW
+      #else // !_CONSTANT_NBW || cnBitsPerDigit < cnLogSwCnts + 1
             assert(nBW >= cnLogSwCnts + 1);
             int nShift = nBW - cnLogSwCnts - 1;
-      #endif // CODE_XX_SW || !_CONSTANT_NBW else
+      #endif // !_CONSTANT_NBW || cnBitsPerDigit < cnLogSwCnts + 1 else
             {
                 int nCntNum = (((wIndex << cnLogSwCnts) + (1 << (nBW - 2)))
                                    >> (nBW - 1));
@@ -176,7 +176,7 @@ CountSw(qpa,
             }
         } else {
             // One subexpanse count per word.
-      #if defined(CODE_XX_SW) || !defined(_CONSTANT_NBW)
+      #if !defined(_CONSTANT_NBW) || cnBitsPerDigit < cnLogSwCnts
             // Would like to resolve this test at compile time if possible.
             int nShift = (nBW > cnLogSwCnts) ? (nBW - cnLogSwCnts) : 0;
             if (nShift == 0) {
@@ -184,10 +184,10 @@ CountSw(qpa,
                     wPopCnt += ((Switch_t*)pwr)->sw_awCnts[ii];
                 }
             } else
-      #else // CODE_XX_SW || !_CONSTANT_NBW
+      #else // !_CONSTANT_NBW || cnBitsPerDigit < cnLogSwCnts
             assert(nBW >= cnLogSwCnts);
             int nShift = nBW - cnLogSwCnts;
-      #endif // CODE_XX_SW || !_CONSTANT_NBW else
+      #endif // !_CONSTANT_NBW || cnBitsPerDigit < cnLogSwCnts else
             {
                 int nCntNum = (((wIndex << cnLogSwCnts) + (1 << (nBW - 1)))
                                    >> (nBW - 0));
@@ -4270,6 +4270,7 @@ t_bitmap:
                 Word_t *pwBitmap = ((BmLeaf_t*)pwr)->bmlf_awBitmap;
           #endif // else _BMLF_BM_IN_LNX
           #if cn2dBmMaxWpkPercent != 0
+          #if cnWordsBm2Cnts != 0
                 if (nBLR == cnBitsLeftAtDl2) {
                     int nCntNum = (wKey & MSK(cnBitsLeftAtDl2))
                                     >> cnLogBmlfBitsPerCnt;
@@ -4324,6 +4325,7 @@ t_bitmap:
                                                             & wBmMask);
                     }
                 } else
+          #endif // cnWordsBm2Cnts != 0
           #endif // cn2dBmMaxWpkPercent != 0
                 if ((nBLR > 8) && (wKey & EXP(nBLR - 1))) {
                     wPopCnt = gwBitmapPopCnt(qya, nBLR);

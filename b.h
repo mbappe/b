@@ -3842,8 +3842,12 @@ swBitmapPrefix(qp, int nBLR, Word_t wPrefix)
   #endif // cnLogBmlfBitsPerCnt <= 7 else
   // Words in bitmap / words per one-byte count / counts per word
   // 64k bits in bitmap / 128 bits per one-byte count / 8 counts per word
-  #define cnWordsBm2Cnts \
-      ((int)MAX(1, (cnBmlfBytesPerCnt << cnLogBmlfCnts) / sizeof(Word_t)))
+  #if cnLogBmlfCnts > 0
+      #define cnWordsBm2Cnts \
+          MAX(1, (cnBmlfBytesPerCnt << cnLogBmlfCnts) / cnBytesPerWord)
+  #else // cnLogBmlfCnts > 0
+      #define cnWordsBm2Cnts  0
+  #endif // cnLogBmlfCnts > 0 else
   #ifndef NO_BMLF_COUNT_CNTS_BACKWARD
     #undef  BMLF_COUNT_CNTS_BACKWARD
     #define BMLF_COUNT_CNTS_BACKWARD
@@ -4188,6 +4192,7 @@ swBitmapPopCnt(qpa, int nBLR, Word_t wPopCnt)
 }
 
 #if cn2dBmMaxWpkPercent != 0
+#if cnWordsBm2Cnts != 0
   #if cnBmlfBytesPerCnt == 1
 static uint8_t*
 gpxBitmapCnts(qpa, int nBLR)
@@ -4205,7 +4210,7 @@ gpxBitmapCnts(qpa, int nBLR)
     return (uint16_t*)&pwr[BitmapWordCnt(nBLR, 0) - cnWordsBm2Cnts];
 }
   #endif // cnBmlfBytesPerCnt == 1 else
-
+#endif // cnWordsBm2Cnts != 0
 #endif // cn2dBmMaxWpkPercent != 0
 
 #endif // defined(BITMAP)
