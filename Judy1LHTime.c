@@ -5226,7 +5226,7 @@ TestJudyCount(void *J1, void *JL, PNewSeed_t PSeed, Word_t Elements)
                         Judy1Dump((Word_t)J1, sizeof(Word_t) * 8, 0);
                         FAILURE("J1C at", elm);
                     }
-  #ifdef REGRESS // Validate Count.
+  #ifdef DEBUG // Validate Count.
                     if (TstKey2 > TstKey + 1) {
                         Word_t TstKeyA = TstKey + (TstKey2 - TstKey) / 3;
                         Word_t Count1A = Judy1Count(J1, TstKey, TstKeyA, PJE0);
@@ -5243,7 +5243,7 @@ TestJudyCount(void *J1, void *JL, PNewSeed_t PSeed, Word_t Elements)
                             FAILURE("J1C at", elm);
                         }
                     }
-  #endif // REGRESS
+  #endif // DEBUG
 #endif // TEST_COUNT_USING_JUDY_NEXT
                 }
 #ifdef TEST_COUNT_USING_JUDY_NEXT
