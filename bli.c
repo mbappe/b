@@ -2734,7 +2734,6 @@ t_switch:
           #endif // defined(INSERT)
             } // cleanup is complete
       #endif // defined(INSERT) || defined(REMOVE)
-            IF_COUNT(return wPopCntSum);
             goto break_from_main_switch;
         }
         DBGX(Checkpoint(qya, "t_switch"));
@@ -2781,7 +2780,7 @@ switchTail:;
         }
       #endif // defined(INSERT) || defined(REMOVE)
         IF_COUNT(wPopCntSum += CountSw(qya, wDigit, nLinks));
-        IF_COUNT(if (!bLinkPresent) return wPopCntSum);
+        IF_COUNT(if (!bLinkPresent) goto break_from_main_switch;);
         // Save the previous link and advance to the next.
         IF_NOT_LOOKUP(nBLUp = nBL);
         IF_NOT_LOOKUP(pLnUp = pLn);
@@ -2885,7 +2884,7 @@ t_xx_sw:
         }
           #endif // INSERT || REMOVE
         IF_COUNT(wPopCntSum += CountSw(qya, wDigit, nLinks));
-        IF_COUNT(if (!bLinkPresent) return wPopCntSum);
+        IF_COUNT(if (!bLinkPresent) goto break_from_main_switch);
         // Save the previous link and advance to the next.
         IF_NOT_LOOKUP(nBLUp = nBL);
         IF_NOT_LOOKUP(pLnUp = pLn);
@@ -3944,7 +3943,7 @@ t_xx_list:
         DBGC(printf("T_XX_LIST: nPos %d\n", nPos));
         wPopCntSum += nPos;
         DBGC(printf("list nPos 0x%x wPopCntSum " OWx"\n", nPos, wPopCntSum));
-        return wPopCntSum;
+        goto break_from_main_switch;
       #endif // defined(COUNT)
 
         goto break_from_main_switch;
@@ -4231,7 +4230,7 @@ t_bitmap:
                 && (!cbEmbeddedBitmap || (nBLR > cnLogBitsPerLink))
                 && (wRoot == WROOT_NULL))
             {
-                return wPopCntSum;
+                goto break_from_main_switch;
             }
             // Count bits.
             Word_t wPopCnt;
@@ -4356,7 +4355,7 @@ t_bitmap:
             wPopCntSum += wPopCnt;
             DBGC(printf("bm nBLR %d wPopCnt " OWx" wPopCntSum " OWx"\n",
                         nBLR, wPopCnt, wPopCntSum));
-            return wPopCntSum;
+            goto break_from_main_switch;
       #endif // COUNT
           #if defined(LOOKUP) && defined(LOOKUP_NO_BITMAP_SEARCH)
             // BUG?: Is pwrUp valid here, i.e. does it mean what this code
@@ -4928,7 +4927,7 @@ t_embedded_keys:
             wPopCntSum += nPos < 0 ? ~nPos : nPos;
           #endif // B_JUDYL else
             DBGC(printf("EK: nPos %d wPopCntSum %zd\n", nPos, wPopCntSum));
-            return wPopCntSum;
+            goto break_from_main_switch;
         }
       #endif // defined(COUNT)
 
@@ -5322,7 +5321,7 @@ t_ek_xv:
                         wPopCntSum, nn));
             wPopCntSum += nn;
             DBGC(printf("ek_xv nn %d wPopCntSum " OWx"\n", nn, wPopCntSum));
-            return wPopCntSum;
+            goto break_from_main_switch;
         }
       #endif // defined(COUNT)
       #ifdef COMPRESSED_LISTS
