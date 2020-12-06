@@ -36,7 +36,7 @@ CC=$CCA
 WFLAGSA=$WFLAGSA_A
 export CC WFLAGSA
 
-MAKE=true
+MAKE=make
 
 # How do we tell if AVX2 is supported by the cpu?
 # On Linux: grep avx2 /etc/cpuinfo
