@@ -9707,8 +9707,23 @@ InflateList(qpa, Word_t wKey, int nPopCnt)
 
     MyFree(wr_pwr(pLn->ln_wRoot), MAX(3, nPopCnt | 1), &j__AllocWordsJV);
 
-    // What about padding the bucket and/or malloc buffer?
-    // Will this list ever be searched? Copied into a list that is searched?
+    // Pad the bucket. Discovered this bug when working with LocateLtKey128.
+  #ifdef COMPRESSED_LISTS
+    if (nBL <= 8) {
+        PAD(ls_pcKeys(pwList, nPopCnt), nPopCnt);
+    } else
+    if (nBL <= 16) {
+        PAD(ls_psKeys(pwList, nPopCnt), nPopCnt);
+    } else
+  #if (cnBitsPerWord > 32)
+    if (nBL <= 32) {
+        PAD(ls_piKeys(pwList, nPopCnt), nPopCnt);
+    } else
+  #endif // (cnBitsPerWord > 32)
+  #endif // COMPRESSED_LISTS
+    {
+        PAD(ls_pwKeysNATX(pwList, nPopCnt), nPopCnt);
+    }
 
     pLn->ln_wRoot = wRootNew;
     snListBLR(qy, nBL);
@@ -9840,7 +9855,23 @@ InflateEmbeddedList(qpa, Word_t wKey)
 #endif // B_JUDYL
     }
 
-    // What about padding the bucket and/or malloc buffer?
+    // Pad the bucket. Discovered this bug when working with LocateLtKey128.
+  #ifdef COMPRESSED_LISTS
+    if (nBL <= 8) {
+        PAD(ls_pcKeys(pwList, nPopCnt), nPopCnt);
+    } else
+    if (nBL <= 16) {
+        PAD(ls_psKeys(pwList, nPopCnt), nPopCnt);
+    } else
+  #if (cnBitsPerWord > 32)
+    if (nBL <= 32) {
+        PAD(ls_piKeys(pwList, nPopCnt), nPopCnt);
+    } else
+  #endif // (cnBitsPerWord > 32)
+  #endif // COMPRESSED_LISTS
+    {
+        PAD(ls_pwKeysNATX(pwList, nPopCnt), nPopCnt);
+    }
 
     *pwRoot = wRoot = wRootNew;
     snListBLR(qy, nBL);
@@ -12221,6 +12252,12 @@ Initialize(void)
 #else //         LOCATE_GE_USING_EQ_M1
     printf("# No LOCATE_GE_USING_EQ_M1\n");
 #endif // #else  LOCATE_GE_USING_EQ_M1
+
+#ifdef           DEBUG_LOCATE_GE
+    printf("#    DEBUG_LOCATE_GE\n");
+#else //         DEBUG_LOCATE_GE
+    printf("# No DEBUG_LOCATE_GE\n");
+#endif //        DEBUG_LOCATE_GE else
 
 #ifdef           LOCATE_GE_AFTER_LOCATE_EQ
     printf("#    LOCATE_GE_AFTER_LOCATE_EQ\n");

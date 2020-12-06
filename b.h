@@ -5188,7 +5188,7 @@ PsplitSearchByKey8(qp, uint8_t *pcKeys, int nPopCnt, uint8_t cKey, int nPos)
             _nPos = (typeof(_xKey)*)pb - (_pxKeys) + nBPos; break; \
         } \
         if (++pb >= pbEnd) { \
-            _nPos = ~((typeof(_xKey)*)pb - (_pxKeys)); break; \
+            _nPos = ~nPopCnt; break; \
         } \
     } \
 }
@@ -5695,7 +5695,7 @@ PsplitSearchByKey8(qp, uint8_t *pcKeys, int nPopCnt, uint8_t cKey, int nPos)
             /* last key is lt */ \
             if (nSplitB == (int)(((_nPopCnt) - 1) / nKeysPerBucket)) { \
                 /* we searched the last bucket and the key is not there */ \
-                _nPos = -1; \
+                _nPos = ~nPopCnt; \
             } else { \
                 /* parallel search the tail of the list */ \
                 /* we are doing a search of the bucket after the original */ \
@@ -7517,7 +7517,7 @@ Word_t cnMagic[] = {
 // Remove needs to know where the key is if it is in the list as does
 // Lookup for JudyL. See ListHasKey and LocateKeyInList.
 static int
-SearchList(qpa, int nBLR, Word_t wKey)
+SearchListGuts(qpa, int nBLR, Word_t wKey)
 {
     qva;
   #if defined(COMPRESSED_LISTS)
@@ -7542,6 +7542,35 @@ SearchList(qpa, int nBLR, Word_t wKey)
       #endif // (cnBitsInD1 <= 32) && (cnBitsPerWord > 32)
   #endif // defined(COMPRESSED_LISTS)
     return SearchListWord(qya, nBLR, wKey);
+}
+
+static inline int
+LocateGeKeyInListGuts(qpa, int nBLR, Word_t* pwKey);
+
+static Word_t
+ls_pxKeyX(Word_t *pwr, int nBL, int nPopCnt, int ii);
+
+static int
+SearchList(qpa, int nBLR, Word_t wKey)
+{
+    int nPosEq = SearchListGuts(qya, nBLR, wKey);
+  #ifdef DEBUG
+  #ifdef DEBUG_LOCATE_GE
+    Word_t wKeyLocal = wKey;
+    int nPosGe = LocateGeKeyInListGuts(qya, nBLR, &wKeyLocal);
+
+    if (nPosEq >= 0) {
+        assert(nPosGe == nPosEq);
+    } else {
+        if (nPosGe < 0) {
+            assert(nPosGe == nPosEq); // ~nPopCnt
+        } else {
+            assert(nPosGe == ~nPosEq);
+        }
+    }
+  #endif // DEBUG_LOCATE_GE
+  #endif // DEBUG
+    return nPosEq;
 }
 
 #if cnBitsPerWord > 32
@@ -7743,7 +7772,7 @@ LocateLtKey128(__m128i *pxBucket, Word_t wKey, int nBL)
     Word_t wHasLtKey = HasLtKey128(pxBucket, wKey, nBL);
       #if defined(USE_POPCOUNT_IN_LK8) || !defined(USE_FFS_IN_LK8)
     if (wHasLtKey == 0) {
-        return -1; // sizeof(Bucket_t) / ExtListBytesPerKey(nBL);
+        return -1;
     }
       #endif // defined(USE_POPCOUNT_IN_LK8) || !defined(USE_FFS_IN_LK8)
     if (nBL <= 8) {
@@ -7757,7 +7786,7 @@ LocateLtKey128(__m128i *pxBucket, Word_t wKey, int nBL)
     }
       #if !defined(USE_POPCOUNT_IN_LK8) && defined(USE_FFS_IN_LK8)
     if (wHasLtKey == 0) {
-        return -1; // sizeof(Bucket_t) / ExtListBytesPerKey(nBL);
+        return -1;
     }
       #endif // !defined(USE_POPCOUNT_IN_LK8) && defined(USE_FFS_IN_LK8)
     int nFirstSetBit = __builtin_clzll(wHasLtKey);
@@ -7796,7 +7825,8 @@ LocateGeKey128(__m128i *pxBucket, Word_t wKey, int nBL)
     if (wHasGeKey == 0) {
         int nPosLt = LocateLtKey128(pxBucket, wKey, nBL); (void)nPosLt;
         assert(nPosLt == 128 / nBL);
-        return -1; // sizeof(Bucket_t) / ExtListBytesPerKey(nBL);
+        // Caller has to change this to ~nPopCnt.
+        return ~(sizeof(Bucket_t) / ExtListBytesPerKey(nBL));
     }
       #endif // defined(USE_POPCOUNT_IN_LK8) || !defined(USE_FFS_IN_LK8)
     if (nBL <= 8) {
@@ -7813,7 +7843,8 @@ LocateGeKey128(__m128i *pxBucket, Word_t wKey, int nBL)
     }
       #if !defined(USE_POPCOUNT_IN_LK8) && defined(USE_FFS_IN_LK8)
     if (wHasGeKey == 0) {
-        return -1; // sizeof(Bucket_t) / ExtListBytesPerKey(nBL);
+        // Caller has to change this to ~nPopCnt.
+        return ~(sizeof(Bucket_t) / ExtListBytesPerKey(nBL));
     }
       #endif // !defined(USE_POPCOUNT_IN_LK8) && defined(USE_FFS_IN_LK8)
     int nFirstSetBit = __builtin_ctzll(wHasGeKey);
@@ -7956,7 +7987,7 @@ LocateGeKey256(__m256i *pxBucket, Word_t wKey, int nBL)
 static int LocateKeyInList(qpa, int nBLR, Word_t wKey);
 
 static inline int
-LocateGeKeyInList(qpa, int nBLR, Word_t* pwKey)
+LocateGeKeyInListGuts(qpa, int nBLR, Word_t* pwKey)
 {
     qva;
     Word_t wKey = *pwKey;
@@ -7972,6 +8003,7 @@ LocateGeKeyInList(qpa, int nBLR, Word_t* pwKey)
             uint8_t *pcKeys = ls_pcKeysX(pwr, nBLR, nPopCnt);
           #if cnListPopCntMaxDl1 <= 16
             nPos = BUCKET_LOCATE_GE_KEY((Bucket_t*)pwr, wKey, nBLR);
+            if (nPos < 0) { nPos = ~nPopCnt; }
           #else // cnListPopCntMaxDl1 <= 16
             uint8_t cKey = (uint8_t)wKey; // Do we need cKey?
             LOCATE_GE_KEY(Bucket_t,
@@ -8093,11 +8125,11 @@ LocateGeKeyInList(qpa, int nBLR, Word_t* pwKey)
                   }
           #endif // PARALLEL_128
           #endif // PARALLEL_SEARCH_WORD
-                    nPos = ~SearchList(qya, nBLR, wKey - 1);
+                    nPos = ~SearchListGuts(qya, nBLR, wKey - 1);
                     assert(nPos < nPopCnt);
                 }
       #else // LOCATE_GE_AFTER_LOCATE_EQ && PARALLEL_128
-                nPos = ~SearchList(qya, nBLR, wKey - 1);
+                nPos = ~SearchListGuts(qya, nBLR, wKey - 1);
                 assert(nPos < nPopCnt);
       #endif // LOCATE_GE_AFTER_LOCATE_EQ && PARALLEL_128 else
                 assert(nPos < nPopCnt);
@@ -8107,7 +8139,7 @@ LocateGeKeyInList(qpa, int nBLR, Word_t* pwKey)
     }
   #else // LOCATE_GE_USING_EQ_M1
     int nPopCnt = gnListPopCnt(qy, nBLR);
-    int nPos = SearchList(qya, nBLR, wKey);
+    int nPos = SearchListGuts(qya, nBLR, wKey);
     if (nPos < 0) {
         if ((nPos ^= -1) >= nPopCnt) {
             return ~nPos;
@@ -8133,6 +8165,29 @@ LocateGeKeyInList(qpa, int nBLR, Word_t* pwKey)
         *pwKey = pwKeys[nPos];
     }
     return nPos;
+}
+
+static inline int
+LocateGeKeyInList(qpa, int nBLR, Word_t* pwKey)
+{
+    int nPosGe = LocateGeKeyInListGuts(qya, nBLR, pwKey);
+  #ifdef DEBUG
+  #ifdef DEBUG_LOCATE_GE
+    Word_t wKey = *pwKey;
+    int nPosEq = SearchListGuts(qya, nBLR, wKey);
+
+    if (nPosEq >= 0) {
+        assert(nPosGe == nPosEq);
+    } else {
+        if (nPosGe < 0) {
+            assert(nPosGe == nPosEq); // ~nPopCnt
+        } else {
+            assert(nPosGe == ~nPosEq);
+        }
+    }
+  #endif // DEBUG_LOCATE_GE
+  #endif // DEBUG
+    return nPosGe;
 }
 
 #ifdef LOOKUP
