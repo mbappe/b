@@ -439,8 +439,10 @@ Swizzle(Word_t word)
 }
 
 // PrintValFF - PrintValFreeForm
-// Print dVal in nWidth provided with a format that fits with as
-// much precision as possible.
+// Print dVal with as much precision as possible in nWidth characters.
+// Sort of. We prefer not using an exponent.
+// We resort to using an exponent only if we cannot get at
+// least one significant digit without using an exponent.
 static void
 PrintValFF(double dVal, // raw value to be scaled, formatted and printed
            int nWidth, // field width for printed number
@@ -448,31 +450,39 @@ PrintValFF(double dVal, // raw value to be scaled, formatted and printed
            )
 {
     char acFormat[24];
-    double dExpWidth = pow(10, nWidth);
-    if ((dVal > .05) && (dVal <= pow(10, nWidth - 2) - .5)) {
+    int nWholeDigits = floor(log10(dVal)) + 1; // min needed for dVal > 1
+    int nFractionDigits = -floor(log10(dVal)); // min needed for dVal < 1
+    if ((nWholeDigits < nWidth - 1) && (nFractionDigits <= nWidth - 2)) {
         // decimal point and no exponent
-        sprintf(acFormat, "%%%d.%df", nWidth, nWidth - 2 - (int)log10(dVal));
+        nWholeDigits = nWholeDigits < 1 ? 1 : nWholeDigits;
+        sprintf(acFormat, "%%%d.%df", nWidth, nWidth - nWholeDigits - 1);
          printf(acFormat, dVal);
-    } else
-    if ((dVal > pow(10, nWidth - 2) - .5) && (dVal <= pow(10, nWidth) + .5)) {
-        // no decimal point or exponent
+        return;
+    }
+    if ((nWholeDigits == nWidth) || (nWholeDigits == nWidth - 1)) {
+        // no decimal point and no exponent
         sprintf(acFormat, "%%%dd", nWidth); // minimum field width
-         printf(acFormat, (unsigned long)dVal);
-    } else
-    if (dVal < 5 / pow(10, nWidth)) {
+         printf(acFormat, (long)(dVal + .5));
+        return;
+    }
+    // Must use an exponent.
+    // Normalized scientific notation: 1 <= abs(significant) < 10.
+    // Engineering notation: exponents are multiples of 3.
+    if (dVal < 1) {
         // Must use a variant of scientific notation with a negative exponent.
-        if (dVal < 1e-9) {
-            sprintf(acFormat, "%%%dd", nWidth); // minimum field width
-             printf(acFormat, 0);
-        } else {
+        // Can we stick with multiples of 3 for the exponent?
+        // Not unless we have enough width.
+        if (nWidth <= 6) {
             sprintf(acFormat, "%%%d.0e", nWidth); // minimum field width
-             printf(acFormat, dVal);
+        } else {
+            sprintf(acFormat, "%%%d.%de", nWidth, nWidth - 6);
         }
-    } else /* if (dVal >= dExpWidth - .5) */ {
+         printf(acFormat, dVal);
+        return;
+    }
+    double dExpWidth = pow(10, nWidth);
+    {
         // Must use a variant of scientific notation with a positive exponent.
-        // Normalized scientific notation: 1 <= abs(significant) < 10.
-        // Engineering notation: exponents are multiples of 3.
-        // The '=' above is necessary to avoid assertion below.
         // How many digits of exponent are needed?
         //  999e9 is dMax for 5 characters with 1 digit  of exponent
         //        it represents up to  999.5e9
@@ -482,7 +492,7 @@ PrintValFF(double dVal, // raw value to be scaled, formatted and printed
         //        it represents up to  99.5e99
         // 999e99 is dMax for 6 characters with 2 digits of exponent
         //        it represents up to 999.5e99
-        // Does GNUplot understand SI prefixes, e.g. k, M, G, T? No.
+        // Does GNUplot understand SI suffixes, e.g. k, M, G, T? No.
         int nDigitsSig = nWidth - 2; // no decimal point in significand
         int nDigitsExp = 1; // arbitrary -- ok for now
         double dMaxE1 = (pow(10, nDigitsSig) - .5) * pow(10, pow(10, nDigitsExp) - 1);
@@ -540,13 +550,17 @@ PrintValX(double dVal, // raw value to be scaled, formatted and printed
     fputs(strPrefix, stdout);
     dVal *= dScale;
     char acFormat[16];
-    int nLogVal = log10(dVal);
-    if ((nDigitsFraction > 0) && (nLogVal < nWidth - nDigitsFraction - 1)) {
+    double dValMax;
+    double dValMin = pow(10, -nDigitsFraction) / 2;
+    if (nDigitsFraction == 0) {
         sprintf(acFormat, "%%%d.%df", nWidth, nDigitsFraction);
-         printf(acFormat, dVal);
-    } else if ((nDigitsFraction == 0) && (nLogVal < nWidth)) {
-        sprintf(acFormat, "%%%dlu", nWidth);
-         printf(acFormat, (unsigned long)dVal);
+        dValMax = pow(10, nWidth - nDigitsFraction) - dValMin;
+    } else {
+        sprintf(acFormat, "%%%d.%df", nWidth, nDigitsFraction);
+        dValMax = pow(10, nWidth - nDigitsFraction - 1) - dValMin;
+    }
+    if ((dVal == 0) || ((dVal > dValMin) && (dVal < dValMax))) {
+        printf(acFormat, dVal);
     } else {
         PrintValFF(dVal, nWidth, bUseSymbol);
     }
@@ -572,7 +586,8 @@ PrintValx100(double dVal, // raw value to be scaled, formatted and printed
               /* strPrefix */ " ", /* dScale */ 100);
 }
 
-#define PRINT5_1f(__X)  PrintValx100((__X), 5, 1)
+#define PRINT5_1f(__X) \
+    PrintValX((__X), 5, 1, /*Symbol*/0, /*Prefix*/ " ", /*Scale*/ 100)
 
 static void
 PRINT6_1f(double __X)
@@ -4208,15 +4223,16 @@ nextPart:
 
         if (mFlag && (bFlag == 0) && (yFlag == 0))
         {
-            PRINT5_1f((double)j__AllocWordsJBB   / (double)Pop1);       // 256 node branch
-            PRINT5_1f((double)j__AllocWordsJBU   / (double)Pop1);       // 256 node branch
-            PRINT5_1f((double)j__AllocWordsJBL   / (double)Pop1);       // xx node branch
-            PRINT5_1f((double)j__AllocWordsJLL[0] / (double)Pop1);      // > 56-bit key
+            PRINT5_1f((double)1                   / Pop1);       // 256 node branch
+            PRINT5_1f((double)j__AllocWordsJBB    / Pop1);       // 256 node branch
+            PRINT5_1f((double)j__AllocWordsJBU    / Pop1);       // 256 node branch
+            PRINT5_1f((double)j__AllocWordsJBL    / Pop1);       // xx node branch
+            PRINT5_1f((double)j__AllocWordsJLL[0] / Pop1);
             for (int ll = 7; ll > 0; --ll) {
-                PRINT5_1f((double)j__AllocWordsJLL[ll] / (double)Pop1); // ll * 8 bit Key
+                PRINT5_1f((double)j__AllocWordsJLL[ll] / Pop1);
             }
-            PRINT5_1f((double)j__AllocWordsJLB1  / (double)Pop1);       // 1 digit bimap
-            PRINT5_1f((double)j__AllocWordsJV    / (double)Pop1);       // Values
+            PRINT5_1f((double)j__AllocWordsJLB1 / Pop1);       // 1 digit bimap
+            PRINT5_1f((double)j__AllocWordsJV   / Pop1);       // Values
 
 // SSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSss
 
