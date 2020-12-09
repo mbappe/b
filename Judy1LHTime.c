@@ -389,6 +389,80 @@ int       TestByteTest(PNewSeed_t PSeed, Word_t Meas);
 
 int       TimeNumberGen(void **TestRan, PNewSeed_t PSeed, Word_t Delta);
 
+#ifdef  TESTCOUNTACCURACY
+#undef __FUNCTI0N__
+#define __FUNCTI0N__ "Judy1CountWithNext"
+static Word_t Judy1CountWithNext(Pvoid_t J1, Word_t Key1, Word_t Key2)
+{
+    if (Key1 > Key2)                // make Key1 smaller than Key2
+    {
+        Key1 = Key1 ^ Key2;
+        Key2 = Key1 ^ Key2;
+        Key1 = Key1 ^ Key2;
+    }
+
+    int Rc = Judy1First(J1, &Key1, PJE0);
+    if (Rc != 1)
+        return((Word_t)0);
+    if (Key1 == Key2)
+    {
+        return((Word_t)1);
+    }
+
+    Word_t NextCount;
+    for (NextCount = 0; Key1 < Key2; NextCount++)
+    {
+        Word_t  PrevKey = Key1;
+        Rc = Judy1Next(J1, &Key1, PJE0);
+        if (Rc != 1)
+            FAILURE("--OOps, Judy1CountWithNext failed return = ", Rc);
+        if (Key1 <= PrevKey)
+        {
+            printf("\n--OOps, Judy1CountWithNext failed Key1 = 0x%lx >= PrevKey = 0x%lx", Key1, PrevKey);
+            FAILURE("--OOps, Judy1CountWithNext failed at = ", NextCount);
+        }
+    }
+    if (Key1 == Key2)
+        NextCount++;
+    return (NextCount);
+}
+
+#undef __FUNCTI0N__
+#define __FUNCTI0N__ "JudyLCountWithNext"
+static Word_t JudyLCountWithNext(Pvoid_t JL, Word_t Key1, Word_t Key2)
+{
+    if (Key1 > Key2)                // make Key1 the smallest
+    {
+        Key1 = Key1 ^ Key2;
+        Key2 = Key1 ^ Key2;
+        Key1 = Key1 ^ Key2;
+    }
+    Pvoid_t Pvoid = JudyLFirst(JL, &Key1, PJE0);
+    if (Pvoid == (Pvoid_t)0)
+        return((Word_t)0);
+
+    if (Key1 == Key2)
+        return((Word_t)1);
+
+    Word_t NextCount;
+    for (NextCount = 0; Key1 < Key2; NextCount++)
+    {
+        Word_t  PrevKey = Key1;
+        Pvoid = JudyLNext(JL, &Key1, PJE0);
+        if (Pvoid == (Pvoid_t)0)
+            FAILURE("--OOps, JudyLCountWithNext failed return = ", Pvoid);
+        if (Key1 <= PrevKey)
+        {
+            printf("\n--OOps, JudyLCountWithNext failed Key1 = 0x%lx >= PrevKey = 0x%lx", Key1, PrevKey);
+            FAILURE("--OOps, JudyLCountWithNext failed at = ", NextCount);
+        }
+    }
+    if (Key1 == Key2)
+        NextCount++;
+    return (NextCount);
+}
+#endif // TESTCOUNTACCURACY
+
 
 // Routine to get next size of Keys
 static int                              // return 1 if last number
@@ -1520,6 +1594,12 @@ LogIfdefs(void)
   #else //       TEST_NEXT_USING_JUDY_NEXT
     printf("# No TEST_NEXT_USING_JUDY_NEXT\n");
   #endif //      TEST_NEXT_USING_JUDY_NEXT else
+
+  #ifdef         TESTCOUNTACCURACY
+    printf("#    TESTCOUNTACCURACY\n");
+  #else //       TESTCOUNTACCURACY
+    printf("# No TESTCOUNTACCURACY\n");
+  #endif //      TESTCOUNTACCURACY else
 
   #ifdef         USE_MALLOC
     printf("#    USE_MALLOC\n");
@@ -5218,6 +5298,17 @@ TestJudyCount(void *J1, void *JL, PNewSeed_t PSeed, Word_t Elements)
                 {
 #ifdef TEST_COUNT_USING_JUDY_NEXT
                     Count1 = Judy1Count(J1, 0, TstKey, PJE0);
+
+#ifdef  TESTCOUNTACCURACY
+                    Word_t CountU1 = Judy1CountWithNext(J1, 0, TstKey);
+                    if (Count1 != CountU1)
+                    {
+                        printf("\n -- Array Pop1 = %lu\n", ((PWord_t)J1)[0] + 1);
+                        printf(" -- Count1 = %lu, != Debug CountU1 = %lu\n", Count1, CountU1);
+                        FAILURE("Judy1Count at", elm);
+                    }
+#endif // TESTCOUNTACCURACY
+
                     if (Count1 != (elm + 1))
                     {
                         printf("\n");
@@ -5233,6 +5324,17 @@ TestJudyCount(void *J1, void *JL, PNewSeed_t PSeed, Word_t Elements)
                     }
                     --TstKey2;
                     Count1 = Judy1Count(J1, TstKey, TstKey2, PJE0);
+
+#ifdef  TESTCOUNTACCURACY
+                    Word_t CountU1 = Judy1CountWithNext(J1, TstKey, TstKey2);
+                    if (Count1 != CountU1)
+                    {
+                        printf("\n  -- Array Pop1 = %lu\n", ((PWord_t)J1)[0] + 1);
+                        printf(" -- Count1 = %lu, != Debug CountU1 = %lu\n", Count1, CountU1);
+//                        FAILURE("Judy1Count at", elm);
+                    }
+#endif // TESTCOUNTACCURACY
+
                     if ((Count1 < 1) || (Count1 > TstKey2 - TstKey + 1))
                     {
                         printf("\n");
