@@ -1028,7 +1028,11 @@ IF_NEXT(static inline BJL(Word_t*)BJ1(Status_t) Next(Word_t wRootArg,
 #endif // NEXT_QPA elif NEXT_QP else
 IF_INSERT(       BJL(Word_t*)BJ1(Status_t) Insert(qpa, Word_t wKey))
 IF_REMOVE(                       Status_t  Remove(qpa, Word_t wKey))
+#ifdef COUNT_2
+IF_COUNT(Word_t Count(qpa, Word_t wKey0, Word_t wKey))
+#else // COUNT_2
 IF_COUNT (                       Word_t    Count (qpa, Word_t wKey))
+#endif // COUNT_2 else
 #ifdef NEW_NEXT_IS_EXCLUSIVE
 // Find the first present key greater than *pwKey.
 #else // NEW_NEXT_IS_EXCLUSIVE
@@ -1079,9 +1083,11 @@ IF_COUNT (                       Word_t    Count (qpa, Word_t wKey))
   #ifndef LOOKUP
   #ifndef COUNT
     int nBLOrig = nBL; (void)nBLOrig;
-    Link_t *pLnOrig = pLn; (void)pLnOrig;
-  #endif // !LOOKUP
   #endif // !COUNT
+  #if !defined(COUNT) || defined(COUNT_2)
+    Link_t *pLnOrig = pLn; (void)pLnOrig;
+  #endif // !COUNT || COUNT_2
+  #endif // !LOOKUP
   #endif // !RECURSIVE
     // nBL, pLn, and wRoot are set up
     DBGX(printf("# %s nBL %d pLn %p wRoot 0x%zx wKey 0x%zx\n",
@@ -1142,9 +1148,11 @@ IF_COUNT (                       Word_t    Count (qpa, Word_t wKey))
          pwLnX = &pLn->ln_wX;
     }
       #endif // REMOTE_LNX else
-      #if defined(INSERT) || defined(REMOVE) || defined(NEXT)
+      #ifndef LOOKUP
+      #if !defined(COUNT) || defined(COUNT_2)
     Word_t* pwLnXOrig = pwLnX; (void)pwLnXOrig;
-      #endif // INSERT || REMOVE || NEXT
+      #endif // !COUNT || COUNT_2
+      #endif // !LOOKUP
   #endif // _LNX
   #if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
     Word_t *pwrUp = pwrUp; // suppress "uninitialized" compiler warning
@@ -1155,6 +1163,10 @@ IF_COUNT (                       Word_t    Count (qpa, Word_t wKey))
     Word_t wPopCntUp = 0; (void)wPopCntUp;
   #ifdef COUNT
     Word_t wPopCntSum = 0;
+      #ifdef COUNT_2
+    Word_t wPopCntSum1 = wPopCntSum1;
+    int nPhaseCount = 0;
+      #endif // COUNT_2
   #endif // COUNT
     // Cleanup is expensive. So we only do it if it has been requested.
     int bCleanupRequested = 0; (void)bCleanupRequested;
@@ -1197,13 +1209,15 @@ IF_COUNT (                       Word_t    Count (qpa, Word_t wKey))
     int bLinkPresent;
     int nLinks;
   #endif // COUNT
-  #if defined(INSERT) || defined(REMOVE) || defined(NEXT)
+  #ifndef LOOKUP
   #ifndef RECURSIVE
+  #if !defined(COUNT) || defined(COUNT_2)
     goto top;
     DBGX(Checkpoint(qya, "top"));
 top:;
+  #endif // !COUNT || COUNT_2
   #endif // !RECURSIVE
-  #endif // INSERT || REMOVE || NEXT
+  #endif // !LOOKUP
     nBLR = nBL;
   #if defined(LOOKUP) || !defined(RECURSIVE)
     goto again;
@@ -5571,8 +5585,25 @@ tryNextDigit:;
     return BJL(NULL)BJ1(Failure);
   #endif // NEXT
   #ifdef COUNT
+      #ifdef COUNT_2
+    if (nPhaseCount == 0) {
+        wPopCntSum1 = wPopCntSum;
+        wPopCntSum = 0;
+        wKey = wKey0;
+        nBL = cnBitsPerWord;
+        pLn = pLnOrig;
+      #ifndef QP_PLN
+        pwRoot = &pLn->ln_wRoot;
+      #endif // !QP_PLN
+        wRoot = pLn->ln_wRoot;
+        nPhaseCount = 1;
+        goto top;
+    }
+    return wPopCntSum1 - wPopCntSum;
+      #else // COUNT_2
     DBGC(printf("done wPopCntSum " OWx"\n", wPopCntSum));
     return wPopCntSum;
+      #endif // COUNT_2
   #endif // COUNT
   #ifdef INSERT
       #ifdef BM_IN_LINK
@@ -5725,7 +5756,8 @@ undo:;
     goto restart;
 restart:;
         DBGX(Checkpoint(qya, "restart"));
-  #if defined(INSERT) || defined(REMOVE) || defined(NEXT)
+  #ifndef LOOKUP
+  #ifndef COUNT
       #if !defined(RECURSIVE)
         nBL = nBLOrig;
         pLn = pLnOrig; // should we set pLnUp = NULL
@@ -5738,7 +5770,8 @@ restart:;
         wRoot = pLn->ln_wRoot;
         goto top;
       #endif // !defined(RECURSIVE)
-  #endif // INSERT || REMOVE || NEXT
+  #endif // !COUNT
+  #endif // !LOOKUP
     }
   #if (defined(LOOKUP) || defined(INSERT) || defined(NEXT)) && defined(B_JUDYL)
     return NULL;

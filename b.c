@@ -13077,6 +13077,13 @@ Initialize(void)
     printf("# No GCC_VECTORS\n");
 #endif // defined(GCC_VECTORS)
 
+// COUNT_2 directs the use of Count with two key parameters.
+#ifdef           COUNT_2
+    printf("#    COUNT_2\n");
+#else //         COUNT_2
+    printf("# No COUNT_2\n");
+#endif // #else  COUNT_2
+
   #ifdef         SW_POP_IN_WR_HB
     printf("#    SW_POP_IN_WR_HB\n");
   #else //       SW_POP_IN_WR_HB
@@ -13854,6 +13861,10 @@ Judy1Count(Pcvoid_t PArray, Word_t wKey0, Word_t wKey1, JError_t *pJError)
     Word_t* pwLnX = NULL;
   #endif // REMOTE_LNX
     qva;
+  #ifdef COUNT_2
+    // Count keys [wKey0, wKey1).
+    Word_t wCount = Count(qya, wKey0, wKey1);
+  #else // COUNT_2
     // Count returns the number of keys before the specified key.
     // It does not include the specified key.
     Word_t wCount0 = (wKey0 == 0) ? 0 : Count(qya, wKey0);
@@ -13861,6 +13872,7 @@ Judy1Count(Pcvoid_t PArray, Word_t wKey0, Word_t wKey1, JError_t *pJError)
     Word_t wCount1 = (wKey1 == 0) ? 0 : Count(qya, wKey1);
     DBGC(printf("Count wKey1 0x%02zx Count1 %zd\n", wKey1, wCount1));
     Word_t wCount = wCount1 - wCount0;
+  #endif // COUNT_2 else
 #ifdef B_JUDYL
     PPvoid_t ppvTest = JudyLGet(PArray, wKey1, NULL); (void)ppvTest;
     DBGC(printf("ppvTest %p\n", (void *)ppvTest));

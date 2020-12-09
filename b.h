@@ -4379,9 +4379,15 @@ InflateBmSwTest(qpa) // qp points to BM switch
 BJL(Word_t*)BJ1(Status_t) Insert(qpa, Word_t wKey);
 Status_t Remove(qpa, Word_t wKey);
 
+#ifdef COUNT_2
+// Count returns the number of keys present in the array between
+// between wKey0 and wKey1. Counts wKey0 if it exists but not wKey1.
+Word_t Count(qpa, Word_t wKey0, Word_t wKey1);
+#else // COUNT_2
 // Count returns the number of keys present in the array up to but
 // excluding the key that is passed as a parameter.
 Word_t Count(qpa, Word_t wKey);
+#endif // COUNT_2 else
 
 #ifdef B_JUDYL
 #define ListSlotCnt  ListSlotCntL
