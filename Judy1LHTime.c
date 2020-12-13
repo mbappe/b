@@ -1028,10 +1028,15 @@ GetNextKey(PNewSeed_t PNewSeed)
     return GetNextKeyX(PNewSeed, wFeedBTap /*global*/, bLfsrOnly /*global*/);
 }
 
+Word_t wPopWidth = 6; // Width of pop field in output.
+Word_t wCloseCountsMask; // Common prefix for keys in Count calls.
+
 static void
 PrintHeaderX(const char *strFirstCol, int nRow)
 {
-    printf("# %4s", strFirstCol);
+    char acFormat[16];
+    sprintf(acFormat, "# %%%zds", wPopWidth - 2);
+    printf(acFormat, strFirstCol);
 
     printf(nRow ? "   Ins" : " Delta");
     printf(nRow ? "  Meas" : "   Get");
@@ -1411,12 +1416,6 @@ static int bRandomGets = 0;
 #define MIN(_a, _b)  ((_a) < (_b) ? (_a) : (_b))
 #define MAX(_a, _b)  ((_a) > (_b) ? (_a) : (_b))
 
-#ifdef    TIME_CLOSE_COUNTS_MASK
-  #define TIME_CLOSE_COUNTS
-#else //  TIME_CLOSE_COUNTS_MASK
-  #define TIME_CLOSE_COUNTS_MASK  0x7fff
-#endif // TIME_CLOSE_COUNTS_MASK else
-
 // Log ifdefs to make plot files more self-describing.
 // Sort lexicographically ignoring leading underscores.
 void
@@ -1617,13 +1616,6 @@ LogIfdefs(void)
     printf("# No TESTCOUNTACCURACY\n");
   #endif //      TESTCOUNTACCURACY else
 
-  #ifdef         TIME_CLOSE_COUNTS
-    printf("#    TIME_CLOSE_COUNTS\n");
-    printf("#    TIME_CLOSE_COUNTS_MASK 0x%zx\n", (Word_t)TIME_CLOSE_COUNTS_MASK);
-  #else //       TIME_CLOSE_COUNTS
-    printf("# No TIME_CLOSE_COUNTS\n");
-  #endif //      TIME_CLOSE_COUNTS else
-
   #ifdef         USE_MALLOC
     printf("#    USE_MALLOC\n");
   #else //       USE_MALLOC
@@ -1650,9 +1642,9 @@ PrintRowHeader(Word_t wPop, Word_t wDelta, Word_t wMeas)
     } else
 #endif
     {
-        PrintValX(wPop,   6, 0, /*bUseSymbol*/ 0, /*strPrefix*/ "" , /*dScale*/ 1);
-        PrintValX(wDelta, 5, 0, /*bUseSymbol*/ 1, /*strPrefix*/ " ", /*dScale*/ 1);
-        PrintValX(wMeas,  5, 0, /*bUseSymbol*/ 1, /*strPrefix*/ " ", /*dScale*/ 1);
+        PrintValX(wPop, wPopWidth, 0, /*sym*/ 0, /*prefix*/ "" , /*dScale*/ 1);
+        PrintValX(wDelta,       5, 0, /*sym*/ 1, /*prefix*/ " ", /*dScale*/ 1);
+        PrintValX(wMeas,        5, 0, /*sym*/ 1, /*prefix*/ " ", /*dScale*/ 1);
     }
 }
 
@@ -1798,6 +1790,20 @@ main(int argc, char *argv[])
 
     exit(1);
 #endif // LATER
+
+// ============================================================
+// ENVIRONMENT VARIABLES
+// ============================================================
+
+    char* strPopWidth = getenv("POP_WIDTH");
+    if (strPopWidth != NULL) {
+        wPopWidth = strtoul(strPopWidth, 0, 0);
+    }
+
+    char* strCloseCountsMask = getenv("CLOSE_COUNTS_MASK");
+    if (strCloseCountsMask != NULL) {
+        wCloseCountsMask = strtoul(strCloseCountsMask, 0, 0);
+    }
 
 // ============================================================
 // PARSE INPUT PARAMETERS
@@ -3212,6 +3218,9 @@ eopt:
     }
 
     LogIfdefs();
+
+    // Log parameters set by environment variables.
+    printf("# wCloseCountsMask 0x%zx\n", wCloseCountsMask);
 
 // ============================================================
 // Warm up the cpu
@@ -5317,20 +5326,21 @@ TestJudyCount(void *J1, void *JL, PNewSeed_t PSeed, Word_t Elements)
             NewSeed_t WorkingSeed = *PSeed;
   #endif // TEST_COUNT_USING_JUDY_NEXT else
             STARTTm;
-  #if defined(TEST_COUNT_USING_JUDY_NEXT) || defined(TIME_CLOSE_COUNTS)
+  #ifdef TEST_COUNT_USING_JUDY_NEXT
             for (Word_t elm = 0; elm < Elements; ++elm)
-  #else // TEST_COUNT_USING_JUDY_NEXT || TIME_CLOSE_COUNTS
-            for (Word_t elm = 0; elm < Elements - 1; elm += 2)
-  #endif // TEST_COUNT_USING_JUDY_NEXT || TIME_CLOSE_COUNTS else
+  #else // TEST_COUNT_USING_JUDY_NEXT
+            for (Word_t elm = 0; elm < Elements - (wCloseCountsMask == 0);
+                 elm += 1 + (wCloseCountsMask == 0))
+  #endif // TEST_COUNT_USING_JUDY_NEXT
             {
   #ifndef TEST_COUNT_USING_JUDY_NEXT // the old way
                 SYNC_SYNC(TstKey = GetNextKey(&WorkingSeed));
-      #ifdef TIME_CLOSE_COUNTS
-                TstKey0 = TstKey ^ TIME_CLOSE_COUNTS_MASK;
-      #else // TIME_CLOSE_COUNTS
-                TstKey0 = GetNextKey(&WorkingSeed);
-                --TstKey; // avoid testing only keys that are present
-      #endif // TIME_CLOSE_COUNTS else
+                if (wCloseCountsMask) {
+                    TstKey0 = TstKey ^ wCloseCountsMask;
+                } else {
+                    TstKey0 = GetNextKey(&WorkingSeed);
+                    --TstKey; // avoid testing only keys that are present
+                }
                 if (TstKey0 > TstKey) {
                     // swap keys
                     TstKey ^= TstKey0; TstKey0 ^= TstKey; TstKey ^= TstKey0;
@@ -5396,9 +5406,9 @@ TestJudyCount(void *J1, void *JL, PNewSeed_t PSeed, Word_t Elements)
         }
         DeltanSec1 = DminTime / (double)Elements;
   #ifndef TEST_COUNT_USING_JUDY_NEXT
-  #ifndef TIME_CLOSE_COUNTS
-        DeltanSec1 *= 2;
-  #endif // !TIME_CLOSE_COUNTS
+        if (wCloseCountsMask == 0) {
+            DeltanSec1 *= 2;
+        }
   #endif // TEST_COUNT_USING_JUDY_NEXT
     }
 
@@ -5416,20 +5426,21 @@ TestJudyCount(void *J1, void *JL, PNewSeed_t PSeed, Word_t Elements)
             NewSeed_t WorkingSeed = *PSeed;
   #endif // TEST_COUNT_USING_JUDY_NEXT else
             STARTTm;
-  #if defined(TEST_COUNT_USING_JUDY_NEXT) || defined(TIME_CLOSE_COUNTS)
+  #ifdef TEST_COUNT_USING_JUDY_NEXT
             for (Word_t elm = 0; elm < Elements; ++elm)
-  #else // TEST_COUNT_USING_JUDY_NEXT || TIME_CLOSE_COUNTS
-            for (Word_t elm = 0; elm < Elements - 1; elm += 2)
-  #endif // TEST_COUNT_USING_JUDY_NEXT || TIME_CLOSE_COUNTS else
+  #else // TEST_COUNT_USING_JUDY_NEXT
+            for (Word_t elm = 0; elm < Elements - (wCloseCountsMask == 0);
+                 elm += 1 + (wCloseCountsMask == 0))
+  #endif // TEST_COUNT_USING_JUDY_NEXT
             {
   #ifndef TEST_COUNT_USING_JUDY_NEXT // the old way
                 SYNC_SYNC(TstKey = GetNextKey(&WorkingSeed));
-      #ifdef TIME_CLOSE_COUNTS
-                TstKey0 = TstKey ^ TIME_CLOSE_COUNTS_MASK;
-      #else // TIME_CLOSE_COUNTS
-                TstKey0 = GetNextKey(&WorkingSeed);
-                --TstKey; // avoid testing only keys that are present
-      #endif // TIME_CLOSE_COUNTS else
+                if (wCloseCountsMask) {
+                    TstKey0 = TstKey ^ wCloseCountsMask;
+                } else {
+                    TstKey0 = GetNextKey(&WorkingSeed);
+                    --TstKey; // avoid testing only keys that are present
+                }
                 if (TstKey0 > TstKey) {
                     // swap keys
                     TstKey ^= TstKey0; TstKey0 ^= TstKey; TstKey ^= TstKey0;
@@ -5495,9 +5506,9 @@ TestJudyCount(void *J1, void *JL, PNewSeed_t PSeed, Word_t Elements)
         }
         DeltanSecL = DminTime / (double)Elements;
   #ifndef TEST_COUNT_USING_JUDY_NEXT
-  #ifndef TIME_CLOSE_COUNTS
-        DeltanSecL *= 2;
-  #endif // !TIME_CLOSE_COUNTS
+        if (wCloseCountsMask == 0) {
+            DeltanSec1 *= 2;
+        }
   #endif // TEST_COUNT_USING_JUDY_NEXT
     }
 
