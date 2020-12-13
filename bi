@@ -57,10 +57,17 @@ else # [ `uname` = Linux ]
     fi
 fi # [ `uname` = Linux ] else
 
-${MAKE} clean default && ${REGRESS}
-if [ $? != 0 ]; then echo "non-zero exit"; exit 1; fi
-
 : \
+&& ${MAKE} clean default && ${REGRESS} \
+&& DEFINES="-DREGRESS -DDEBUG_ALL" ${MAKE} clean default \
+&& DEFINES="-DREGRESS -DDEBUG_ALL -DFULL_DUMP" ${MAKE} clean default \
+&& CC=$CCB WFLAGSA=$WFLAGSA_B ${MAKE} clean default \
+&& CC=$CCB WFLAGSA=$WFLAGSA_B DEFINES="-DREGRESS -DDEBUG" \
+    ${MAKE} clean default \
+&& CC=$CCB WFLAGSA=$WFLAGSA_B DEFINES="-DREGRESS -DDEBUG_ALL" \
+    ${MAKE} clean default \
+&& CC=$CCB WFLAGSA=$WFLAGSA_B DEFINES="-DREGRESS -DDEBUG_ALL -DFULL_DUMP" \
+    ${MAKE} clean default \
 && DEFINES="-DREGRESS -DDEBUG" ${MAKE} clean default \
 && ${REGRESS} \
 && DEFINES="-DNO_USE_BM_SW -DREGRESS -DDEBUG" ${MAKE} clean default \
@@ -142,15 +149,6 @@ if [ $? != 0 ]; then echo "non-zero exit"; exit 1; fi
     DEFINES="-DPARALLEL_256 -DREGRESS -DDEBUG" \
     ${MAKE} clean default \
 && ${REGRESS} \
-&& DEFINES="-DREGRESS -DDEBUG_ALL" ${MAKE} clean default \
-&& DEFINES="-DREGRESS -DDEBUG_ALL -DFULL_DUMP" ${MAKE} clean default \
-&& CC=$CCB WFLAGSA=$WFLAGSA_B ${MAKE} clean default \
-&& CC=$CCB WFLAGSA=$WFLAGSA_B DEFINES="-DREGRESS -DDEBUG" \
-    ${MAKE} clean default \
-&& CC=$CCB WFLAGSA=$WFLAGSA_B DEFINES="-DREGRESS -DDEBUG_ALL" \
-    ${MAKE} clean default \
-&& CC=$CCB WFLAGSA=$WFLAGSA_B DEFINES="-DREGRESS -DDEBUG_ALL -DFULL_DUMP" \
-    ${MAKE} clean default \
 && DEFINES="-DPARALLEL_SEARCH_WORD -DNO_PSPLIT_PARALLEL -DREGRESS -DDEBUG" \
     ${MAKE} clean default \
 && ${REGRESS} \
