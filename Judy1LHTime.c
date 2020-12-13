@@ -5294,7 +5294,7 @@ TestJudyCount(void *J1, void *JL, PNewSeed_t PSeed, Word_t Elements)
 {
     (void)PSeed; // for TEST_COUNT_USING_JUDY_NEXT
 
-    Word_t    Count;
+    Word_t    Count; (void)Count;
     Word_t    TstKey;
 
     double    DminTime;
