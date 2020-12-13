@@ -1407,6 +1407,12 @@ static int bRandomGets = 0;
 #define MIN(_a, _b)  ((_a) < (_b) ? (_a) : (_b))
 #define MAX(_a, _b)  ((_a) > (_b) ? (_a) : (_b))
 
+#ifdef    TIME_CLOSE_COUNTS_MASK
+  #define TIME_CLOSE_COUNTS
+#else //  TIME_CLOSE_COUNTS_MASK
+  #define TIME_CLOSE_COUNTS_MASK  0x7fff
+#endif // TIME_CLOSE_COUNTS_MASK else
+
 // Log ifdefs to make plot files more self-describing.
 // Sort lexicographically ignoring leading underscores.
 void
@@ -1572,6 +1578,12 @@ LogIfdefs(void)
     printf("# No RAMMETRICS\n");
   #endif //      RAMMETRICS else
 
+  #ifdef         REGRESS
+    printf("#    REGRESS\n");
+  #else //       REGRESS
+    printf("# No REGRESS\n");
+  #endif //      REGRESS else
+
   #ifdef         SEARCHMETRICS
     printf("#    SEARCHMETRICS\n");
   #else //       SEARCHMETRICS
@@ -1600,6 +1612,13 @@ LogIfdefs(void)
   #else //       TESTCOUNTACCURACY
     printf("# No TESTCOUNTACCURACY\n");
   #endif //      TESTCOUNTACCURACY else
+
+  #ifdef         TIME_CLOSE_COUNTS
+    printf("#    TIME_CLOSE_COUNTS\n");
+    printf("#    TIME_CLOSE_COUNTS_MASK 0x%zx\n", (Word_t)TIME_CLOSE_COUNTS_MASK);
+  #else //       TIME_CLOSE_COUNTS
+    printf("# No TIME_CLOSE_COUNTS\n");
+  #endif //      TIME_CLOSE_COUNTS else
 
   #ifdef         USE_MALLOC
     printf("#    USE_MALLOC\n");
@@ -4097,9 +4116,19 @@ nextPart:
             WaitForContextSwitch(Meas);
             TestJudyCount(J1, JL, &BeginSeed, Meas);
             if (J1Flag)
+            {
+                if (DeltanSec1 < DeltaGen1) {
+                    DeltaGen1 = DeltanSec1;
+                }
                 PrintValFFX(DeltanSec1 - DeltaGen1, 5, 0);
+            }
             if (JLFlag)
+            {
+                if (DeltanSecL < DeltaGenL) {
+                    DeltaGenL = DeltanSecL;
+                }
                 PrintValFFX(DeltanSecL - DeltaGenL, 5, 0);
+            }
             if (fFlag)
                 fflush(NULL);
         }
@@ -5276,108 +5305,80 @@ TestJudyCount(void *J1, void *JL, PNewSeed_t PSeed, Word_t Elements)
     {
         for (DminTime = 1e40, icnt = ICNT, lp = 0; lp < Loops; lp++)
         {
-// TEST_COUNT_USING_JUDY_NEXT is incompatible with hFlag.
-#ifdef TEST_COUNT_USING_JUDY_NEXT // the old way
+            Word_t TstKey0 = 0;
+      // TEST_COUNT_USING_JUDY_NEXT is incompatible with hFlag.
+  #ifdef TEST_COUNT_USING_JUDY_NEXT // the old way
             TstKey = 0;
-            int Rc = Judy1First(J1, &TstKey, PJE0);
-            elm = 0;
-#else // TEST_COUNT_USING_JUDY_NEXT
-            Word_t TstKey2;
+            Judy1First(J1, &TstKey, PJE0);
+            --TstKey; // avoid testing only keys that are present
+  #else // TEST_COUNT_USING_JUDY_NEXT
             NewSeed_t WorkingSeed = *PSeed;
-            elm = 1;
-#endif // TEST_COUNT_USING_JUDY_NEXT
-
+  #endif // TEST_COUNT_USING_JUDY_NEXT else
             STARTTm;
-            while (elm < Elements)
+  #if defined(TEST_COUNT_USING_JUDY_NEXT) || defined(TIME_CLOSE_COUNTS)
+            for (Word_t elm = 0; elm < Elements; ++elm)
+  #else // TEST_COUNT_USING_JUDY_NEXT || TIME_CLOSE_COUNTS
+            for (Word_t elm = 0; elm < Elements - 1; elm += 2)
+  #endif // TEST_COUNT_USING_JUDY_NEXT || TIME_CLOSE_COUNTS else
             {
-#ifndef TEST_COUNT_USING_JUDY_NEXT // the new way
+  #ifndef TEST_COUNT_USING_JUDY_NEXT // the old way
                 SYNC_SYNC(TstKey = GetNextKey(&WorkingSeed));
-                TstKey2 = GetNextKey(&WorkingSeed);
-#endif // TEST_COUNT_USING_JUDY_NEXT
+      #ifdef TIME_CLOSE_COUNTS
+                TstKey0 = TstKey ^ TIME_CLOSE_COUNTS_MASK;
+      #else // TIME_CLOSE_COUNTS
+                TstKey0 = GetNextKey(&WorkingSeed);
+                --TstKey; // avoid testing only keys that are present
+      #endif // TIME_CLOSE_COUNTS else
+                if (TstKey0 > TstKey) {
+                    // swap keys
+                    TstKey ^= TstKey0; TstKey0 ^= TstKey; TstKey ^= TstKey0;
+                }
+  #endif // !TEST_COUNT_USING_JUDY_NEXT
                 if (Tit)
                 {
-#ifdef TEST_COUNT_USING_JUDY_NEXT
-                    Count1 = Judy1Count(J1, 0, TstKey, PJE0);
-
-#ifdef  TESTCOUNTACCURACY
-                    Word_t CountU1 = Judy1CountWithNext(J1, 0, TstKey);
+                    Count1 = Judy1Count(J1, TstKey0, TstKey, PJE0);
+  #ifdef  TESTCOUNTACCURACY
+                    Word_t CountU1 = Judy1CountWithNext(J1, TstKey0, TstKey);
                     if (Count1 != CountU1)
                     {
                         printf("\n -- Array Pop1 = %lu\n", ((PWord_t)J1)[0] + 1);
                         printf(" -- Count1 = %lu, != Debug CountU1 = %lu\n", Count1, CountU1);
                         FAILURE("Judy1Count at", elm);
                     }
-#endif // TESTCOUNTACCURACY
-
-                    if (Count1 != (elm + 1))
-                    {
-                        printf("\n");
-                        printf("Count1 = %" PRIuPTR", TstKey = %" PRIuPTR"\n",
-                               Count1, TstKey);
-                        printf("Elements %zd\n", Elements);
-                        FAILURE("J1C at", elm);
-                    }
-#else // TEST_COUNT_USING_JUDY_NEXT
-                    if (TstKey > TstKey2) {
-                        // swap keys
-                        Word_t w = TstKey; TstKey = TstKey2; TstKey2 = w;
-                    }
-                    --TstKey2;
-                    Count1 = Judy1Count(J1, TstKey, TstKey2, PJE0);
-
-#ifdef  TESTCOUNTACCURACY
-                    Word_t CountU1 = Judy1CountWithNext(J1, TstKey, TstKey2);
-                    if (Count1 != CountU1)
-                    {
-                        printf("\n  -- Array Pop1 = %lu\n", ((PWord_t)J1)[0] + 1);
-                        printf(" -- Count1 = %lu, != Debug CountU1 = %lu\n", Count1, CountU1);
-//                        FAILURE("Judy1Count at", elm);
-                    }
-#endif // TESTCOUNTACCURACY
-
-                    if ((Count1 < 1) || (Count1 > TstKey2 - TstKey + 1))
-                    {
-                        printf("\n");
-                        printf("Count1 %zd TstKey 0x%zx TstKey2 0x%zx\n",
-                               Count1, TstKey, TstKey2);
-                        printf("Elements %zd\n", Elements);
-                        Judy1Dump((Word_t)J1, sizeof(Word_t) * 8, 0);
-                        FAILURE("J1C at", elm);
-                    }
-  #ifdef DEBUG // Validate Count.
-                    if (TstKey2 > TstKey + 1) {
-                        Word_t TstKeyA = TstKey + (TstKey2 - TstKey) / 3;
-                        Word_t Count1A = Judy1Count(J1, TstKey, TstKeyA, PJE0);
+  #endif // TESTCOUNTACCURACY
+  #ifdef REGRESS // Validate Count.
+                    if (TstKey > TstKey0) {
+                        Word_t TstKeyA = TstKey0 + (TstKey - TstKey0) / 3;
+                        Word_t Count1A = Judy1Count(J1, TstKey0, TstKeyA, PJE0);
                         Word_t Count1B
-                            = Judy1Count(J1, TstKeyA + 1, TstKey2, PJE0);
+                            = Judy1Count(J1, TstKeyA + 1, TstKey, PJE0);
                         if (Count1 != Count1A + Count1B) {
                             printf("\n");
-                            printf("Count1 %zd TstKey 0x%zx TstKey2 0x%zx\n",
-                                   Count1, TstKey, TstKey2);
+                            printf("Count1 %zd TstKey0 0x%zx TstKey 0x%zx\n",
+                                   Count1, TstKey0, TstKey);
                             printf("TstKeyA 0x%zx Count1A %zd Count1B %zd\n",
                                    TstKeyA, Count1A, Count1B);
                             printf("Elements %zd\n", Elements);
                             Judy1Dump((Word_t)J1, sizeof(Word_t) * 8, 0);
                             FAILURE("J1C at", elm);
                         }
+                    } else {
+                        int ret = Judy1Test(J1, TstKey, NULL);
+                        if (Count1 != (ret == 1)) {
+                            printf("TstKey 0x%zx Count1 %zd Judy1Test %d\n",
+                                   TstKey, Count1, ret);
+                            FAILURE("J1C at", elm);
+                        }
                     }
-  #endif // DEBUG
-#endif // TEST_COUNT_USING_JUDY_NEXT
+  #endif // REGRESS
                 }
-#ifdef TEST_COUNT_USING_JUDY_NEXT
-                Rc = Judy1Next(J1, &TstKey, PJE0);
-#else // TEST_COUNT_USING_JUDY_NEXT
-                ++elm;
-#endif // TEST_COUNT_USING_JUDY_NEXT
-                ++elm;
+  #ifdef TEST_COUNT_USING_JUDY_NEXT
+                ++TstKey; // Undo decrement after previous First/Next.
+                Judy1Next(J1, &TstKey, PJE0);
+                --TstKey; // Avoid testing only keys that are present.
+  #endif // TEST_COUNT_USING_JUDY_NEXT
             }
             ENDTm(DeltanSec1);
-
-#ifdef TEST_COUNT_USING_JUDY_NEXT
-            if (Rc == 1234)             // impossible value
-                exit(-1);               // shut up compiler only
-#endif // TEST_COUNT_USING_JUDY_NEXT
-
             if (DminTime > DeltanSec1)
             {
                 icnt = ICNT;
@@ -5391,9 +5392,11 @@ TestJudyCount(void *J1, void *JL, PNewSeed_t PSeed, Word_t Elements)
             }
         }
         DeltanSec1 = DminTime / (double)Elements;
-#ifndef TEST_COUNT_USING_JUDY_NEXT
+  #ifndef TEST_COUNT_USING_JUDY_NEXT
+  #ifndef TEST_CLOSE_COUNTS
         DeltanSec1 *= 2;
-#endif // TEST_COUNT_USING_JUDY_NEXT
+  #endif // !TEST_CLOSE_COUNTS
+  #endif // TEST_COUNT_USING_JUDY_NEXT
     }
 
     if (JLFlag)
