@@ -1029,9 +1029,9 @@ IF_NEXT(static inline BJL(Word_t*)BJ1(Status_t) Next(Word_t wRootArg,
 IF_INSERT(       BJL(Word_t*)BJ1(Status_t) Insert(qpa, Word_t wKey))
 IF_REMOVE(                       Status_t  Remove(qpa, Word_t wKey))
 #ifdef COUNT_2
-IF_COUNT(Word_t Count(qpa, Word_t wKey0, Word_t wKey))
+IF_COUNT(static inline Word_t Count(qpa, Word_t wKey0, Word_t wKey))
 #else // COUNT_2
-IF_COUNT (                       Word_t    Count (qpa, Word_t wKey))
+IF_COUNT(static inline Word_t Count(qpa, Word_t wKey))
 #endif // COUNT_2 else
 #ifdef NEW_NEXT_IS_EXCLUSIVE
 // Find the first present key greater than *pwKey.
@@ -1083,10 +1083,8 @@ IF_COUNT (                       Word_t    Count (qpa, Word_t wKey))
   #ifndef LOOKUP
   #ifndef COUNT
     int nBLOrig = nBL; (void)nBLOrig;
-  #endif // !COUNT
-  #if !defined(COUNT) || defined(COUNT_2)
     Link_t *pLnOrig = pLn; (void)pLnOrig;
-  #endif // !COUNT || COUNT_2
+  #endif // !COUNT
   #endif // !LOOKUP
   #endif // !RECURSIVE
     // nBL, pLn, and wRoot are set up
@@ -1149,9 +1147,9 @@ IF_COUNT (                       Word_t    Count (qpa, Word_t wKey))
     }
       #endif // REMOTE_LNX else
       #ifndef LOOKUP
-      #if !defined(COUNT) || defined(COUNT_2)
+      #if !defined(COUNT)
     Word_t* pwLnXOrig = pwLnX; (void)pwLnXOrig;
-      #endif // !COUNT || COUNT_2
+      #endif // !COUNT
       #endif // !LOOKUP
   #endif // _LNX
   #if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
@@ -1167,6 +1165,20 @@ IF_COUNT (                       Word_t    Count (qpa, Word_t wKey))
     Word_t wPopCntSum1 = wPopCntSum1;
     int nPhaseCount = 0;
       #endif // COUNT_2
+      #ifdef COUNT_2_PREFIX
+    struct { Link_t* q_pLn; int q_nBL;
+              #ifdef _LNX
+             Word_t* q_pwLnX;
+              #endif // _LNX
+    } aqyaCount[2] = { { pLn, nBL
+              #ifdef _LNX
+                       , pwLnX
+              #endif // _LNX
+    } };
+    int nBitsCount = LOG((((wKey0 == 0) ? 0 : (wKey0 - 1)) ^ wKey) | 1) + 1;
+      #elif defined(COUNT_2)
+    Link_t *pLnCount = pLn;
+      #endif // COUNT_2_PREFIX elif COUNT_2
   #endif // COUNT
     // Cleanup is expensive. So we only do it if it has been requested.
     int bCleanupRequested = 0; (void)bCleanupRequested;
@@ -2793,8 +2805,22 @@ switchTail:;
             // *pwRoot may have changed so wRoot is out of date
         }
       #endif // defined(INSERT) || defined(REMOVE)
-        IF_COUNT(wPopCntSum += CountSw(qya, wDigit, nLinks));
-        IF_COUNT(if (!bLinkPresent) goto break_from_main_switch;);
+      #ifdef COUNT
+          #ifdef COUNT_2_PREFIX
+        if (nBLR - nBW < nBitsCount) {
+          #endif // COUNT_2_PREFIX
+            wPopCntSum += CountSw(qya, wDigit, nLinks);
+          #ifdef COUNT_2_PREFIX
+            aqyaCount[nPhaseCount & 1].q_nBL = nBL;
+            aqyaCount[nPhaseCount & 1].q_pLn = pLn;
+              #ifdef _LNX
+            aqyaCount[nPhaseCount & 1].q_pwLnX = pwLnX;
+              #endif // _LNX
+            nPhaseCount |= 1;
+        }
+          #endif // COUNT_2_PREFIX
+        if (!bLinkPresent) { goto break_from_main_switch; }
+      #endif // COUNT
         // Save the previous link and advance to the next.
         IF_NOT_LOOKUP(nBLUp = nBL);
         IF_NOT_LOOKUP(pLnUp = pLn);
@@ -3632,6 +3658,7 @@ t_list:
             IF_INSERT(goto t_list_request_cleanup_if_needed);
         }
 
+        IF_COUNT(Word_t wKeyGe = wKey);
         // Search the list.
         // AUGMENT_TYPE_8_PLUS_4 and PACK_L1_VALUES both complicate this.
         // I wonder if we could incorporate them into the SEARCH_LIST macro.
@@ -3660,7 +3687,7 @@ t_list:
         if ((nPos = LocateGeKeyInList(qya, nBLR, &wKey)) >= 0)
       #elif defined(COUNT) // LOOKUP elif NEXT
         if ((nPos = nBLR <= 32
-                  ? LocateGeKeyInList(qya, nBLR, &wKey)
+                  ? LocateGeKeyInList(qya, nBLR, &wKeyGe)
                   : SearchList(qya, nBLR, wKey))
             >= 0)
       #else // LOOKUP elif NEXT elif COUNT
@@ -3673,7 +3700,7 @@ t_list:
             IF_INSERT(if (nIncr > 0) goto undo); // undo counting
       #endif // !RECURSIVE
             IF_REMOVE(goto removeGutsAndCleanup);
-            IF_COUNT(nPos ^= -1); // could/should count be returning here?
+            IF_COUNT(nPos = ~(nPos + (wKeyGe == wKey))); // could/should count be returning here?
       #if defined(LOOKUP) || defined(INSERT) || defined(NEXT)
             IF_NEXT(*pwKey = wKey);
           #if B_JUDYL
@@ -3870,6 +3897,7 @@ t_xx_list:
       #if defined(REMOVE)
                 goto removeGutsAndCleanup;
       #endif // defined(REMOVE)
+                IF_COUNT(++nPos);
       #if defined(LOOKUP) || defined(INSERT) || defined(NEXT)
                 IF_NEXT(*pwKey = wKey);
           #ifdef B_JUDYL
@@ -4251,8 +4279,7 @@ t_bitmap:
             if (cbEmbeddedBitmap && (nBLR <= cnLogBitsPerLink)) {
                 assert(nBL == nBLR); // no skip to sub-link-size bm
                 if (nBLR <= cnLogBitsPerWord) {
-                    Word_t wBit = EXP(wKey & NZ_MSK(nBLR));
-                    Word_t wBmMask = wBit - 1;
+                    Word_t wBmMask = NZ_MSK((wKey & NZ_MSK(nBLR)) + 1);
                     Word_t wBits =
                         ((cnLogBitsPerLink == cnLogBitsPerWord)
                                 && ((Word_t*)pLn == &pLn->ln_wRoot))
@@ -4261,8 +4288,8 @@ t_bitmap:
                 } else {
                     Word_t wBitNum = wKey & MSK(nBLR);
                     Word_t wBmWordNum = wBitNum >> cnLogBitsPerWord;
-                    Word_t wBit = EXP(wBitNum & MSK(cnLogBitsPerWord));
-                    Word_t wBmMask = wBit - 1;
+                    Word_t wBmMask
+                        = NZ_MSK((wBitNum & MSK(cnLogBitsPerWord)) + 1);
                     Word_t *pwLn = (Word_t*)pLn;
                     wPopCnt = 0;
                     for (int i = 0; i < (int)wBmWordNum; ++i) {
@@ -4320,8 +4347,7 @@ t_bitmap:
                                                   - cnLogBitsPerWord)) + jj]);
                         }
                         Word_t wBmMask
-                            = ~(((Word_t)1
-                                << (wKey & (cnBitsPerWord - 1))) - 1);
+                            = ~NZ_MSK((wKey & (cnBitsPerWord - 1)) + 1);
                         wPopCnt -= __builtin_popcountll(pwBitmap[nWordOffset]
                                                             & wBmMask);
                     } else
@@ -4333,7 +4359,7 @@ t_bitmap:
                                                   - cnLogBitsPerWord)) + jj]);
                         }
                         Word_t wBmMask
-                            = ((Word_t)1 << (wKey & (cnBitsPerWord - 1))) - 1;
+                            = NZ_MSK((wKey & (cnBitsPerWord - 1)) + 1);
                         wPopCnt += __builtin_popcountll(pwBitmap[nWordOffset]
                                                             & wBmMask);
                     }
@@ -4350,8 +4376,7 @@ t_bitmap:
                         wPopCnt -= __builtin_popcountll(pwBitmap[nn]);
                     }
                     Word_t wBmMask
-                        = ((Word_t)-1
-                            << (wKey & MSK(nBLR) & (cnBitsPerWord - 1)));
+                        = ~NZ_MSK((wKey & MSK(nBLR) & (cnBitsPerWord - 1)) + 1);
                     wPopCnt -= __builtin_popcountll(pwBitmap[nWordOffset]
                                                         & wBmMask);
                 } else {
@@ -4360,8 +4385,7 @@ t_bitmap:
                         wPopCnt += __builtin_popcountll(pwBitmap[nn]);
                     }
                     Word_t wBmMask
-                        = ((Word_t)1
-                            << (wKey & MSK(nBLR) & (cnBitsPerWord - 1))) - 1;
+                        = NZ_MSK((wKey & MSK(nBLR) & (cnBitsPerWord - 1)) + 1);
                     wPopCnt += __builtin_popcountll(pwBitmap[nWordOffset]
                                                         & wBmMask);
                 }
@@ -4933,12 +4957,12 @@ t_embedded_keys:
       #if defined(COUNT)
         {
           #ifdef B_JUDYL
-            if ((wRoot >> (cnBitsPerWord - nBL)) < (wKey & MSK(nBL))) {
+            if ((wRoot >> (cnBitsPerWord - nBL)) <= (wKey & MSK(nBL))) {
                 ++wPopCntSum;
             }
           #else // B_JUDYL
             int nPos = SearchEmbeddedX(qya, wKey);
-            wPopCntSum += nPos < 0 ? ~nPos : nPos;
+            wPopCntSum += nPos < 0 ? ~nPos : nPos + 1;
           #endif // B_JUDYL else
             DBGC(printf("EK: nPos %d wPopCntSum %zd\n", nPos, wPopCntSum));
             goto break_from_main_switch;
@@ -5325,9 +5349,9 @@ t_ek_xv:
           #endif // (cnBitsInD1 < cnLogBitsPerByte)
             int nn;
             for (nn = 0; nn < wr_nPopCnt(wRoot, nBL); nn++) {
-                if (((*pwLnX >> (nn * nBits)) & MSK(nBits))
-                        >= (wKey & MSK(nBits)))
-                {
+                Word_t wK = (*pwLnX >> (nn * nBits)) & MSK(nBits);
+                if (wK >= (wKey & MSK(nBits))) {
+                    nn += (wK == (wKey & MSK(nBits)));
                     break;
                 }
             }
@@ -5586,17 +5610,38 @@ tryNextDigit:;
   #endif // NEXT
   #ifdef COUNT
       #ifdef COUNT_2
-    if (nPhaseCount == 0) {
+          #ifdef COUNT_2_PREFIX
+    if (nPhaseCount < 2)
+          #else // COUNT_2_PREFIX
+    if (nPhaseCount == 0)
+          #endif // COUNT_2_PREFIX else
+    {
+        if (wKey0 == 0) { return wPopCntSum; }
         wPopCntSum1 = wPopCntSum;
         wPopCntSum = 0;
-        wKey = wKey0;
+        wKey = wKey0 - 1;
+          #ifdef COUNT_2_PREFIX
+        nBL = aqyaCount[0].q_nBL;
+        pLn = aqyaCount[0].q_pLn;
+              #ifdef _LNX
+        pwLnX = aqyaCount[0].q_pwLnX;
+              #endif // _LNX
+          #else // COUNT_2_PREFIX
         nBL = cnBitsPerWord;
-        pLn = pLnOrig;
-      #ifndef QP_PLN
+        pLn = pLnCount;
+              #ifdef _LNX
+        pwLnX = NULL;
+              #endif // _LNX
+          #endif // COUNT_2_PREFIX
+          #ifndef QP_PLN
         pwRoot = &pLn->ln_wRoot;
-      #endif // !QP_PLN
+          #endif // !QP_PLN
         wRoot = pLn->ln_wRoot;
+          #ifdef COUNT_2_PREFIX
+        nPhaseCount = 2;
+          #else // COUNT_2_PREFIX
         nPhaseCount = 1;
+          #endif // COUNT_2_PREFIX else
         goto top;
     }
     return wPopCntSum1 - wPopCntSum;

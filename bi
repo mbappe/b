@@ -112,6 +112,11 @@ if [ $? != 0 ]; then echo "non-zero exit"; exit 1; fi
 && : "test for nPopCntLoop > anListPopCntMax[nBLLoop] in Splay" \
 && DEFINES="-DcnListPopCntMax16=8 -DREGRESS -DDEBUG" ${MAKE} clean default \
 && ${REGRESS} \
+&& DEFINES="-DNO_COUNT_2_PREFIX -DREGRESS -DDEBUG" ${MAKE} clean default \
+&& ${REGRESS} \
+&& DEFINES="-DNO_COUNT_2_PREFIX -DCOUNT_2 -DREGRESS -DDEBUG" \
+    ${MAKE} clean default \
+&& ${REGRESS} \
 && DEFINES="-DDS_4_WAY -DREGRESS -DDEBUG" ${MAKE} clean default \
 && ${REGRESS} \
 && : "64-way" \

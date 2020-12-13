@@ -13084,6 +13084,12 @@ Initialize(void)
     printf("# No COUNT_2\n");
 #endif // #else  COUNT_2
 
+#ifdef           COUNT_2_PREFIX
+    printf("#    COUNT_2_PREFIX\n");
+#else //         COUNT_2_PREFIX
+    printf("# No COUNT_2_PREFIX\n");
+#endif // #else  COUNT_2_PREFIX
+
   #ifdef         SW_POP_IN_WR_HB
     printf("#    SW_POP_IN_WR_HB\n");
   #else //       SW_POP_IN_WR_HB
@@ -13793,179 +13799,6 @@ Judy1FreeArray(PPvoid_t PPArray, PJError_t PJError)
 #else // (cnDigitsPerWord != 1)
     JudyFree((Word_t)*PPArray, EXP(cnBitsPerWord - cnLogBitsPerWord));
     return EXP(cnBitsPerWord - cnLogBitsPerByte);
-#endif // (cnDigitsPerWord != 1)
-}
-
-// Return the number of keys that are present from wKey0 through wKey1.
-// Include wKey0 and wKey1 in the count if they are present.
-// Return zero if (wKey0 == 0) and (wKey1 == (Word_t)-1) and all keys are
-// present.
-// Use (*pwRoot == 0) to disambiguate no keys present from all keys present.
-//
-// 'typedef const void * Pcvoid_t' aka 'typedef void * const Pcvoid_t'
-// Pcvoid_t is a pointer to a constant.
-// The value of *PArray cannot be changed.
-Word_t
-#ifdef B_JUDYL
-JudyLCount(Pcvoid_t PArray, Word_t wKey0, Word_t wKey1, JError_t *pJError)
-#else // B_JUDYL
-Judy1Count(Pcvoid_t PArray, Word_t wKey0, Word_t wKey1, JError_t *pJError)
-#endif // B_JUDYL
-{
-    DBGC(printf("\n\nJudy1Count(wKey0 0x%02zx wKey1 0x%02zx)\n",
-                wKey0, wKey1));
-    //DBGC(Dump(pwRootLast, 0, cnBitsPerWord));
-
-#if (cnDigitsPerWord != 1)
-
-    // There is really no need for us to disambiguate since the caller
-    // can do it just fine without our help.
-    // The interesting case is when we return zero for full pop.
-    // But the caller can identify this case by:
-    // (wKey0 == 0) && (wKey1 == -1) && (PArray != NULL).
-    // This is no more onerous than the Judy way of checking
-    // pJError->je_Errno.
-    // If we supported exceptions there might be an argument for us
-    // making the distinction.
-
-    // Return 0 if the array is empty or wKey0 > wKey1.
-    // JudyCommon/JudyCount.c defines C_JERR for this case.
-    // The 'C_' is an abbreviation for count.
-    if ((PArray == (Pvoid_t)NULL) || (wKey0 > wKey1))
-    {
-        if (pJError != NULL)
-        {
-            pJError->je_Errno = JU_ERRNO_NONE; // zero pop
-            pJError->je_ErrID = __LINE__;
-        }
-
-        return 0; // C_JERR
-    }
-
-    // Set je_Errno just in case the array is full and we return 0?
-    // So we always set je_Errno to something? Unlike Unix which
-    // sets errno only in the case of an error?
-    if (pJError != NULL)
-    {
-        pJError->je_Errno = JU_ERRNO_FULL; // full pop
-        pJError->je_ErrID = __LINE__;
-    }
-
-    int nBL = cnBitsPerWord;
-  #ifdef QP_PLN
-    Link_t *pLn = STRUCT_OF((Word_t*)&PArray, Link_t, ln_wRoot);
-  #else // QP_PLN
-    Word_t* pwRoot = (Word_t*)&PArray;
-  #endif // QP_PLN else
-  #ifdef REMOTE_LNX
-    Word_t* pwLnX = NULL;
-  #endif // REMOTE_LNX
-    qva;
-  #ifdef COUNT_2
-    // Count keys [wKey0, wKey1).
-    Word_t wCount = Count(qya, wKey0, wKey1);
-  #else // COUNT_2
-    // Count returns the number of keys before the specified key.
-    // It does not include the specified key.
-    Word_t wCount0 = (wKey0 == 0) ? 0 : Count(qya, wKey0);
-    DBGC(printf("Count wKey0 0x%02zx Count0 %zd\n", wKey0, wCount0));
-    Word_t wCount1 = (wKey1 == 0) ? 0 : Count(qya, wKey1);
-    DBGC(printf("Count wKey1 0x%02zx Count1 %zd\n", wKey1, wCount1));
-    Word_t wCount = wCount1 - wCount0;
-  #endif // COUNT_2 else
-#ifdef B_JUDYL
-    PPvoid_t ppvTest = JudyLGet(PArray, wKey1, NULL); (void)ppvTest;
-    DBGC(printf("ppvTest %p\n", (void *)ppvTest));
-    wCount += (ppvTest != NULL);
-#else // B_JUDYL
-    int bTest = Judy1Test(PArray, wKey1, NULL); (void)bTest;
-    DBGC(printf("bTest %d\n", bTest));
-    wCount += bTest;
-#endif // B_JUDYL
-
-#if 0
-    if ((wKey0 == 0) && (wKey1 == (Word_t)-1)) {
-        unsigned nType = wr_nType(wRoot);
-        Word_t *pwr = wr_pwr(wRoot);
-        Word_t wPopCnt; (void)wPopCnt;
-
-  #if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
-        if ( ! tp_bIsSwitch(nType) )
-        {
-      #if defined(EMBED_KEYS)
-            if (nType == T_EMBEDDED_KEYS) {
-                wPopCnt = 1; // Always a full word to top; never embedded.
-            } else
-      #endif // defined(EMBED_KEYS)
-            if (pwr == NULL) {
-                wPopCnt = 0;
-      #if defined(SKIP_TO_BITMAP)
-            } else if (nType == T_SKIP_TO_BITMAP) {
-                wPopCnt = GetPopCnt(&wRoot, cnBitsPerWord);
-      #endif // defined(SKIP_TO_BITMAP)
-            } else {
-                assert( (nType == T_LIST)
-#if defined(UA_PARALLEL_128)
-                       || (nType == T_LIST_UA)
-#endif // defined(UA_PARALLEL_128)
-                       );
-                // ls_wPopCnt is valid at top for PP_IN_LINK
-                // and POP_WORD_IN_LINK.
-                wPopCnt = PWR_xListPopCnt(&wRoot, pwr, cnBitsPerWord);
-            }
-        }
-        else // ! tp_bIsSwitch(nType)
-  #endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
-        { // tp_bIsSwitch(nType)
-  #if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
-            wPopCnt = SumPopCnt(&wRoot, cnBitsPerWord);
-  #else // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
-            wPopCnt = GetPopCnt(&wRoot, cnBitsPerWord);
-  #endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
-        }
-
-  #if defined(DEBUG)
-        if ((wPopCnt != wPopCntTotal)
-      #ifdef B_JUDYL
-            && !bPopCntTotalIsInvalid
-      #endif // B_JUDYL
-            )
-        {
-            printf("\nAssertion error debug:\n");
-            printf("\nwPopCnt %" _fw"u wPopCntTotal %" _fw"u\n",
-                   wPopCnt, wPopCntTotal);
-            if (wPopCntTotal < 0x1000) {
-                Dump(pwRootLast, 0, cnBitsPerWord);
-            }
-        }
-      #ifdef B_JUDYL
-        assert(wPopCnt == wPopCntTotal || bPopCntTotalIsInvalid);
-      #else // B_JUDYL
-        assert(wPopCnt == wPopCntTotal);
-      #endif // B_JUDYL
-
-        if (wPopCnt != wCount)
-        {
-            printf("\nAssertion error debug:\n");
-            printf("\nwPopCnt %" _fw"u wCount %" _fw"u\n",
-                   wPopCnt, wCount);
-            if (wPopCntTotal < 0x1000) {
-                Dump(pwRootLast, 0, cnBitsPerWord);
-            }
-        }
-        assert(wPopCnt == wCount);
-  #endif // defined(DEBUG)
-    }
-#endif // 0
-
-    DBGC(printf("Judy1Count returning wCount %" _fw"d\n\n", wCount));
-    return wCount;
-
-#else // (cnDigitsPerWord != 1)
-
-    (void)PArray; (void)wKey0; (void)wKey1, (void)PJError;
-    return wPopCntTotal;
-
 #endif // (cnDigitsPerWord != 1)
 }
 

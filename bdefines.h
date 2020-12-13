@@ -134,6 +134,16 @@
   #define     COMPRESSED_LISTS
 #endif // !NO_COMPRESSED_LISTS
 
+#ifndef   NO_COUNT_2_PREFIX
+  #undef     COUNT_2_PREFIX
+  #define    COUNT_2_PREFIX
+#endif // NO_COUNT_2_PREFIX
+
+#ifdef COUNT_2_PREFIX
+  #undef  COUNT_2
+  #define COUNT_2
+#endif // COUNT_2_PREFIX
+
 // Default is -DPARALLEL_128.
 // Determines type hence size of Bucket_t.
 #ifndef PARALLEL_256

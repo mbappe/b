@@ -4379,16 +4379,6 @@ InflateBmSwTest(qpa) // qp points to BM switch
 BJL(Word_t*)BJ1(Status_t) Insert(qpa, Word_t wKey);
 Status_t Remove(qpa, Word_t wKey);
 
-#ifdef COUNT_2
-// Count returns the number of keys present in the array between
-// between wKey0 and wKey1. Counts wKey0 if it exists but not wKey1.
-Word_t Count(qpa, Word_t wKey0, Word_t wKey1);
-#else // COUNT_2
-// Count returns the number of keys present in the array up to but
-// excluding the key that is passed as a parameter.
-Word_t Count(qpa, Word_t wKey);
-#endif // COUNT_2 else
-
 #ifdef B_JUDYL
 #define ListSlotCnt  ListSlotCntL
 #define NewList  NewListL
@@ -7564,7 +7554,6 @@ SearchList(qpa, int nBLR, Word_t wKey)
   #ifdef DEBUG_LOCATE_GE
     Word_t wKeyLocal = wKey;
     int nPosGe = LocateGeKeyInListGuts(qya, nBLR, &wKeyLocal);
-
     if (nPosEq >= 0) {
         assert(nPosGe == nPosEq);
     } else {
@@ -8071,19 +8060,32 @@ LocateGeKeyInListGuts(qpa, int nBLR, Word_t* pwKey)
                     return ~nPopCnt;
                 }
             } else {
-                // did not find key equal to wKey - 1
+                // Did not find key equal to wKey - 1.
+                // LocateKeyInList has identified the bucket,
+                // but not the position in the bucket?
                 if ((nPos ^= -1) >= nPopCnt) {
                     return ~nPopCnt;
                 }
+                // wKey-1 is not in list.
+                // If wKey-1 belongs past end we don't get here.
+                // Otherwise nPos is bucket where wKey-1 belongs.
+                // Which means it is the bucket where wGeKey belongs.
+                // If there is no wGeKey in this bucket then there is
+                // none in the list.
       #if defined(LOCATE_GE_AFTER_LOCATE_EQ) && defined(PARALLEL_128)
           #ifdef COMPRESSED_LISTS
               #if defined(PSPLIT_PARALLEL) && defined(PARALLEL_128)
                 if (nBLR <= 8) {
                     uint8_t* pcKeys = ls_pcKeysX(pwr, nBLR, nPopCnt);
-                    nPos += LocateGeKey128((__m128i*)&pcKeys[nPos],
-                                           wKey, nBLR);
-                    assert(nPos < nPopCnt);
-                    *pwKey = (wKey & ~NZ_MSK(nBLR)) | pcKeys[nPos];
+                    int nBPos = LocateGeKey128((__m128i*)&pcKeys[nPos],
+                                                wKey, nBLR);
+                    if (nBPos < 0) {
+                        nPos = ~nPopCnt;
+                    } else {
+                        nPos += nBPos;
+                        assert(nPos < nPopCnt);
+                        *pwKey = (wKey & ~NZ_MSK(nBLR)) | pcKeys[nPos];
+                    }
                     return nPos;
                 }
                 else
@@ -8181,7 +8183,6 @@ LocateGeKeyInList(qpa, int nBLR, Word_t* pwKey)
   #ifdef DEBUG_LOCATE_GE
     Word_t wKey = *pwKey;
     int nPosEq = SearchListGuts(qya, nBLR, wKey);
-
     if (nPosEq >= 0) {
         assert(nPosGe == nPosEq);
     } else {
