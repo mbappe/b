@@ -5507,7 +5507,7 @@ TestJudyCount(void *J1, void *JL, PNewSeed_t PSeed, Word_t Elements)
         DeltanSecL = DminTime / (double)Elements;
   #ifndef TEST_COUNT_USING_JUDY_NEXT
         if (wCloseCountsMask == 0) {
-            DeltanSec1 *= 2;
+            DeltanSecL *= 2;
         }
   #endif // TEST_COUNT_USING_JUDY_NEXT
     }
