@@ -1030,6 +1030,7 @@ GetNextKey(PNewSeed_t PNewSeed)
 
 Word_t wPopWidth = 6; // Width of pop field in output.
 Word_t wCloseCountsMask; // Common prefix for keys in Count calls.
+int bCountTwiddledKeys; // Test keys that are probably not present with -S0.
 
 static void
 PrintHeaderX(const char *strFirstCol, int nRow)
@@ -1800,9 +1801,16 @@ main(int argc, char *argv[])
         wPopWidth = strtoul(strPopWidth, 0, 0);
     }
 
+  #ifndef TEST_COUNT_USING_JUDY_NEXT
     char* strCloseCountsMask = getenv("CLOSE_COUNTS_MASK");
     if (strCloseCountsMask != NULL) {
         wCloseCountsMask = strtoul(strCloseCountsMask, 0, 0);
+    }
+  #endif // !TEST_COUNT_USING_JUDY_NEXT
+
+    char* strCountTwiddledKeys = getenv("COUNT_TWIDDLED_KEYS");
+    if (strCountTwiddledKeys != NULL) {
+        bCountTwiddledKeys = !!strtol(strCountTwiddledKeys, 0, 0);
     }
 
 // ============================================================
@@ -3220,7 +3228,10 @@ eopt:
     LogIfdefs();
 
     // Log parameters set by environment variables.
+  #ifndef TEST_COUNT_USING_JUDY_NEXT
     printf("# wCloseCountsMask 0x%zx\n", wCloseCountsMask);
+  #endif // TEST_COUNT_USING_JUDY_NEXT
+    printf("# bCountTwiddledKeys %d\n", bCountTwiddledKeys);
 
 // ============================================================
 // Warm up the cpu
@@ -5312,35 +5323,31 @@ TestJudyCount(void *J1, void *JL, PNewSeed_t PSeed, Word_t Elements)
 
     Word_t Loops = lFlag ? 1 : (MAXLOOPS / Elements) + MINLOOPS;
 
+  #ifndef TEST_COUNT_USING_JUDY_NEXT
+    Elements >>= !wCloseCountsMask; // two gets per loop
+  #endif // !TEST_COUNT_USING_JUDY_NEXT
     if (J1Flag)
     {
         for (DminTime = 1e40, icnt = ICNT, lp = 0; lp < Loops; lp++)
         {
             Word_t TstKey0 = 0;
       // TEST_COUNT_USING_JUDY_NEXT is incompatible with hFlag.
-  #ifdef TEST_COUNT_USING_JUDY_NEXT // the old way
+  #ifdef TEST_COUNT_USING_JUDY_NEXT // the old way; not a good test
             TstKey = 0;
             Judy1First(J1, &TstKey, NULL);
-            --TstKey; // avoid testing only keys that are present
+            TstKey ^= bCountTwiddledKeys;
   #else // TEST_COUNT_USING_JUDY_NEXT
             NewSeed_t WorkingSeed = *PSeed;
   #endif // TEST_COUNT_USING_JUDY_NEXT else
             STARTTm;
-  #ifdef TEST_COUNT_USING_JUDY_NEXT
             for (Word_t elm = 0; elm < Elements; ++elm)
-  #else // TEST_COUNT_USING_JUDY_NEXT
-            for (Word_t elm = 0; elm < Elements - (wCloseCountsMask == 0);
-                 elm += 1 + (wCloseCountsMask == 0))
-  #endif // TEST_COUNT_USING_JUDY_NEXT
             {
-  #ifndef TEST_COUNT_USING_JUDY_NEXT // the old way
+  #ifndef TEST_COUNT_USING_JUDY_NEXT
                 SYNC_SYNC(TstKey = GetNextKey(&WorkingSeed));
-                if (wCloseCountsMask) {
-                    TstKey0 = TstKey ^ wCloseCountsMask;
-                } else {
-                    TstKey0 = GetNextKey(&WorkingSeed);
-                    --TstKey; // avoid testing only keys that are present
-                }
+                TstKey ^= bCountTwiddledKeys;
+                TstKey0 = wCloseCountsMask
+                    ? (TstKey ^ wCloseCountsMask)
+                    : (GetNextKey(&WorkingSeed) ^ bCountTwiddledKeys);
                 if (TstKey0 > TstKey) {
                     // swap keys
                     TstKey ^= TstKey0; TstKey0 ^= TstKey; TstKey ^= TstKey0;
@@ -5386,9 +5393,9 @@ TestJudyCount(void *J1, void *JL, PNewSeed_t PSeed, Word_t Elements)
   #endif // REGRESS
                 }
   #ifdef TEST_COUNT_USING_JUDY_NEXT
-                ++TstKey; // Undo decrement after previous First/Next.
+                TstKey ^= bCountTwiddledKeys;
                 Judy1Next(J1, &TstKey, NULL);
-                --TstKey; // Avoid testing only keys that are present.
+                TstKey ^= bCountTwiddledKeys;
   #endif // TEST_COUNT_USING_JUDY_NEXT
             }
             ENDTm(DeltanSec1);
@@ -5405,11 +5412,6 @@ TestJudyCount(void *J1, void *JL, PNewSeed_t PSeed, Word_t Elements)
             }
         }
         DeltanSec1 = DminTime / (double)Elements;
-  #ifndef TEST_COUNT_USING_JUDY_NEXT
-        if (wCloseCountsMask == 0) {
-            DeltanSec1 *= 2;
-        }
-  #endif // TEST_COUNT_USING_JUDY_NEXT
     }
 
     if (JLFlag)
@@ -5418,29 +5420,22 @@ TestJudyCount(void *J1, void *JL, PNewSeed_t PSeed, Word_t Elements)
         {
             Word_t TstKey0 = 0;
       // TEST_COUNT_USING_JUDY_NEXT is incompatible with hFlag.
-  #ifdef TEST_COUNT_USING_JUDY_NEXT // the old way
+  #ifdef TEST_COUNT_USING_JUDY_NEXT // the old way; not a good test
             TstKey = 0;
             JudyLFirst(JL, &TstKey, NULL);
-            --TstKey; // avoid testing only keys that are present
+            TstKey ^= bCountTwiddledKeys;
   #else // TEST_COUNT_USING_JUDY_NEXT
             NewSeed_t WorkingSeed = *PSeed;
   #endif // TEST_COUNT_USING_JUDY_NEXT else
             STARTTm;
-  #ifdef TEST_COUNT_USING_JUDY_NEXT
             for (Word_t elm = 0; elm < Elements; ++elm)
-  #else // TEST_COUNT_USING_JUDY_NEXT
-            for (Word_t elm = 0; elm < Elements - (wCloseCountsMask == 0);
-                 elm += 1 + (wCloseCountsMask == 0))
-  #endif // TEST_COUNT_USING_JUDY_NEXT
             {
-  #ifndef TEST_COUNT_USING_JUDY_NEXT // the old way
+  #ifndef TEST_COUNT_USING_JUDY_NEXT
                 SYNC_SYNC(TstKey = GetNextKey(&WorkingSeed));
-                if (wCloseCountsMask) {
-                    TstKey0 = TstKey ^ wCloseCountsMask;
-                } else {
-                    TstKey0 = GetNextKey(&WorkingSeed);
-                    --TstKey; // avoid testing only keys that are present
-                }
+                TstKey ^= bCountTwiddledKeys;
+                TstKey0 = wCloseCountsMask
+                    ? (TstKey ^ wCloseCountsMask)
+                    : (GetNextKey(&WorkingSeed) ^ bCountTwiddledKeys);
                 if (TstKey0 > TstKey) {
                     // swap keys
                     TstKey ^= TstKey0; TstKey0 ^= TstKey; TstKey ^= TstKey0;
@@ -5486,9 +5481,9 @@ TestJudyCount(void *J1, void *JL, PNewSeed_t PSeed, Word_t Elements)
   #endif // REGRESS
                 }
   #ifdef TEST_COUNT_USING_JUDY_NEXT
-                ++TstKey; // Undo decrement after previous First/Next.
+                TstKey ^= bCountTwiddledKeys;
                 JudyLNext(JL, &TstKey, NULL);
-                --TstKey; // Avoid testing only keys that are present.
+                TstKey ^= bCountTwiddledKeys;
   #endif // TEST_COUNT_USING_JUDY_NEXT
             }
             ENDTm(DeltanSecL);
@@ -5505,11 +5500,6 @@ TestJudyCount(void *J1, void *JL, PNewSeed_t PSeed, Word_t Elements)
             }
         }
         DeltanSecL = DminTime / (double)Elements;
-  #ifndef TEST_COUNT_USING_JUDY_NEXT
-        if (wCloseCountsMask == 0) {
-            DeltanSecL *= 2;
-        }
-  #endif // TEST_COUNT_USING_JUDY_NEXT
     }
 
     return (0);
