@@ -12319,6 +12319,12 @@ Initialize(void)
     printf("# No PARALLEL_LOCATE_GE_KEY_16_USING_UNPACK\n");
 #endif // #else  PARALLEL_LOCATE_GE_KEY_16_USING_UNPACK
 
+#ifdef           NOT_LT_FOR_GE
+    printf("#    NOT_LT_FOR_GE\n");
+#else //         NOT_LT_FOR_GE
+    printf("# No NOT_LT_FOR_GE\n");
+#endif // #else  NOT_LT_FOR_GE
+
 #if defined(PARALLEL_SEARCH_WORD)
     printf("#    PARALLEL_SEARCH_WORD\n");
 #else // defined(PARALLEL_SEARCH_WORD)
