@@ -5527,36 +5527,45 @@ TestJudyNext(void *J1, void *JL, PNewSeed_t PSeed, Word_t Elements)
     {
         for (DminTime = 1e40, icnt = ICNT, lp = 0; lp < Loops; lp++)
         {
-            int Rc;
+            int Rc; (void)Rc;
+      #ifdef REGRESS
             Word_t J1KeyBefore;
-#ifdef TEST_NEXT_USING_JUDY_NEXT
-            J1KeyBefore = -1;
+      #endif // REGRESS
+  #ifdef TEST_NEXT_USING_JUDY_NEXT
             J1Key = 0;
             Rc = Judy1First(J1, &J1Key, PJE0);
-#else // TEST_NEXT_USING_JUDY_NEXT
+      #ifdef REGRESS
+            J1KeyBefore = ~J1Key;
+      #endif // REGRESS
+  #else // TEST_NEXT_USING_JUDY_NEXT
+      #ifdef REGRESS
             Word_t J1LastKey = -1;
             Judy1Last(J1, &J1LastKey, PJE0);
+      #endif // REGRESS
             NewSeed_t WorkingSeed = *PSeed;
-#endif // #else TEST_NEXT_USING_JUDY_NEXT
+  #endif // #else TEST_NEXT_USING_JUDY_NEXT
 
             STARTTm;
             for (elm = 0; elm < Elements; elm++)
             {
-#ifndef TEST_NEXT_USING_JUDY_NEXT
+  #ifndef TEST_NEXT_USING_JUDY_NEXT
                 SYNC_SYNC(J1Key = GetNextKey(&WorkingSeed));
-#endif // #ifndef TEST_NEXT_USING_JUDY_NEXT
+  #endif // #ifndef TEST_NEXT_USING_JUDY_NEXT
                 if (Tit)
                 {
-#ifndef TEST_NEXT_USING_JUDY_NEXT
+  #ifndef TEST_NEXT_USING_JUDY_NEXT
+      #ifdef REGRESS
                     J1KeyBefore = J1Key;
+      #endif // REGRESS
                     Rc = Judy1Next(J1, &J1Key, PJE0);
+      #ifdef REGRESS
                     if (J1KeyBefore == J1LastKey)
                     {
                         if ((Rc == 1)
   // Judy 1.0.5 did not preserve the key value on next/prev failure.
-  #ifndef NO_PRESERVED_KEY
+      #ifndef NO_PRESERVED_KEY
                             || (J1Key != J1KeyBefore)
-  #endif // #ifndef NO_PRESERVED_KEY
+      #endif // #ifndef NO_PRESERVED_KEY
                             )
                         {
                             printf("\n");
@@ -5565,12 +5574,12 @@ TestJudyNext(void *J1, void *JL, PNewSeed_t PSeed, Word_t Elements)
                             printf("\nElements = %" PRIuPTR
                                    ", elm = %" PRIuPTR"\n",
                                    Elements, elm);
-  #ifndef NO_PRESERVED_KEY
+      #ifndef NO_PRESERVED_KEY
                             if (Rc != 1) {
                                 printf("Build with -DNO_PRESERVED_KEY");
                                 printf(" to disable this test.");
                             }
-  #endif // #ifndef NO_PRESERVED_KEY
+      #endif // #ifndef NO_PRESERVED_KEY
                             FAILURE("J1N succeeded on last key J1Key", J1Key);
                         }
                         if (Elements == 1) {
@@ -5579,23 +5588,28 @@ TestJudyNext(void *J1, void *JL, PNewSeed_t PSeed, Word_t Elements)
                         J1Key = 0;
                         Rc = Judy1First(J1, &J1Key, PJE0);
                     }
-#endif // #ifndef TEST_NEXT_USING_JUDY_NEXT
+      #endif // REGRESS
+  #endif // #ifndef TEST_NEXT_USING_JUDY_NEXT
+  #ifdef REGRESS
                     if ((Rc != 1) || (J1Key == J1KeyBefore))
                     {
                         printf("\n");
-#ifndef TEST_NEXT_USING_JUDY_NEXT
+      #ifndef TEST_NEXT_USING_JUDY_NEXT
                         printf("J1LastKey 0x%zx\n", J1LastKey);
-#endif // #ifndef TEST_NEXT_USING_JUDY_NEXT
+      #endif // #ifndef TEST_NEXT_USING_JUDY_NEXT
                         printf("J1KeyBefore 0x%zx\n", J1KeyBefore);
                         printf("Rc %d\n", Rc);
                         printf("J1Key 0x%zx\n", J1Key);
                         printf("Elements %zu elm %zu\n", Elements, elm);
                         FAILURE("J1N failed J1Key", J1Key);
                     }
-#ifdef TEST_NEXT_USING_JUDY_NEXT
+  #endif // REGRESS
+  #ifdef TEST_NEXT_USING_JUDY_NEXT
+      #ifdef REGRESS
                     J1KeyBefore = J1Key;
+      #endif // REGRESS
                     Rc = Judy1Next(J1, &J1Key, PJE0);
-#endif // TEST_NEXT_USING_JUDY_NEXT
+  #endif // TEST_NEXT_USING_JUDY_NEXT
                 }
             }
             ENDTm(DeltanSec1);
@@ -5619,35 +5633,44 @@ TestJudyNext(void *J1, void *JL, PNewSeed_t PSeed, Word_t Elements)
     {
         for (DminTime = 1e40, icnt = ICNT, lp = 0; lp < Loops; lp++)
         {
+      #ifdef REGRESS
             Word_t JLKeyBefore;
-            Word_t *PValue = NULL;
-#ifdef TEST_NEXT_USING_JUDY_NEXT
-            JLKeyBefore = -1;
+      #endif // REGRESS
+            Word_t *PValue = NULL; (void)PValue;
+  #ifdef TEST_NEXT_USING_JUDY_NEXT
             JLKey = 0;
             PValue = (Word_t*)JudyLFirst(JL, &JLKey, PJE0);
-#else // TEST_NEXT_USING_JUDY_NEXT
+      #ifdef REGRESS
+            JLKeyBefore = ~JLKey;
+      #endif // REGRESS
+  #else // TEST_NEXT_USING_JUDY_NEXT
+      #ifdef REGRESS
             Word_t JLLastKey = -1;
             JudyLLast(JL, &JLLastKey, PJE0);
+      #endif // REGRESS
             NewSeed_t WorkingSeed = *PSeed;
-#endif // #else TEST_NEXT_USING_JUDY_NEXT
+  #endif // #else TEST_NEXT_USING_JUDY_NEXT
 
             STARTTm;
             for (elm = 0; elm < Elements; elm++)
             {
-#ifndef TEST_NEXT_USING_JUDY_NEXT
+  #ifndef TEST_NEXT_USING_JUDY_NEXT
                 SYNC_SYNC(JLKey = GetNextKey(&WorkingSeed));
-#endif // #ifndef TEST_NEXT_USING_JUDY_NEXT
+  #endif // #ifndef TEST_NEXT_USING_JUDY_NEXT
                 if (Tit)
                 {
-#ifndef TEST_NEXT_USING_JUDY_NEXT
+  #ifndef TEST_NEXT_USING_JUDY_NEXT
+      #ifdef REGRESS
                     JLKeyBefore = JLKey;
+      #endif // REGRESS
                     PValue = (Word_t*)JudyLNext(JL, &JLKey, PJE0);
+      #ifdef REGRESS
                     if (JLKeyBefore == JLLastKey)
                     {
                         if ((PValue != NULL)
-  #ifndef NO_PRESERVED_KEY
+      #ifndef NO_PRESERVED_KEY
                             || (JLKey != JLKeyBefore)
-  #endif // #ifndef NO_PRESERVED_KEY
+      #endif // #ifndef NO_PRESERVED_KEY
                             )
                         {
                             printf("\n");
@@ -5656,12 +5679,12 @@ TestJudyNext(void *J1, void *JL, PNewSeed_t PSeed, Word_t Elements)
                             printf("\nElements = %" PRIuPTR
                                    ", elm = %" PRIuPTR"\n",
                                    Elements, elm);
-  #ifndef NO_PRESERVED_KEY
+      #ifndef NO_PRESERVED_KEY
                             if (PValue == NULL) {
                                 printf("Build with -DNO_PRESERVED_KEY");
                                 printf(" to disable this test.");
                             }
-  #endif // #ifndef NO_PRESERVED_KEY
+      #endif // #ifndef NO_PRESERVED_KEY
                             FAILURE("JLN succeeded on last key JLKey", JLKey);
                         }
                         if (Elements == 1) {
@@ -5670,16 +5693,18 @@ TestJudyNext(void *J1, void *JL, PNewSeed_t PSeed, Word_t Elements)
                         JLKey = 0;
                         PValue = (Word_t*)JudyLFirst(JL, &JLKey, PJE0);
                     }
-#endif // #ifndef TEST_NEXT_USING_JUDY_NEXT
+      #endif // REGRESS
+  #endif // #ifndef TEST_NEXT_USING_JUDY_NEXT
+      #ifdef REGRESS
                     if ((PValue == NULL)
                         || (JLKey == JLKeyBefore)
                         // Could verify that PValue != PValueBefore.
                         || (VFlag && (*PValue != JLKey)))
                     {
                         printf("\n");
-#ifndef TEST_NEXT_USING_JUDY_NEXT
+  #ifndef TEST_NEXT_USING_JUDY_NEXT
                         printf("JLLastKey %" PRIuPTR"\n", JLLastKey);
-#endif // #ifndef TEST_NEXT_USING_JUDY_NEXT
+  #endif // #ifndef TEST_NEXT_USING_JUDY_NEXT
                         printf("JLKeyBefore %" PRIuPTR"\n", JLKeyBefore);
                         printf("JLKeyBefore 0x%zx PValue %p\n", JLKeyBefore, PValue);
                         if (PValue != NULL)
@@ -5695,10 +5720,13 @@ TestJudyNext(void *J1, void *JL, PNewSeed_t PSeed, Word_t Elements)
                         }
                         FAILURE("JLN failed JLKey", JLKey);
                     }
-#ifdef TEST_NEXT_USING_JUDY_NEXT
+      #endif // REGRESS
+  #ifdef TEST_NEXT_USING_JUDY_NEXT
+      #ifdef REGRESS
                     JLKeyBefore = JLKey;
+      #endif // REGRESS
                     PValue = (Word_t*)JudyLNext(JL, &JLKey, PJE0);
-#endif // TEST_NEXT_USING_JUDY_NEXT
+  #endif // TEST_NEXT_USING_JUDY_NEXT
                 }
             }
             ENDTm(DeltanSecL);
