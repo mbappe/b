@@ -8481,8 +8481,23 @@ newSkipToBitmap:;
             // in a DoubleIt, InsertAll, Insert, InsertGuts, InsertAtList,
             // TransformList cycle. Yuck.
       #ifdef USE_XX_SW_ONLY_AT_DL2
+            // cnBW may not be wide enough to splay the list into lists
+            // that can all be embedded.
             if (nBLNew == nDL_to_nBL(2)) {
                 nBW = cnBW; // nBWUp? nBWNew?
+                int nSplayMaxPopCnt
+                    = SplayMaxPopCnt(pwRoot, nBL, wKey, nBLNew - nBW);
+                while (nSplayMaxPopCnt > EmbeddedListPopCntMax(nBLNew - nBW)) {
+                    ++nBW;
+                    nSplayMaxPopCnt
+                        = SplayMaxPopCnt(pwRoot, nBL, wKey, nBLNew - nBW);
+                    if (nBLNew - nBW == cnLogBitsPerWord) {
+                        // Can we end up with skip to big bitmap?
+                        // Or skip to a wide branch with embedded bitmaps?
+                        // Fix in InsertCleanup?
+                        break;
+                    }
+                }
       #if cnSwCnts != 0
                 int nBWMin = LOG(cnSwCnts * sizeof(Word_t) * 8
                                      / (2 << LOG(MAX(nBLNew, 16) - 1)));
@@ -11841,6 +11856,7 @@ Initialize(void)
 #else // defined(ALLOW_EMBEDDED_BITMAP)
     printf("# No ALLOW_EMBEDDED_BITMAP\n");
 #endif // defined(ALLOW_EMBEDDED_BITMAP)
+    printf("# cbEmbeddedBitmap %d\n", cbEmbeddedBitmap);
 
     // EBM is JudyL embedded bitmap.
     // CHECK_TYPE_FOR_EBM means test type before goto t_bitmap even when
@@ -12318,12 +12334,6 @@ Initialize(void)
 #else //         PARALLEL_LOCATE_GE_KEY_16_USING_UNPACK
     printf("# No PARALLEL_LOCATE_GE_KEY_16_USING_UNPACK\n");
 #endif // #else  PARALLEL_LOCATE_GE_KEY_16_USING_UNPACK
-
-#ifdef           NOT_LT_FOR_GE
-    printf("#    NOT_LT_FOR_GE\n");
-#else //         NOT_LT_FOR_GE
-    printf("# No NOT_LT_FOR_GE\n");
-#endif // #else  NOT_LT_FOR_GE
 
 #if defined(PARALLEL_SEARCH_WORD)
     printf("#    PARALLEL_SEARCH_WORD\n");
@@ -15235,6 +15245,8 @@ embeddedBitmap:;
                 }
                 return Failure;
             }
+        } else {
+            // What about array full pop?
         }
         int nWordNum = (*pwKey & MSK(nBLR)) >> cnLogBitsPerWord;
 // Word and bit will always be the last ones in the expanse for any
@@ -15513,7 +15525,6 @@ t_bm_sw:;
             return Success;
         }
         assert(*pwKey == (wPrefix | (*pwKey & MSK(nBLR))));
-        nBL = nBLR;
         goto t_xx_sw;
     }
   #endif // defined(SKIP_TO_XX_SW)

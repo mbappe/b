@@ -145,6 +145,8 @@ fi # [ `uname` = Linux ] else
 && CC_MFLAGS=$MAVX2 DEFINES="-DPARALLEL_256 -DREGRESS -DDEBUG" \
     ${MAKE} clean default \
 && ${REGRESS} \
+&& DEFINES="-DPARALLEL_256 -DREGRESS -DDEBUG" ${MAKE} clean default \
+&& ${REGRESS} \
 && MALLOC_ALIGNMENT=32 CC_MFLAGS=$MAVX2 \
     DEFINES="-DPARALLEL_256 -DREGRESS -DDEBUG" \
     ${MAKE} clean default \

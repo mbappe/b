@@ -5232,22 +5232,6 @@ PsplitSearchByKey8(qp, uint8_t *pcKeys, int nPopCnt, uint8_t cKey, int nPos)
     } \
 }
 
-// Mimic P_SEARCH_GT_B using LocateLtKey128 instead of LocateGeKey128.
-#define P_SEARCH_LT_B(_b_t, _xKey, _pxKeys, _nPos) \
-{ \
-    ASSERT(((Word_t)(_pxKeys) % cnBytesListKeysAlign) == 0); \
-    _b_t* pb = (_b_t*)&(_pxKeys)[_nPos]; \
-    for (;;) { \
-        int nBPos = LocateLtKey128(pb, (_xKey), sizeof(_xKey) * 8); \
-        if (nBPos >= 0) { \
-            _nPos = (typeof(_xKey)*)pb - (_pxKeys) + nBPos; break; \
-        } \
-        if (--pb < (_b_t*)(_pxKeys)) { \
-            _nPos = 0; break; \
-        } \
-    } \
-}
-
       #if JUNK
 // Amazingly, the variant above was the best performing in my tests.
 // But that was before I changed the variant above quite a bit and I
@@ -7594,389 +7578,128 @@ LocateGeKeyInWord16(Word_t wWord, Word_t wKey)
 
 #if defined(PSPLIT_PARALLEL) || defined(PARALLEL_SEARCH_WORD)
 
-static Word_t // bool
-HasGeKey128(__m128i *pxBucket, Word_t wKey, int nBL)
-{
-    (void)nBL;
-  #ifdef COMPRESSED_LISTS
-    if (nBL <= 8) {
-      #ifdef NOT_LT_FOR_GE
-        v_t vGe = ~(v_t)(*(v_t*)pxBucket < (unsigned char)wKey);
-      #else // NOT_LT_FOR_GE
-        v_t vGe = (v_t)(*(v_t*)pxBucket >= (unsigned char)wKey);
-      #endif // NOT_LT_FOR_GE else
-        return _mm_movemask_epi8((__m128i)vGe);
-    }
-    if (nBL <= 16) {
-      #ifdef NOT_LT_FOR_GE
-        v41_t vGe = ~(v41_t)(*(v41_t*)pxBucket < (unsigned short)wKey);
-      #else // NOT_LT_FOR_GE
-        v41_t vGe = (v41_t)(*(v41_t*)pxBucket >= (unsigned short)wKey);
-      #endif // NOT_LT_FOR_GE else
-      #ifdef HK_MOVEMASK
-        return _mm_movemask_epi8((__m128i)vGe);
-      #else // HK_MOVEMASK
-        // seems marginally faster at startup (in cache)
-        return _mm_packs_epi16((__m128i)vGe, (__m128i)vGe)[0];
-      #endif // HK_MOVEMASK
-    }
-      #if cnBitsPerWord > 32
-    if (nBL <= 32) {
-        //ASSERT(nBL == 32);
-      #ifdef NOT_LT_FOR_GE
-        v42_t vGe = ~(v42_t)(*(v42_t*)pxBucket < (unsigned int)wKey);
-      #else // NOT_LT_FOR_GE
-        v42_t vGe = (v42_t)(*(v42_t*)pxBucket >= (unsigned int)wKey);
-      #endif // NOT_LT_FOR_GE else
-          #ifdef HK_MOVEMASK
-        return _mm_movemask_epi8((__m128i)vGe);
-          #else // HK_MOVEMASK
-        return _mm_packs_epi32((__m128i)vGe, (__m128i)vGe)[0];
-          #endif // HK_MOVEMASK
-    }
-      #endif // cnBitsPerWord > 32
-  #endif // COMPRESSED_LISTS
-    return ((Word_t*)pxBucket)[1] >= wKey;
-}
-
-static Word_t // bool
-HasGeKey256(__m256i *pxBucket, Word_t wKey, int nBL)
-{
-    (void)nBL;
-  #ifdef COMPRESSED_LISTS
-    if (nBL <= 8) {
-      #ifdef NOT_LT_FOR_GE
-        v50_t vGe = ~(v50_t)(*(v50_t*)pxBucket < (uint8_t)wKey);
-      #else // NOT_LT_FOR_GE
-        v50_t vGe = (v50_t)(*(v50_t*)pxBucket >= (uint8_t)wKey);
-      #endif // NOT_LT_FOR_GE else
-        return my_mm256_movemask_epi8((__m256i)vGe);
-    }
-    if (nBL <= 16) {
-      #ifdef NOT_LT_FOR_GE
-        v51_t vGe = ~(v51_t)(*(v51_t*)pxBucket < (uint16_t)wKey);
-      #else // NOT_LT_FOR_GE
-        v51_t vGe = (v51_t)(*(v51_t*)pxBucket >= (uint16_t)wKey);
-      #endif // NOT_LT_FOR_GE else
-        return my_mm256_movemask_epi8((__m256i)vGe);
-    }
-      #if cnBitsPerWord > 32
-    if (nBL <= 32) {
-        //ASSERT(nBL == 32);
-      #ifdef NOT_LT_FOR_GE
-        v52_t vGe = ~(v52_t)(*(v52_t*)pxBucket < (uint32_t)wKey);
-      #else // NOT_LT_FOR_GE
-        v52_t vGe = (v52_t)(*(v52_t*)pxBucket >= (uint32_t)wKey);
-      #endif // NOT_LT_FOR_GE else
-        return my_mm256_movemask_epi8((__m256i)vGe);
-    }
-      #endif // cnBitsPerWord > 32
-  #endif // COMPRESSED_LISTS
-    return ((Word_t*)pxBucket)[1] >= wKey;
-}
-
-static Word_t // bool
-HasLtKey128(__m128i *pxBucket, Word_t wKey, int nBL)
-{
-    (void)nBL;
-  #ifdef COMPRESSED_LISTS
-    if (nBL <= 8) {
-      #ifdef NOT_GE_FOR_LT
-        v_t vLt = ~(v_t)(*(v_t*)pxBucket >= (unsigned char)wKey);
-      #else // NOT_GE_FOR_LT
-        v_t vLt = (v_t)(*(v_t*)pxBucket < (unsigned char)wKey);
-      #endif // NOT_GE_FOR_LT else
-        return _mm_movemask_epi8((__m128i)vLt);
-    }
-    if (nBL <= 16) {
-      #ifdef NOT_GE_FOR_LT
-        v41_t vLt = ~(v41_t)(*(v41_t*)pxBucket >= (unsigned short)wKey);
-      #else // NOT_GE_FOR_LT
-        v41_t vLt = (v41_t)(*(v41_t*)pxBucket < (unsigned short)wKey);
-      #endif // NOT_GE_FOR_LT else
-      #ifdef HK_MOVEMASK
-        return _mm_movemask_epi8((__m128i)vLt);
-      #else // HK_MOVEMASK
-        // seems marginally faster at startup (in cache)
-        return _mm_packs_epi16((__m128i)vLt, (__m128i)vLt)[0];
-      #endif // HK_MOVEMASK
-    }
-      #if cnBitsPerWord > 32
-    if (nBL <= 32) {
-        //ASSERT(nBL == 32);
-      #ifdef NOT_GE_FOR_LT
-        v42_t vLt = ~(v42_t)(*(v42_t*)pxBucket >= (unsigned int)wKey);
-      #else // NOT_GE_FOR_LT
-        v42_t vLt = (v42_t)(*(v42_t*)pxBucket < (unsigned int)wKey);
-      #endif // NOT_GE_FOR_LT else
-          #ifdef HK_MOVEMASK
-        return _mm_movemask_epi8((__m128i)vLt);
-          #else // HK_MOVEMASK
-        return _mm_packs_epi32((__m128i)vLt, (__m128i)vLt)[0];
-          #endif // HK_MOVEMASK
-    }
-      #endif // cnBitsPerWord > 32
-  #endif // COMPRESSED_LISTS
-    return ((Word_t*)pxBucket)[0] < wKey;
-}
-
-static Word_t // bool
-HasLtKey256(__m256i *pxBucket, Word_t wKey, int nBL)
-{
-    (void)nBL;
-  #ifdef COMPRESSED_LISTS
-    if (nBL <= 8) {
-      #ifdef NOT_GE_FOR_LT
-        v50_t vLt = ~(v50_t)(*(v50_t*)pxBucket >= (uint8_t)wKey);
-      #else // NOT_GE_FOR_LT
-        v50_t vLt = (v50_t)(*(v50_t*)pxBucket < (uint8_t)wKey);
-      #endif // NOT_GE_FOR_LT else
-        return (uint32_t)my_mm256_movemask_epi8((__m256i)vLt);
-    }
-    if (nBL <= 16) {
-      #ifdef NOT_GE_FOR_LT
-        v51_t vLt = ~(v51_t)(*(v51_t*)pxBucket >= (uint16_t)wKey);
-      #else // NOT_GE_FOR_LT
-        v51_t vLt = (v51_t)(*(v51_t*)pxBucket < (uint16_t)wKey);
-      #endif // NOT_GE_FOR_LT else
-        return (uint32_t)my_mm256_movemask_epi8((__m256i)vLt);
-    }
-      #if cnBitsPerWord > 32
-    if (nBL <= 32) {
-        //ASSERT(nBL == 32);
-      #ifdef NOT_GE_FOR_LT
-        v52_t vLt = ~(v52_t)(*(v52_t*)pxBucket >= (uint32_t)wKey);
-      #else // NOT_GE_FOR_LT
-        v52_t vLt = (v52_t)(*(v52_t*)pxBucket < (uint32_t)wKey);
-      #endif // NOT_GE_FOR_LT else
-        return (uint32_t)my_mm256_movemask_epi8((__m256i)vLt);
-    }
-      #endif // cnBitsPerWord > 32
-  #endif // COMPRESSED_LISTS
-    return ((Word_t*)pxBucket)[0] < wKey;
-}
-
-// Locate the largest key in the 128-bit bucket that is less than wKey.
-// If one exists then return nPos.
-// If none exists then return -1.
-static int
-LocateLtKey128(__m128i *pxBucket, Word_t wKey, int nBL)
-{
-    (void)nBL;
-  #ifdef COMPRESSED_LISTS
-    Word_t wHasLtKey = HasLtKey128(pxBucket, wKey, nBL);
-      #if defined(USE_POPCOUNT_IN_LK8) || !defined(USE_FFS_IN_LK8)
-    if (wHasLtKey == 0) {
-        return -1;
-    }
-      #endif // defined(USE_POPCOUNT_IN_LK8) || !defined(USE_FFS_IN_LK8)
-    if (nBL <= 8) {
-      #ifdef USE_POPCOUNT_IN_LK8
-        return 64 - __builtin_popcountll((wHasLtKey & -wHasLtKey) - 1);
-      #elif defined(USE_FFS_IN_LK8)
-        return 64 - (__builtin_ffsll(wHasLtKey) - 1);
-      #else // USE_POPCOUNT_IN_LK8 #elif USE_FFS_IN_LK8
-        return 64 - __builtin_clzll(wHasLtKey);
-      #endif // USE_POPCOUNT_IN_LK8 #elif USE_FFS_IN_LK8 #else
-    }
-      #if !defined(USE_POPCOUNT_IN_LK8) && defined(USE_FFS_IN_LK8)
-    if (wHasLtKey == 0) {
-        return -1;
-    }
-      #endif // !defined(USE_POPCOUNT_IN_LK8) && defined(USE_FFS_IN_LK8)
-    int nFirstSetBit = __builtin_clzll(wHasLtKey);
-    if (nBL <= 16) {
-      #ifdef HK_MOVEMASK
-        return 32 - nFirstSetBit / 2;
-      #else // HK_MOVEMASK
-        return 8 - nFirstSetBit / 8;
-      #endif // HK_MOVEMASK else
-    }
-      #if cnBitsPerWord > 32
-    if (nBL <= 32) {
-        //assert(nBL == 32);
-          #ifdef HK_MOVEMASK
-        return 16 - nFirstSetBit / 4;
-          #else // HK_MOVEMASK
-        return 4 - nFirstSetBit / 16;
-          #endif // HK_MOVEMASK else
-    }
-      #endif // cnBitsPerWord > 32
-  #endif // COMPRESSED_LISTS
-    return ((Word_t*)pxBucket)[1] < wKey ? 1
-         : ((Word_t*)pxBucket)[0] < wKey ? 0 : -1;
-}
-
 // Locate the smallest key in the 128-bit bucket that is greater than or equal
 // to wKey. If one exists then return nPos.
 // If none exists then return -1.
+// It's easier to return -1 than ~(8 / ExtListBytesPerKey(nBL)) for
+// USE_FFS_IN_LK8 so we just do it for all cases.
 static int
 LocateGeKey128(__m128i *pxBucket, Word_t wKey, int nBL)
 {
     (void)nBL;
   #ifdef COMPRESSED_LISTS
-    Word_t wHasGeKey = HasGeKey128(pxBucket, wKey, nBL);
-      #if defined(USE_POPCOUNT_IN_LK8) || !defined(USE_FFS_IN_LK8)
-    if (wHasGeKey == 0) {
-        int nPosLt = LocateLtKey128(pxBucket, wKey, nBL); (void)nPosLt;
-        assert(nPosLt == 128 / nBL);
-        // Caller has to change this to ~nPopCnt.
-        return ~(sizeof(Bucket_t) / ExtListBytesPerKey(nBL));
-    }
-      #endif // defined(USE_POPCOUNT_IN_LK8) || !defined(USE_FFS_IN_LK8)
+    Word_t wHasGeKey;
     if (nBL <= 8) {
-      #ifdef USE_POPCOUNT_IN_LK8
-        return __builtin_popcountll((wHasGeKey & -wHasGeKey) - 1);
-      #elif defined(USE_FFS_IN_LK8)
+        wHasGeKey = _mm_movemask_epi8(*(v_t*)pxBucket >= (uint8_t)wKey);
+      #ifdef USE_FFS_IN_LK8
         return __builtin_ffsll(wHasGeKey) - 1;
-      #else // USE_POPCOUNT_IN_LK8 #elif USE_FFS_IN_LK8
-        int nPos = __builtin_ctzll(wHasGeKey);
-        int nPosLt = LocateLtKey128(pxBucket, wKey, nBL); (void)nPosLt;
-        assert(nPosLt == nPos || (nPos == 0 && nPosLt == -1));
-        return nPos;
-      #endif // USE_POPCOUNT_IN_LK8 #elif USE_FFS_IN_LK8 #else
-    }
-      #if !defined(USE_POPCOUNT_IN_LK8) && defined(USE_FFS_IN_LK8)
-    if (wHasGeKey == 0) {
-        // Caller has to change this to ~nPopCnt.
-        return ~(sizeof(Bucket_t) / ExtListBytesPerKey(nBL));
-    }
-      #endif // !defined(USE_POPCOUNT_IN_LK8) && defined(USE_FFS_IN_LK8)
-    int nFirstSetBit = __builtin_ctzll(wHasGeKey);
-    if (nBL <= 16) {
-      #ifdef HK_MOVEMASK
-        return nFirstSetBit / 2;
-      #else // HK_MOVEMASK
-        int nPos = nFirstSetBit / 8;
-        int nPosLt = LocateLtKey128(pxBucket, wKey, nBL); (void)nPosLt;
-        assert(nPosLt == nPos || (nPos == 0 && nPosLt == -1));
-        return nPos;
-      #endif // HK_MOVEMASK else
-    }
-      #if cnBitsPerWord > 32
-    if (nBL <= 32) {
-        //assert(nBL == 32);
-          #ifdef HK_MOVEMASK
-        return nFirstSetBit / 4;
-          #else // HK_MOVEMASK
-        int nPos = nFirstSetBit / 16;
-        int nPosLt = LocateLtKey128(pxBucket, wKey, nBL); (void)nPosLt;
-        assert(nPosLt == nPos || (nPos == 0 && nPosLt == -1));
-        return nPos;
-          #endif // HK_MOVEMASK else
-    }
-      #endif // cnBitsPerWord > 32
-  #endif // COMPRESSED_LISTS
-    // may want to change this to v43_t <; movemask; / 8
-    return ((Word_t*)pxBucket)[0] >= wKey ? 0
-         : ((Word_t*)pxBucket)[1] >= wKey ? 1 : -1;
-}
-
-// Locate the largest key in the 256-bit bucket that is less than wKey.
-// If one exists then return nPos.
-// If none exists then return -1.
-static int
-LocateLtKey256(__m256i *pxBucket, Word_t wKey, int nBL)
-{
-    (void)nBL;
-  #ifdef COMPRESSED_LISTS
-    Word_t wHasLtKey = HasLtKey256(pxBucket, wKey, nBL);
-      #if defined(USE_POPCOUNT_IN_LK8) || !defined(USE_FFS_IN_LK8)
-    if (wHasLtKey == 0) {
-        return -1; // sizeof(Bucket_t) / ExtListBytesPerKey(nBL);
-    }
-      #endif // defined(USE_POPCOUNT_IN_LK8) || !defined(USE_FFS_IN_LK8)
-    if (nBL <= 8) {
+      #endif // USE_FFS_IN_LK8
+        if (wHasGeKey != 0) {
       #ifdef USE_POPCOUNT_IN_LK8
-        return 64 - __builtin_popcountll((wHasLtKey & -wHasLtKey) - 1);
-      #elif defined(USE_FFS_IN_LK8)
-        return 64 - (__builtin_ffsll(wHasLtKey) - 1);
-      #else // USE_POPCOUNT_IN_LK8 #elif USE_FFS_IN_LK8
-        return 64 - __builtin_clzll(wHasLtKey);
-      #endif // USE_POPCOUNT_IN_LK8 #elif USE_FFS_IN_LK8 #else
+            return __builtin_popcountll((wHasGeKey & -wHasGeKey) - 1);
+      #else // USE_POPCOUNT_IN_LK8
+            return __builtin_ctzll(wHasGeKey);
+      #endif // USE_POPCOUNT_IN_LK8 else
+        }
+        return -1;
     }
-      #if !defined(USE_POPCOUNT_IN_LK8) && defined(USE_FFS_IN_LK8)
-    if (wHasLtKey == 0) {
-        return -1; // sizeof(Bucket_t) / ExtListBytesPerKey(nBL);
-    }
-      #endif // !defined(USE_POPCOUNT_IN_LK8) && defined(USE_FFS_IN_LK8)
-    int nFirstSetBit = __builtin_clzll(wHasLtKey);
     if (nBL <= 16) {
-        return 32 - nFirstSetBit / 2;
+        __m128i m128i = (__m128i)(*(v41_t*)pxBucket >= (uint16_t)wKey);
+      #ifdef HK_MOVEMASK
+        if ((wHasGeKey = _mm_movemask_epi8(m128i)) != 0) {
+            return __builtin_ctzll(wHasGeKey) / 2;
+        }
+      #else // HK_MOVEMASK
+        // seems marginally faster at startup (in cache)
+        if ((wHasGeKey = _mm_packs_epi16(m128i, m128i)[0]) != 0) {
+            return __builtin_ctzll(wHasGeKey) / 8;
+        }
+      #endif // HK_MOVEMASK
+        return -1;
     }
       #if cnBitsPerWord > 32
-    if (nBL <= 32) {
-        //assert(nBL == 32);
-        return 16 - nFirstSetBit / 4;
-    }
+    if (nBL <= 32)
       #endif // cnBitsPerWord > 32
   #endif // COMPRESSED_LISTS
-    // probably need to change this to v53_t < / movemask / div 8
-    return ((Word_t*)pxBucket)[3] < wKey ? 3
-         : ((Word_t*)pxBucket)[2] < wKey ? 2
-         : ((Word_t*)pxBucket)[1] < wKey ? 1
-         : ((Word_t*)pxBucket)[0] < wKey ? 0 : -1;
+  #if defined(COMPRESSED_LISTS) || (cnBitsPerWord == 32)
+    {
+        __m128i m128i = (__m128i)(*(v42_t*)pxBucket >= (uint32_t)wKey);
+      #ifdef HK_MOVEMASK
+        if ((wHasGeKey = _mm_movemask_epi8(m128i)) != 0) {
+            return __builtin_ctzll(wHasGeKey) / 4;
+        }
+      #else // HK_MOVEMASK
+        if ((wHasGeKey = _mm_packs_epi32(m128i, m128i)[0]) != 0) {
+            return __builtin_ctzll(wHasGeKey) / 16;
+        }
+      #endif // HK_MOVEMASK
+        return -1;
+    }
+  #endif // defined(COMPRESSED_LISTS) || (cnBitsPerWord == 32)
+  #if cnBitsPerWord > 32
+    // How do we know a ge key exists?
+    // And can we streamline the caller(s) in exchange for fixing this?
+    // May want to change this to "v43_t < key; movemask / 8" if we decide
+    // to fix this assumption.
+    assert(((Word_t*)pxBucket)[1] >= wKey);
+    return ((Word_t*)pxBucket)[0] < wKey;
+  #endif // cnBitsPerWord > 32
 }
 
 // Locate the smallest key in the 256-bit bucket that is greater than or equal
 // to wKey. If one exists then return nPos.
 // If none exists then return -1.
+// It's easier to return -1 than ~(8 / ExtListBytesPerKey(nBL)) for
+// USE_FFS_IN_LK8 so we just do it for all cases.
 static int
 LocateGeKey256(__m256i *pxBucket, Word_t wKey, int nBL)
 {
     (void)nBL;
+    Word_t wHasGeKey;
   #ifdef COMPRESSED_LISTS
-    Word_t wHasGeKey = HasGeKey256(pxBucket, wKey, nBL);
-      #if defined(USE_POPCOUNT_IN_LK8) || !defined(USE_FFS_IN_LK8)
-    if (wHasGeKey == 0) {
-        int nPosLt = LocateLtKey256(pxBucket, wKey, nBL); (void)nPosLt;
-        // This assertion blows without cast to (uint32_t) in HasLtKey256.
-        assert(nPosLt == 256 / nBL);
-        return -1; // sizeof(Bucket_t) / ExtListBytesPerKey(nBL);
-    }
-      #endif // defined(USE_POPCOUNT_IN_LK8) || !defined(USE_FFS_IN_LK8)
     if (nBL <= 8) {
-      #ifdef USE_POPCOUNT_IN_LK8
-        return __builtin_popcountll((wHasGeKey & -wHasGeKey) - 1);
-      #elif defined(USE_FFS_IN_LK8)
+        wHasGeKey = my_mm256_movemask_epi8(*(v50_t*)pxBucket >= (uint8_t)wKey);
+      #ifdef USE_FFS_IN_LK8
         return __builtin_ffsll(wHasGeKey) - 1;
-      #else // USE_POPCOUNT_IN_LK8 #elif USE_FFS_IN_LK8
-        int nPos = __builtin_ctzll(wHasGeKey);
-        int nPosLt = LocateLtKey256(pxBucket, wKey, nBL); (void)nPosLt;
-        assert(nPosLt == nPos || (nPos == 0 && nPosLt == -1));
-        return nPos;
-      #endif // USE_POPCOUNT_IN_LK8 #elif USE_FFS_IN_LK8 #else
+      #endif // USE_FFS_IN_LK8
+        if (wHasGeKey != 0) {
+      #ifdef USE_POPCOUNT_IN_LK8
+            return __builtin_popcountll((wHasGeKey & -wHasGeKey) - 1);
+      #else // USE_POPCOUNT_IN_LK8
+            return __builtin_ctzll(wHasGeKey);
+      #endif // USE_POPCOUNT_IN_LK8 else
+        }
+        return -1;
     }
-      #if !defined(USE_POPCOUNT_IN_LK8) && defined(USE_FFS_IN_LK8)
-    if (wHasGeKey == 0) {
-        return -1; // sizeof(Bucket_t) / ExtListBytesPerKey(nBL);
-    }
-      #endif // !defined(USE_POPCOUNT_IN_LK8) && defined(USE_FFS_IN_LK8)
-    int nFirstSetBit = __builtin_ctzll(wHasGeKey);
     if (nBL <= 16) {
-        return nFirstSetBit / 2;
+        __m256i m256i = (__m256i)(*(v51_t*)pxBucket >= (uint16_t)wKey);
+        if ((wHasGeKey = my_mm256_movemask_epi8(m256i)) != 0) {
+            return __builtin_ctzll(wHasGeKey) / 2;
+        }
+        return -1;
     }
       #if cnBitsPerWord > 32
-    if (nBL <= 32) {
-        //assert(nBL == 32);
-        return nFirstSetBit / 4;
-    }
+    if (nBL <= 32)
       #endif // cnBitsPerWord > 32
   #endif // COMPRESSED_LISTS
-  #if 1
+  #if defined(COMPRESSED_LISTS) || (cnBitsPerWord == 32)
     {
-        v53_t vGe = (v53_t)(*(v53_t*)pxBucket >= (uint64_t)wKey);
-        Word_t wHasGeKey = my_mm256_movemask_epi8((__m256i)vGe);
-        int nFirstSetBit = __builtin_ctzll(wHasGeKey);
-        return nFirstSetBit / 8;
+        __m256i m256i = (__m256i)(*(v52_t*)pxBucket >= (uint32_t)wKey);
+        if ((wHasGeKey = my_mm256_movemask_epi8(m256i)) != 0) {
+            return __builtin_ctzll(wHasGeKey) / 4;
+        }
+        return -1;
     }
-  #else
-    return ((Word_t*)pxBucket)[0] >= wKey ? 0
-         : ((Word_t*)pxBucket)[1] >= wKey ? 1
-         : ((Word_t*)pxBucket)[2] >= wKey ? 2
-         : ((Word_t*)pxBucket)[3] >= wKey ? 3 : -1;
-  #endif
+  #endif // defined(COMPRESSED_LISTS) || (cnBitsPerWord == 32)
+  #if cnBitsPerWord > 32
+    wHasGeKey = my_mm256_movemask_epi8(*(v53_t*)pxBucket >= (uint64_t)wKey);
+    // How do we know a ge key exists?
+    // And can we streamline the caller(s) in exchange for fixing this?
+    assert(wHasGeKey != 0);
+    return __builtin_ctzll(wHasGeKey) / 8;
+  #endif // cnBitsPerWord > 32
 }
+
 #endif // PSPLIT_PARALLEL || PARALLEL_SEARCH_WORD
 
 static int LocateKeyInList(qpa, int nBLR, Word_t wKey);
@@ -7986,143 +7709,149 @@ LocateGeKeyInListGuts(qpa, int nBLR, Word_t* pwKey)
 {
     qva;
     Word_t wKey = *pwKey;
-  #ifdef LOCATE_GE_USING_EQ_M1
+  // LOCATE_GE_KEY_8 implies PSPLIT_PARALLEL && PARALLEL_[128|256]
+  // and COMPRESSED_LISTS.
     int nPos;
+  #ifdef LOCATE_GE_KEY_8
+    if (nBLR <= 8) {
+        int nPopCnt = gnListPopCnt(qy, nBLR);
+        uint8_t *pcKeys = ls_pcKeysX(pwr, nBLR, nPopCnt);
+      // Because of a surprise/bug in USE_XX_SW_ONLY_AT_DL2 we could end up
+      // with a Dl1 list that is bigger than 16 even if
+      // cnListPopCntMaxDl1 <= 16. We have since fixed the bug and
+      // commented out the !defined(USE_XX_SW_ONLY_AT_DL2) workaround here.
+      #if cnListPopCntMaxDl1 <= 16 // && !defined(USE_XX_SW_ONLY_AT_DL2)
+        nPos = BUCKET_LOCATE_GE_KEY((Bucket_t*)pwr, wKey, nBLR);
+        if (nPos < 0) { nPos = ~nPopCnt; }
+      #else // cnListPopCntMaxDl1 <= 16
+        uint8_t cKey = (uint8_t)wKey; // Do we need cKey?
+        LOCATE_GE_KEY(Bucket_t,
+                      uint8_t, nBLR, pcKeys, nPopCnt, cKey, nPos);
+      #endif // cnListPopCntMaxDl1 <= 16 else
+        if (nPos >= 0) {
+            *pwKey = (wKey & ~NZ_MSK(nBLR)) | pcKeys[nPos];
+        }
+        return nPos;
+    }
+  #endif // LOCATE_GE_KEY_8
+  #ifdef LOCATE_GE_KEY_16
+    if (nBLR <= 16) {
+        int nPopCnt = gnListPopCnt(qy, nBLR);
+        uint16_t *psKeys = ls_psKeysX(pwr, nBLR, nPopCnt);
+        uint16_t sKey = (uint16_t)wKey; // Do we need cKey?
+        LOCATE_GE_KEY(Bucket_t,
+                      uint16_t, nBLR, psKeys, nPopCnt, sKey, nPos);
+        if (nPos >= 0) {
+            *pwKey = (wKey & ~NZ_MSK(nBLR)) | psKeys[nPos];
+        }
+        return nPos;
+    }
+  #endif // LOCATE_GE_KEY_16
+  #if cnBitsPerWord > 32
+      #ifdef LOCATE_GE_KEY_24
+    if (nBLR <= 24) {
+        int nPopCnt = gnListPopCnt(qy, nBLR);
+        uint32_t *piKeys = ls_piKeysX(pwr, nBLR, nPopCnt);
+        uint32_t iKey = (uint32_t)wKey; // Do we need cKey?
+        LOCATE_GE_KEY(Bucket_t,
+                      uint32_t, nBLR, piKeys, nPopCnt, iKey, nPos);
+        if (nPos >= 0) {
+            *pwKey = (wKey & ~NZ_MSK(nBLR)) | piKeys[nPos];
+        }
+        return nPos;
+    }
+      #endif // LOCATE_GE_KEY_24
+      #ifdef LOCATE_GE_KEY_32
+    if (nBLR <= 32) {
+        int nPopCnt = gnListPopCnt(qy, nBLR);
+        uint32_t *piKeys = ls_piKeysX(pwr, nBLR, nPopCnt);
+        uint32_t iKey = (uint32_t)wKey; // Do we need cKey?
+        LOCATE_GE_KEY(Bucket_t,
+                      uint32_t, nBLR, piKeys, nPopCnt, iKey, nPos);
+        if (nPos >= 0) {
+            *pwKey = (wKey & ~NZ_MSK(nBLR)) | piKeys[nPos];
+        }
+        return nPos;
+    }
+      #endif // LOCATE_GE_KEY_32
+  #endif // cnBitsPerWord > 32
+  #ifdef LOCATE_GE_USING_EQ_M1
     if ((wKey & NZ_MSK(nBLR)) == 0) {
         nPos = 0;
     } else {
-        int nPopCnt; (void)nPopCnt;
-      #ifdef LOCATE_GE_KEY_8 // implies PSPLIT_PARALLEL && PARALLEL_128
-        if (nBLR == 8) {
-            nPopCnt = gnListPopCnt(qy, nBLR);
-            uint8_t *pcKeys = ls_pcKeysX(pwr, nBLR, nPopCnt);
-          #if cnListPopCntMaxDl1 <= 16
-            nPos = BUCKET_LOCATE_GE_KEY((Bucket_t*)pwr, wKey, nBLR);
-            if (nPos < 0) { nPos = ~nPopCnt; }
-          #else // cnListPopCntMaxDl1 <= 16
-            uint8_t cKey = (uint8_t)wKey; // Do we need cKey?
-            LOCATE_GE_KEY(Bucket_t,
-                          uint8_t, nBLR, pcKeys, nPopCnt, cKey, nPos);
-          #endif // cnListPopCntMaxDl1 <= 16 else
-            if (nPos >= 0) {
-                *pwKey = (wKey & ~NZ_MSK(nBLR)) | pcKeys[nPos];
+        int nPopCnt = gnListPopCnt(qy, nBLR);
+        nPos = LocateKeyInList(qya, nBLR, wKey - 1);
+        if (nPos >= 0) {
+            // found key equal to wKey - 1
+            if (++nPos >= nPopCnt) {
+                return ~nPopCnt;
             }
-            return nPos;
-        }
-      #endif // LOCATE_GE_KEY_8
-      #ifdef LOCATE_GE_KEY_16
-        if (nBLR == 16) {
-            nPopCnt = gnListPopCnt(qy, nBLR);
-            uint16_t *psKeys = ls_psKeysX(pwr, nBLR, nPopCnt);
-            uint16_t sKey = (uint16_t)wKey; // Do we need cKey?
-            LOCATE_GE_KEY(Bucket_t,
-                          uint16_t, nBLR, psKeys, nPopCnt, sKey, nPos);
-            if (nPos >= 0) {
-                *pwKey = (wKey & ~NZ_MSK(nBLR)) | psKeys[nPos];
+        } else {
+            // Did not find key equal to wKey - 1.
+            // LocateKeyInList has identified the bucket,
+            // but not the position in the bucket?
+            if ((nPos ^= -1) >= nPopCnt) {
+                // Is this what protects LocateGeKey128 from no ge key
+                // for nBL > 32?
+                return ~nPopCnt;
             }
-            return nPos;
-        }
-      #endif // LOCATE_GE_KEY_16
-      #if cnBitsPerWord > 32
-          #ifdef LOCATE_GE_KEY_24
-        if (nBLR == 24) {
-            nPopCnt = gnListPopCnt(qy, nBLR);
-            uint32_t *piKeys = ls_piKeysX(pwr, nBLR, nPopCnt);
-            uint32_t iKey = (uint32_t)wKey; // Do we need cKey?
-            LOCATE_GE_KEY(Bucket_t,
-                          uint32_t, nBLR, piKeys, nPopCnt, iKey, nPos);
-            if (nPos >= 0) {
-                *pwKey = (wKey & ~NZ_MSK(nBLR)) | piKeys[nPos];
-            }
-            return nPos;
-        }
-          #endif // LOCATE_GE_KEY_24
-          #ifdef LOCATE_GE_KEY_32
-        if (nBLR == 32) {
-            nPopCnt = gnListPopCnt(qy, nBLR);
-            uint32_t *piKeys = ls_piKeysX(pwr, nBLR, nPopCnt);
-            uint32_t iKey = (uint32_t)wKey; // Do we need cKey?
-            LOCATE_GE_KEY(Bucket_t,
-                          uint32_t, nBLR, piKeys, nPopCnt, iKey, nPos);
-            if (nPos >= 0) {
-                *pwKey = (wKey & ~NZ_MSK(nBLR)) | piKeys[nPos];
-            }
-            return nPos;
-        }
-          #endif // LOCATE_GE_KEY_32
-      #endif // cnBitsPerWord > 32
-        {
-            nPopCnt = gnListPopCnt(qy, nBLR);
-            nPos = LocateKeyInList(qya, nBLR, wKey - 1);
-            if (nPos >= 0) {
-                // found key equal to wKey - 1
-                if (++nPos >= nPopCnt) {
-                    return ~nPopCnt;
-                }
-            } else {
-                // Did not find key equal to wKey - 1.
-                // LocateKeyInList has identified the bucket,
-                // but not the position in the bucket?
-                if ((nPos ^= -1) >= nPopCnt) {
-                    return ~nPopCnt;
-                }
-                // wKey-1 is not in list.
-                // If wKey-1 belongs past end we don't get here.
-                // Otherwise nPos is bucket where wKey-1 belongs.
-                // Which means it is the bucket where wGeKey belongs.
-                // If there is no wGeKey in this bucket then there is
-                // none in the list.
+            // wKey-1 is not in list.
+            // If wKey-1 belongs past end we don't get here.
+            // Otherwise nPos is bucket where wKey-1 belongs.
+            // Which means it is the bucket where wGeKey belongs.
+            // If there is no wGeKey in this bucket then there is
+            // none in the list.
       #if defined(LOCATE_GE_AFTER_LOCATE_EQ) && defined(PARALLEL_128)
           #ifdef COMPRESSED_LISTS
               #if defined(PSPLIT_PARALLEL) && defined(PARALLEL_128)
-                if (nBLR <= 8) {
-                    uint8_t* pcKeys = ls_pcKeysX(pwr, nBLR, nPopCnt);
-                    int nBPos = LocateGeKey128((__m128i*)&pcKeys[nPos],
-                                                wKey, nBLR);
-                    if (nBPos < 0) {
-                        nPos = ~nPopCnt;
-                    } else {
-                        nPos += nBPos;
-                        assert(nPos < nPopCnt);
-                        *pwKey = (wKey & ~NZ_MSK(nBLR)) | pcKeys[nPos];
-                    }
-                    return nPos;
-                }
-                else
-                if (nBLR <= 16) {
-                    uint16_t* psKeys = ls_psKeysX(pwr, nBLR, nPopCnt);
-                    nPos += LocateGeKey128((__m128i*)&psKeys[nPos],
-                                           wKey, nBLR);
+            if (nBLR <= 8) {
+                uint8_t* pcKeys = ls_pcKeysX(pwr, nBLR, nPopCnt);
+                int nBPos = LocateGeKey128((__m128i*)&pcKeys[nPos],
+                                            wKey, nBLR);
+                if (nBPos < 0) {
+                    nPos = ~nPopCnt;
+                } else {
+                    nPos += nBPos;
                     assert(nPos < nPopCnt);
-                    *pwKey = (wKey & ~NZ_MSK(nBLR)) | psKeys[nPos];
-                    return nPos;
+                    *pwKey = (wKey & ~NZ_MSK(nBLR)) | pcKeys[nPos];
                 }
-                else
+                return nPos;
+            }
+            else
+            if (nBLR <= 16) {
+                uint16_t* psKeys = ls_psKeysX(pwr, nBLR, nPopCnt);
+                nPos += LocateGeKey128((__m128i*)&psKeys[nPos],
+                                       wKey, nBLR);
+                assert(nPos < nPopCnt);
+                *pwKey = (wKey & ~NZ_MSK(nBLR)) | psKeys[nPos];
+                return nPos;
+            }
+            else
                   #if cnBitsPerWord > 32
-                if (nBLR <= 32) {
-                    uint32_t* piKeys = ls_piKeysX(pwr, nBLR, nPopCnt);
-                    nPos += LocateGeKey128((__m128i*)&piKeys[nPos],
-                                           wKey, nBLR);
-                    assert(nPos < nPopCnt);
-                    *pwKey = (wKey & ~NZ_MSK(nBLR)) | piKeys[nPos];
-                    return nPos;
-                }
-                else
+            if (nBLR <= 32) {
+                uint32_t* piKeys = ls_piKeysX(pwr, nBLR, nPopCnt);
+                nPos += LocateGeKey128((__m128i*)&piKeys[nPos],
+                                       wKey, nBLR);
+                assert(nPos < nPopCnt);
+                *pwKey = (wKey & ~NZ_MSK(nBLR)) | piKeys[nPos];
+                return nPos;
+            }
+            else
                   #endif // cnBitsPerWord > 32
               #else // PSPLIT_PARALLEL && PARALLEL_128
-                if (nBL > 32)
+            if (nBL > 32)
               #endif // PSPLIT_PARALLEL && PARALLEL_128 else
           #endif // COMPRESSED_LISTS
-                {
+            {
 // Hmm. What about !COMPRESSED_LISTS and nBLR <= 32 here?
           #ifdef PARALLEL_SEARCH_WORD
           #ifdef PARALLEL_128
-                  if ((nBL != cnBitsPerWord)
+                if ((nBL != cnBitsPerWord)
               #ifdef B_JUDYL
-                          && (nPopCnt >= cnParallelSearchWordPopCntMinL)
+                      && (nPopCnt >= cnParallelSearchWordPopCntMinL)
               #endif // B_JUDYL
-                      )
-                  {
+                    )
+                {
                     assert(ALIGN_LIST_LEN(sizeof(Word_t), nPopCnt));
                     Word_t* pwKeys = ls_pwKeysX(pwr, nBLR, nPopCnt);
                     nPos += LocateGeKey128((__m128i*)&pwKeys[nPos],
@@ -8130,24 +7859,23 @@ LocateGeKeyInListGuts(qpa, int nBLR, Word_t* pwKey)
                     assert(nPos < nPopCnt);
                     *pwKey = pwKeys[nPos];
                     return nPos;
-                  }
+                }
           #endif // PARALLEL_128
           #endif // PARALLEL_SEARCH_WORD
-                    nPos = ~SearchListGuts(qya, nBLR, wKey - 1);
-                    assert(nPos < nPopCnt);
-                }
-      #else // LOCATE_GE_AFTER_LOCATE_EQ && PARALLEL_128
                 nPos = ~SearchListGuts(qya, nBLR, wKey - 1);
                 assert(nPos < nPopCnt);
-      #endif // LOCATE_GE_AFTER_LOCATE_EQ && PARALLEL_128 else
-                assert(nPos < nPopCnt);
             }
+      #else // LOCATE_GE_AFTER_LOCATE_EQ && PARALLEL_128
+            nPos = ~SearchListGuts(qya, nBLR, wKey - 1);
+            assert(nPos < nPopCnt);
+      #endif // LOCATE_GE_AFTER_LOCATE_EQ && PARALLEL_128 else
             assert(nPos < nPopCnt);
         }
+        assert(nPos < nPopCnt);
     }
   #else // LOCATE_GE_USING_EQ_M1
     int nPopCnt = gnListPopCnt(qy, nBLR);
-    int nPos = SearchListGuts(qya, nBLR, wKey);
+    nPos = SearchListGuts(qya, nBLR, wKey);
     if (nPos < 0) {
         if ((nPos ^= -1) >= nPopCnt) {
             return ~nPos;
@@ -8155,18 +7883,26 @@ LocateGeKeyInListGuts(qpa, int nBLR, Word_t* pwKey)
     }
   #endif // LOCATE_GE_USING_EQ_M1 else
   #ifdef COMPRESSED_LISTS
+      #ifndef LOCATE_GE_KEY_8
     if (nBLR <= 8) {
         uint8_t* pcKeys = ls_pcKeysX(pwr, nBLR, nPopCnt);
         *pwKey = (wKey & ~NZ_MSK(nBLR)) | pcKeys[nPos];
-    } else if (nBLR <= 16) {
+    } else
+      #endif // !LOCATE_GE_KEY_8
+      #ifndef LOCATE_GE_KEY_16
+    if (nBLR <= 16) {
         uint16_t* psKeys = ls_psKeysX(pwr, nBLR, nPopCnt);
         *pwKey = (wKey & ~NZ_MSK(nBLR)) | psKeys[nPos];
+    } else
+      #endif // !LOCATE_GE_KEY_16
+      #ifndef LOCATE_GE_KEY_32
       #if cnBitsPerWord > 32
-    } else if (nBLR <= 32) {
+    if (nBLR <= 32) {
         uint32_t* piKeys = ls_piKeysX(pwr, nBLR, nPopCnt);
         *pwKey = (wKey & ~NZ_MSK(nBLR)) | piKeys[nPos];
-      #endif // cnBitsPerWord > 32
     } else
+      #endif // cnBitsPerWord > 32
+      #endif // !LOCATE_GE_KEY_32
   #endif // COMPRESSED_LISTS
     {
         Word_t* pwKeys = ls_pwKeysX(pwr, nBLR, nPopCnt);

@@ -1100,11 +1100,14 @@
   #define _NEXT_SHORTCUT
 #endif // NEXT_SHORTCUT_NULL elif NEXT_SHORTCUT_SWITCH
 
-// JudyXNext(wKey) is usually done on a key that exists.
-// Which we translate into internal Next(wKey+1) aka JudyXFirst(wKey+1).
-// We use LocateGeKey(wKey+1) for internal Next(wKey+1) aka JudyXFirst.
-// LOCATE_GE_USING_EQ_M1 causes LocateGeKey(wKey+1) to use LocateKey(wKey)
-// which is fast and follows up with Search only if wKey is not there.
+// Our internal NextX acts like JudyXFirst(wKey) if !NEW_NEXT_IS_EXCLUSIVE
+// which is the default.
+// Hence JudyXNext(wKey) calls internal NextX(wKey+1).
+// And JudyXNext(wKey) is usually done on a key that exists.
+// LOCATE_GE_USING_EQ_M1 (without LOCATE_GE_KEY_<nBL>) causes
+// LocateGeKeyInList(wKey) to use LocateKey(wKey-1) for <nBL> which is faster
+// than LocateGeKey(wKey) when wKey-1 exists.
+// Then LocateKeyInList resorts to SearchList only if wKey-1 does not exist.
 // NO_LOCATE_GE_USING_EQ_M1 doesn't bother with LocateKey(wKey) and just
 // starts with Search.
 #ifndef   NO_LOCATE_GE_USING_EQ_M1
@@ -1126,22 +1129,37 @@
 
 // Default is LOCATE_GE_KEY_<8|16|24|32> which uses LOCATE_GE_KEY for
 // LocateGeKeyInList.
-#ifdef PSPLIT_PARALLEL
-#if defined(PARALLEL_128) || defined(PARALLEL_256)
-#ifdef COMPRESSED_LISTS
-#ifndef    NO_LOCATE_GE_KEY_X
-  #undef      LOCATE_GE_KEY_8
-  #define     LOCATE_GE_KEY_8
-  #undef      LOCATE_GE_KEY_16
-  #define     LOCATE_GE_KEY_16
-  #undef      LOCATE_GE_KEY_24
-  #define     LOCATE_GE_KEY_24
-  #undef      LOCATE_GE_KEY_32
-  #define     LOCATE_GE_KEY_32
-#endif // !NO_LOCATE_GE_KEY_X
-#endif // COMPRESSED_LISTS
-#endif // PARALLEL_128 || PARALLEL_256
-#endif // PSPLIT_PARALLEL
+#ifdef NO_LOCATE_GE_KEY_X
+  #define _LOCATE_GE_KEY_X_NOT_OK
+#elif !defined(COMPRESSED_LISTS) || !defined(PSPLIT_PARALLEL)
+  #define _LOCATE_GE_KEY_X_NOT_OK
+#elif !defined(PARALLEL_128) && !defined(PARALLEL_256)
+  #define _LOCATE_GE_KEY_X_NOT_OK
+#endif // !defined(PARALLEL_128) && !defined(PARALLEL_256)
+#ifndef  _LOCATE_GE_KEY_X_NOT_OK
+  #undef  LOCATE_GE_KEY_8
+  #define LOCATE_GE_KEY_8
+  #undef  LOCATE_GE_KEY_16
+  #define LOCATE_GE_KEY_16
+  #undef  LOCATE_GE_KEY_24
+  #define LOCATE_GE_KEY_24
+  #undef  LOCATE_GE_KEY_32
+  #define LOCATE_GE_KEY_32
+#endif //  _LOCATE_GE_KEY_X_NOT_OK
+
+#ifdef LOCATE_GE_KEY_8
+  #define _LOCATE_GE_KEY_X
+#elif defined(LOCATE_GE_KEY_16) // LOCATE_GE_KEY_8
+  #define _LOCATE_GE_KEY_X
+#elif defined(LOCATE_GE_KEY_24) // LOCATE_GE_KEY_8 elif LOCATE_GE_KEY_16
+  #define _LOCATE_GE_KEY_X
+#elif defined(LOCATE_GE_KEY_32) // LOCATE_GE_KEY_8 ... elif LOCATE_GE_KEY_24
+  #define _LOCATE_GE_KEY_X
+#endif // LOCATE_GE_KEY_8 elif ... elif LOCATE_GE_KEY_32 else
+
+#if defined(_LOCATE_GE_KEY_X) && defined(_LOCATE_GE_KEY_X_NOT_OK)
+  #error _LOCATE_GE_KEY_X && _LOCATE_GE_KEY_X_NOT_OK
+#endif // defined(_LOCATE_GE_KEY_X) && defined(_LOCATE_GE_KEY_X_NOT_OK)
 
 #endif // ( ! defined(_BDEFINES_H_INCLUDED) )
 
