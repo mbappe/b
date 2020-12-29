@@ -116,22 +116,21 @@ CountSw(qpa,
         assert(nLinks == (int)EXP(nBW));
         DBGC(printf("CountSw nBW %d\n", nBW));
         if (nBLR <= 16) {
-            // Four subexpanse counts per word.
-      #if !defined(_CONSTANT_NBW) || cnBitsPerDigit < cnLogSwCnts + 2
-            int nShift = (nBW > cnLogSwCnts + 2) ? (nBW - cnLogSwCnts - 2) : 0;
+      #if !defined(_CONSTANT_NBPD) || cnBitsPerDigit < nLogSwSubCnts(1)
+            int nShift = (nBW > nLogSwSubCnts(1)) ? (nBW - nLogSwSubCnts(1)) : 0;
             // Would like to resolve this test at compile time if possible.
             if (nShift == 0) {
                 for (int ii = 0; ii < (int)wIndex; ++ii) {
                     wPopCnt += ((uint16_t*)((Switch_t*)pwr)->sw_awCnts)[ii];
                 }
             } else
-      #else // !_CONSTANT_NBW || cnBitsPerDigit < cnLogSwCnts + 2
-            assert(nBW >= cnLogSwCnts + 2);
-            int nShift = nBW - cnLogSwCnts - 2;
-      #endif // !_CONSTANT_NBW || cnBitsPerDigit < cnLogSwCnts + 2 else
+      #else // !_CONSTANT_NBPD || cnBitsPerDigit < nLogSwSubCnts(1)
+            assert(nBW >= nLogSwSubCnts(1));
+            int nShift = nBW - nLogSwSubCnts(1);
+      #endif // !_CONSTANT_NBPD || cnBitsPerDigit < nLogSwSubCnts(1)
             {
-                int nCntNum = (((wIndex << cnLogSwCnts) + (1 << (nBW - 3)))
-                                   >> (nBW - 2));
+                int nCntNum = ((wIndex << nLogSwSubCnts(1)) + (1 << (nBW - 1)))
+                                  >> nBW;
                 int nCum = 0;
                 for (int ii = 0; ii < nCntNum; ++ii) {
                     nCum += ((uint16_t*)((Switch_t*)pwr)->sw_awCnts)[ii];
@@ -146,23 +145,23 @@ CountSw(qpa,
                     wPopCnt = nCum + CountSwLoop(qya, xx, wIndex - xx);
                 }
             }
+      #if cnBitsPerWord > 32
         } else if (nBLR <= 32) {
-            // Two subexpanse counts per word.
-      #if !defined(_CONSTANT_NBW) || cnBitsPerDigit < cnLogSwCnts + 1
+          #if !defined(_CONSTANT_NBPD) || cnBitsPerDigit < cnLogSwCnts + 1
+            int nShift = (nBW > nLogSwSubCnts(2)) ? (nBW - nLogSwSubCnts(2)) : 0;
             // Would like to resolve this test at compile time if possible.
-            int nShift = (nBW > cnLogSwCnts + 1) ? (nBW - cnLogSwCnts - 1) : 0;
             if (nShift == 0) {
                 for (int ii = 0; ii < (int)wIndex; ++ii) {
                     wPopCnt += ((uint32_t*)((Switch_t*)pwr)->sw_awCnts)[ii];
                 }
             } else
-      #else // !_CONSTANT_NBW || cnBitsPerDigit < cnLogSwCnts + 1
-            assert(nBW >= cnLogSwCnts + 1);
-            int nShift = nBW - cnLogSwCnts - 1;
-      #endif // !_CONSTANT_NBW || cnBitsPerDigit < cnLogSwCnts + 1 else
+          #else // !_CONSTANT_NBPD || cnBitsPerDigit < cnLogSwCnts + 1
+            assert(nBW >= nLogSwSubCnts(2));
+            int nShift = nBW - nLogSwSubCnts(2);
+          #endif // !_CONSTANT_NBPD || cnBitsPerDigit < cnLogSwCnts + 1 else
             {
-                int nCntNum = (((wIndex << cnLogSwCnts) + (1 << (nBW - 2)))
-                                   >> (nBW - 1));
+                int nCntNum = ((wIndex << nLogSwSubCnts(2)) + (1 << (nBW - 1)))
+                                  >> nBW;
                 Word_t wCum = 0;
                 for (int i = 0; i < nCntNum; ++i) {
                     wCum += ((uint32_t*)((Switch_t*)pwr)->sw_awCnts)[i];
@@ -174,9 +173,10 @@ CountSw(qpa,
                     wPopCnt = wCum + CountSwLoop(qya, xx, wIndex - xx);
                 }
             }
+      #endif // cnBitsPerWord > 32
         } else {
             // One subexpanse count per word.
-      #if !defined(_CONSTANT_NBW) || cnBitsPerDigit < cnLogSwCnts
+      #if !defined(_CONSTANT_NBPD) || cnBitsPerDigit < cnLogSwCnts
             // Would like to resolve this test at compile time if possible.
             int nShift = (nBW > cnLogSwCnts) ? (nBW - cnLogSwCnts) : 0;
             if (nShift == 0) {
@@ -184,10 +184,10 @@ CountSw(qpa,
                     wPopCnt += ((Switch_t*)pwr)->sw_awCnts[ii];
                 }
             } else
-      #else // !_CONSTANT_NBW || cnBitsPerDigit < cnLogSwCnts
+      #else // !_CONSTANT_NBPD || cnBitsPerDigit < cnLogSwCnts
             assert(nBW >= cnLogSwCnts);
             int nShift = nBW - cnLogSwCnts;
-      #endif // !_CONSTANT_NBW || cnBitsPerDigit < cnLogSwCnts else
+      #endif // !_CONSTANT_NBPD || cnBitsPerDigit < cnLogSwCnts else
             {
                 int nCntNum = (((wIndex << cnLogSwCnts) + (1 << (nBW - 1)))
                                    >> (nBW - 0));
@@ -484,11 +484,13 @@ SwIncr(qpa, int nBLR, int nDigit, int nBW, int nIncr)
       #if cnSwCnts != 0
         Word_t* pwCnts = ((Switch_t*)pwr)->sw_awCnts;
         if (nBLR <= 16) {
-            int nShift = (nBW > cnLogSwCnts + 2) ? (nBW - cnLogSwCnts - 2) : 0;
+            int nShift = (nBW > nLogSwSubCnts(1)) ? (nBW - nLogSwSubCnts(1)) : 0;
             ((uint16_t*)pwCnts)[nDigit >> nShift] += nIncr;
+          #if cnBitsPerWord > 32
         } else if (nBLR <= 32) {
-            int nShift = (nBW > cnLogSwCnts + 1) ? (nBW - cnLogSwCnts - 1) : 0;
+            int nShift = (nBW > nLogSwSubCnts(2)) ? (nBW - nLogSwSubCnts(2)) : 0;
             ((uint32_t*)pwCnts)[nDigit >> nShift] += nIncr;
+          #endif // cnBitsPerWord > 32
         } else {
           #if cnSwCnts == 1
             if (!(nDigit >> (nBW - 1)))
@@ -985,23 +987,23 @@ AugTypeBitsInv(int nAugTypeBits)
 
 #ifndef LOOKUP
   #define _USE_SEARCH_LIST
-#elif defined(B_JUDYL)
+#elif defined(B_JUDYL) // !LOOKUP
   #ifdef HASKEY_FOR_JUDYL_LOOKUP
-#define _USE_HAS_KEY
+    #define _USE_HAS_KEY
   #elif defined(SEARCH_FOR_JUDYL_LOOKUP)
-#define _USE_SEARCH_LIST
+    #define _USE_SEARCH_LIST
   #else // HASKEY_FOR_JUDYL_LOOKUP elif SEARCH_FOR_JUDYL_LOOKUP
-#define _USE_LOCATE_KEY
+    #define _USE_LOCATE_KEY
   #endif // HASKEY_FOR_JUDYL_LOOKUP elif SEARCH_FOR_JUDYL_LOOKUP else
-#else // LOOKUP elif B_JUDYL
+#else // !LOOKUP elif B_JUDYL
   #ifdef SEARCH_FOR_JUDY1_LOOKUP
-#define _USE_SEARCH_LIST
+    #define _USE_SEARCH_LIST
   #elif defined(LOCATEKEY_FOR_JUDY1_LOOKUP)
-#define _USE_LOCATE_KEY
+    #define _USE_LOCATE_KEY
   #else // SEARCH_FOR_JUDY1_LOOKUP elif LOCATEKEY_FOR_JUDY1_LOOKUP
-#define _USE_HAS_KEY
+    #define _USE_HAS_KEY
   #endif // SEARCH_FOR_JUDY1_LOOKUP elif LOCATEKEY_FOR_JUDY1_LOOKUP else
-#endif // LOOKUP elif B_JUDYL else
+#endif // !LOOKUP elif B_JUDYL else
 
 #if defined(LOOKUP_NO_LIST_SEARCH) && defined(LOOKUP)
   #define SEARCH_LIST(_suffix, qya, _nBLR, _wKey)  0
@@ -3683,13 +3685,8 @@ t_list:
               #endif // B_JUDYL && !PACK_L1_VALUES
                     SEARCH_LIST(, qya, nBLR, wKey)) >= 0)
           #endif // AUGMENT_TYPE && !AUGMENT_TYPE_NOT else
-      #elif defined(NEXT) // LOOKUP
+      #elif defined(NEXT) || defined(COUNT) // LOOKUP
         if ((nPos = LocateGeKeyInList(qya, nBLR, &wKey)) >= 0)
-      #elif defined(COUNT) // LOOKUP elif NEXT
-        if ((nPos = nBLR <= 32
-                  ? LocateGeKeyInList(qya, nBLR, &wKeyGe)
-                  : SearchList(qya, nBLR, wKey))
-            >= 0)
       #else // LOOKUP elif NEXT elif COUNT
         if ((nPos = SearchList(qya, nBLR, wKey)) >= 0)
       #endif // LOOKUP elif NEXT elif COUNT else
@@ -3700,7 +3697,8 @@ t_list:
             IF_INSERT(if (nIncr > 0) goto undo); // undo counting
       #endif // !RECURSIVE
             IF_REMOVE(goto removeGutsAndCleanup);
-            IF_COUNT(nPos = ~(nPos + (wKeyGe == wKey))); // could/should count be returning here?
+            IF_COUNT(wPopCntSum += (nPos + (wKeyGe == wKey)));
+            IF_COUNT(goto break_from_main_switch);
       #if defined(LOOKUP) || defined(INSERT) || defined(NEXT)
             IF_NEXT(*pwKey = wKey);
           #if B_JUDYL
@@ -3777,12 +3775,15 @@ t_list_ua:
         {
       // LOOKUP_NO_LIST_SEARCH is for analysis only.
       #if !defined(LOOKUP) || !defined(LOOKUP_NO_LIST_SEARCH)
+            IF_COUNT(Word_t wKeyGe = wKey);
             if (1
-          #if defined(LOOKUP) && !defined(B_JUDYL)
+          #if defined(LOOKUP)
                 && ListHasKey(qya, nBLR, wKey)
-          #else // LOOKUP && !B_JUDYL
+          #elif defined(NEXT) || defined(COUNT) // LOOKUP
+                && ((nPos = LocateGeKeyInList(qya, nBLR, &wKey)) >= 0)
+          #else // LOOKUP elif NEXT || COUNT
                 && ((nPos = SearchList(qya, nBLR, wKey)) >= 0)
-          #endif // LOOKUP && !B_JUDYL else
+          #endif // LOOKUP elif NEXT || COUNT else
                 )
       #endif // !LOOKUP || !LOOKUP_NO_LIST_SEARCH
             {
@@ -3790,21 +3791,14 @@ t_list_ua:
                 IF_INSERT(if (nIncr > 0) { goto undo; }) // undo counting
       #endif // !RECURSIVE
                 IF_REMOVE(goto removeGutsAndCleanup);
-                IF_COUNT(wPopCntSum += nPos);
+                IF_COUNT(wPopCntSum += (nPos + (wKeyGe == wKey)));
+                IF_COUNT(goto break_from_main_switch);
+                IF_NEXT(*pwKey = wKey);
                 IF_NOT_REMOVE(return KeyFound);
             }
-      #ifdef NEXT
-            else {
-                int nPopCnt = gnListPopCnt(qy, nBLR);
-                if (~nPos < nPopCnt) {
-                    uint16_t* psKeys = ls_psKeysX(pwr, nBLR, nPopCnt);
-                    *pwKey = (wKey & ~NZ_MSK(nBLR)) | psKeys[~nPos];
-                }
-                return Success;
-            }
-      #elif !defined(LOOKUP)
+      #if defined(INSERT) || defined(REMOVE) || defined(COUNT)
             { nPos ^= -1; }
-      #endif // NEXT elif !LOOKUP
+      #endif // INSERT || REMOVE || COUNT
         }
         IF_COUNT(wPopCntSum += nPos);
         goto break_from_main_switch;
@@ -5616,6 +5610,8 @@ tryNextDigit:;
     if (nPhaseCount == 0)
           #endif // COUNT_2_PREFIX else
     {
+        DBGC(printf("Count wKey 0x%zx wKey0 0x%zx nPhase %d wPopCntSum %zd\n",
+                    wKey, wKey0, nPhaseCount, wPopCntSum));
         if (wKey0 == 0) { return wPopCntSum; }
         wPopCntSum1 = wPopCntSum;
         wPopCntSum = 0;
@@ -5644,6 +5640,8 @@ tryNextDigit:;
           #endif // COUNT_2_PREFIX else
         goto top;
     }
+    DBGC(printf("Count wKey 0x%zx wKey0 0x%zx nPhaseCount %d wPopCntSum %zd\n",
+                wKey, wKey0, nPhaseCount, wPopCntSum));
     return wPopCntSum1 - wPopCntSum;
       #else // COUNT_2
     DBGC(printf("done wPopCntSum " OWx"\n", wPopCntSum));

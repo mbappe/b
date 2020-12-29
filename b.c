@@ -219,8 +219,8 @@ AllocWords(Word_t *pw, int nWords)
       #if 1 // !defined(LIBCMALLOC) || defined(__linux__)
     ASSERT(cnBitsMallocMask >= cnLogBytesPerWord);
     assert((int)(pw[-1] >> cnLogBytesPerWord)
-       <= nWords + cnGuardWords + 1
-           + (cnExtraUnitsMax << (cnBitsMallocMask - cnLogBytesPerWord)));
+        <= nWords + cnGuardWords + 1
+            + (cnExtraUnitsMax << (cnBitsMallocMask - cnLogBytesPerWord)));
     // All of our mallocs are way less than 2MB.
     assert(((pw[-1] & (~(Word_t)0x1fffff | cnMallocMask)) >> cnBitsUsed) == 0);
     return pw[-1] >> cnLogBytesPerWord;
@@ -3133,15 +3133,6 @@ InsertEmbedded(qpa, Word_t wKey)
 
 #if (cwListPopCntMax != 0)
 
-#ifdef UA_PARALLEL_128
-#define UA_PAD(_pxKeys, _nPopCnt) \
-{ \
-    for (int nn = (_nPopCnt); nn < 6; ++nn) { \
-        (_pxKeys)[nn] = (_pxKeys)[nn - 1]; \
-    } \
-}
-#endif // UA_PARALLEL_128
-
 #define COPY_KEYS_WITH_INSERT(_pTgtKeys, _pSrcKeys, _nSrcCnt, _wKey, _nPos) \
 { \
     if ((void*)(_pTgtKeys) != (void*)(_pSrcKeys)) { \
@@ -3329,12 +3320,7 @@ CopyWithInsert16(qp, uint16_t *pSrc,
     }
 
     pTgt[nPos] = sKey; // insert the key
-  #if defined(UA_PARALLEL_128)
-    if ((nType == T_LIST_UA) && (nPos <= 6)) {
-        UA_PAD(pTgt, nKeys + 1);
-    } else
-  #endif // defined(UA_PARALLEL_128)
-    { PAD(pTgt, nKeys + 1); }
+    PAD(pTgt, nKeys + 1);
 
     BJL(return &pwTgtVals[~nPos]);
 }
@@ -4422,8 +4408,8 @@ lastDigit8:;
                 int nPopCntLoop = nn - nnStart; (void)nPopCntLoop;
   #if cnSwCnts != 0
 #if 1
-                int nShift = (nBW > cnLogSwCnts + 2)
-                               ? (nBW - cnLogSwCnts - 2) : 0;
+                int nShift = (nBW > nLogSwSubCnts(1))
+                           ? (nBW - nLogSwSubCnts(1)) : 0;
                 ((uint16_t*)pwCnts)[nDigit >> nShift] += nPopCntLoop;
 #else
                 ((uint16_t*)((Switch_t*)pwr)->sw_awCnts)
@@ -4533,8 +4519,8 @@ lastDigit8:;
                     assert(nPopCntLoop > auListPopCntMax[nBLLoop]);
       #if cnSwCnts != 0
 #if 1
-                    int nShift = (nBW > cnLogSwCnts + 2)
-                                   ? (nBW - cnLogSwCnts - 2) : 0;
+                    int nShift = (nBW > nLogSwSubCnts(1))
+                               ? (nBW - nLogSwSubCnts(1)) : 0;
                     ((uint16_t*)pwCnts)[nDigit >> nShift] -= nPopCntLoop;
 #else
                     ((uint16_t*)((Switch_t*)pwr)->sw_awCnts)
@@ -4593,8 +4579,8 @@ lastDigit16:;
                 int nPopCntLoop = nn - nnStart; (void)nPopCntLoop;
   #if cnSwCnts != 0
 #if 1
-                int nShift = (nBW > cnLogSwCnts + 2)
-                               ? (nBW - cnLogSwCnts - 2) : 0;
+                int nShift = (nBW > nLogSwSubCnts(1))
+                           ? (nBW - nLogSwSubCnts(1)) : 0;
                 ((uint16_t*)pwCnts)[nDigit >> nShift] += nPopCntLoop;
 #else
                 ((uint16_t*)((Switch_t*)pwr)->sw_awCnts)
@@ -4718,12 +4704,7 @@ lastDigit16:;
                         uint16_t *psKeysLoop
                             = ls_psKeysX(pwrLoop, nBLLoop, nPopCntLoop);
                         COPY(psKeysLoop, &psKeys[nnStart], nPopCntLoop);
-  #ifdef UA_PARALLEL_128
-                        if (nTypeLoop == T_LIST_UA) {
-                            UA_PAD(psKeysLoop, nPopCntLoop);
-                        } else
-  #endif // UA_PARALLEL_128
-                        { PAD(psKeysLoop, nPopCntLoop); }
+                        PAD(psKeysLoop, nPopCntLoop);
                     }
                 } else
   #ifdef BITMAP
@@ -4738,8 +4719,8 @@ lastDigit16:;
                     assert(nPopCntLoop > auListPopCntMax[nBLLoop]);
       #if cnSwCnts != 0
 #if 1
-                    int nShift = (nBW > cnLogSwCnts + 2)
-                                   ? (nBW - cnLogSwCnts - 2) : 0;
+                    int nShift = (nBW > nLogSwSubCnts(1))
+                               ? (nBW - nLogSwSubCnts(1)) : 0;
                     ((uint16_t*)pwCnts)[nDigit >> nShift] -= nPopCntLoop;
 #else
                     ((uint16_t*)((Switch_t*)pwr)->sw_awCnts)
@@ -4797,8 +4778,8 @@ lastDigit32:;
   #if cnSwCnts != 0
                 if (nBLR <= 16) {
 #if 1
-                    int nShift = (nBW > cnLogSwCnts + 2)
-                                   ? (nBW - cnLogSwCnts - 2) : 0;
+                    int nShift = (nBW > nLogSwSubCnts(1))
+                               ? (nBW - nLogSwSubCnts(1)) : 0;
                     ((uint16_t*)pwCnts)[nDigit >> nShift] += nPopCntLoop;
 #else
                     ((uint16_t*)pwCnts)[nDigit >> (nBW - cnLogSwCnts - 2)]
@@ -4806,8 +4787,8 @@ lastDigit32:;
 #endif
                 } else if (nBLR <= 32) {
 #if 1
-                    int nShift = (nBW > cnLogSwCnts + 1)
-                                   ? (nBW - cnLogSwCnts - 1) : 0;
+                    int nShift = (nBW > nLogSwSubCnts(2))
+                               ? (nBW - nLogSwSubCnts(2)) : 0;
                     ((uint32_t*)pwCnts)[nDigit >> nShift] += nPopCntLoop;
 #else
                     ((uint32_t*)pwCnts)[nDigit >> (nBW - cnLogSwCnts - 1)]
@@ -4820,7 +4801,7 @@ lastDigit32:;
 #if 1
                     {
                         int nShift = (nBW > cnLogSwCnts)
-                                       ? (nBW - cnLogSwCnts) : 0;
+                                   ? (nBW - cnLogSwCnts) : 0;
                         pwCnts[nDigit >> nShift] += nPopCntLoop;
                     }
 #else
@@ -4977,8 +4958,8 @@ lastDigit32:;
       #if cnSwCnts != 0
                 if (nBLR <= 16) {
 #if 1
-                    int nShift = (nBW > cnLogSwCnts + 2)
-                                   ? (nBW - cnLogSwCnts - 2) : 0;
+                    int nShift = (nBW > nLogSwSubCnts(1))
+                               ? (nBW - nLogSwSubCnts(1)) : 0;
                     ((uint16_t*)pwCnts)[nDigit >> nShift] -= nPopCntLoop;
 #else
                     ((uint16_t*)pwCnts)[nDigit >> (nBW - cnLogSwCnts - 2)]
@@ -4986,8 +4967,8 @@ lastDigit32:;
 #endif
                 } else if (nBLR <= 32) {
 #if 1
-                    int nShift = (nBW > cnLogSwCnts + 1)
-                                   ? (nBW - cnLogSwCnts - 1) : 0;
+                    int nShift = (nBW > nLogSwSubCnts(2))
+                               ? (nBW - nLogSwSubCnts(2)) : 0;
                     ((uint32_t*)pwCnts)[nDigit >> nShift] -= nPopCntLoop;
 #else
                     ((uint32_t*)pwCnts)[nDigit >> (nBW - cnLogSwCnts - 1)]
@@ -5000,7 +4981,7 @@ lastDigit32:;
 #if 1
                     {
                         int nShift = (nBW > cnLogSwCnts)
-                                       ? (nBW - cnLogSwCnts) : 0;
+                                   ? (nBW - cnLogSwCnts) : 0;
                         pwCnts[nDigit >> nShift] -= nPopCntLoop;
                     }
 #else
@@ -5060,8 +5041,8 @@ lastDigit:;
   #if cnSwCnts != 0
                 if (nBLR <= 16) {
 #if 1
-                    int nShift = (nBW > cnLogSwCnts + 2)
-                                   ? (nBW - cnLogSwCnts - 2) : 0;
+                    int nShift = (nBW > nLogSwSubCnts(1))
+                               ? (nBW - nLogSwSubCnts(1)) : 0;
                     ((uint16_t*)pwCnts)[nDigit >> nShift] += nPopCntLoop;
 #else
                     ((uint16_t*)pwCnts)[nDigit >> (nBW - cnLogSwCnts - 2)]
@@ -5069,8 +5050,8 @@ lastDigit:;
 #endif
                 } else if (nBLR <= 32) {
 #if 1
-                    int nShift = (nBW > cnLogSwCnts + 1)
-                                   ? (nBW - cnLogSwCnts - 1) : 0;
+                    int nShift = (nBW > nLogSwSubCnts(2))
+                               ? (nBW - nLogSwSubCnts(2)) : 0;
                     ((uint32_t*)pwCnts)[nDigit >> nShift] += nPopCntLoop;
 #else
                     ((uint32_t*)pwCnts)[nDigit >> (nBW - cnLogSwCnts - 1)]
@@ -5083,7 +5064,7 @@ lastDigit:;
 #if 1
                     {
                         int nShift = (nBW > cnLogSwCnts)
-                                       ? (nBW - cnLogSwCnts) : 0;
+                                   ? (nBW - cnLogSwCnts) : 0;
                         pwCnts[nDigit >> nShift] += nPopCntLoop;
                     }
 #else
@@ -5217,16 +5198,9 @@ lastDigit:;
                             uint16_t *psKeysLoop
                                 = ls_psKeysX(pwrLoop, nBLLoop, nPopCntLoop);
                             COPY(psKeysLoop, &pwKeys[nnStart], nPopCntLoop);
-  #ifdef UA_PARALLEL_128
-                            if (nTypeLoop == T_LIST_UA) {
-                                UA_PAD(psKeysLoop, nPopCntLoop);
-                            } else
-  #endif // UA_PARALLEL_128
-                            {
-                                PAD(psKeysLoop, nPopCntLoop);
-                                if (nBLLoop == 16) {
-                                    UpdateDist(qyax(Loop), nPopCntLoop);
-                                }
+                            PAD(psKeysLoop, nPopCntLoop);
+                            if (nBLLoop == 16) {
+                                UpdateDist(qyax(Loop), nPopCntLoop);
                             }
                         }
           #if (cnBitsPerWord > 32)
@@ -5268,8 +5242,8 @@ lastDigit:;
       #if cnSwCnts != 0
                     if (nBLR <= 16) {
 #if 1
-                        int nShift = (nBW > cnLogSwCnts + 2)
-                                       ? (nBW - cnLogSwCnts - 2) : 0;
+                        int nShift = (nBW > nLogSwSubCnts(1))
+                                   ? (nBW - nLogSwSubCnts(1)) : 0;
                         ((uint16_t*)pwCnts)[nDigit >> nShift] -= nPopCntLoop;
 #else
                         ((uint16_t*)pwCnts)[nDigit >> (nBW - cnLogSwCnts - 2)]
@@ -5277,8 +5251,8 @@ lastDigit:;
 #endif
                     } else if (nBLR <= 32) {
 #if 1
-                        int nShift = (nBW > cnLogSwCnts + 1)
-                                       ? (nBW - cnLogSwCnts - 1) : 0;
+                        int nShift = (nBW > nLogSwSubCnts(2))
+                                   ? (nBW - nLogSwSubCnts(2)) : 0;
                         ((uint32_t*)pwCnts)[nDigit >> nShift] -= nPopCntLoop;
 #else
                         ((uint32_t*)pwCnts)[nDigit >> (nBW - cnLogSwCnts - 1)]
@@ -5291,7 +5265,7 @@ lastDigit:;
                         {
 #if 1
                             int nShift = (nBW > cnLogSwCnts)
-                                           ? (nBW - cnLogSwCnts) : 0;
+                                       ? (nBW - cnLogSwCnts) : 0;
                             pwCnts[nDigit >> nShift] -= nPopCntLoop;
 #else
                             pwCnts[nDigit >> (nBW - cnLogSwCnts)]
@@ -5932,12 +5906,7 @@ lastDigit16:;
                             bInsertNotDone = 0;
                         } else {
                             COPY(psKeysLoop, &psKeys[nnStart], nPopCntLoop);
-  #ifdef UA_PARALLEL_128
-                            if (nTypeLoop == T_LIST_UA) {
-                                UA_PAD(psKeysLoop, nPopCntLoop);
-                            } else
-  #endif // UA_PARALLEL_128
-                            { PAD(psKeysLoop, nPopCntLoop); }
+                            PAD(psKeysLoop, nPopCntLoop);
                         }
                     }
                 } else
@@ -6463,16 +6432,9 @@ lastDigit:;
                             } else {
                                 COPY(psKeysLoop, &pwKeys[nnStart],
                                      nPopCntLoop);
-  #ifdef UA_PARALLEL_128
-                                if (nTypeLoop == T_LIST_UA) {
-                                    UA_PAD(psKeysLoop, nPopCntLoop);
-                                } else
-  #endif // UA_PARALLEL_128
-                                {
-                                    PAD(psKeysLoop, nPopCntLoop);
-                                    if (nBLLoop == 16) {
-                                        UpdateDist(qyax(Loop), nPopCntLoop);
-                                    }
+                                PAD(psKeysLoop, nPopCntLoop);
+                                if (nBLLoop == 16) {
+                                    UpdateDist(qyax(Loop), nPopCntLoop);
                                 }
                             }
                         }
@@ -7101,16 +7063,16 @@ InsertAtPrefixMismatch(qpa, Word_t wKey, int nBLR)
     Word_t* pwCnts = ((Switch_t*)pwSw)->sw_awCnts;
     if (nBLNew <= 16) {
 #if 1
-        int nShift = (nBWNew > cnLogSwCnts + 2)
-                       ? (nBWNew - cnLogSwCnts - 2) : 0;
+        int nShift = (nBWNew > nLogSwSubCnts(1))
+                   ? (nBWNew - nLogSwSubCnts(1)) : 0;
         ((uint16_t*)pwCnts)[nIndex >> nShift] = wPopCnt;
 #else
         ((uint16_t*)pwCnts)[nIndex >> (nBWNew - cnLogSwCnts - 2)] = wPopCnt;
 #endif
     } else if (nBLNew <= 32) {
 #if 1
-        int nShift = (nBWNew > cnLogSwCnts + 1)
-                       ? (nBWNew - cnLogSwCnts - 1) : 0;
+        int nShift = (nBWNew > nLogSwSubCnts(2))
+                   ? (nBWNew - nLogSwSubCnts(2)) : 0;
         ((uint32_t*)pwCnts)[nIndex >> nShift] = wPopCnt;
 #else
         ((uint32_t*)pwCnts)[nIndex >> (nBWNew - cnLogSwCnts - 1)] = wPopCnt;
@@ -7425,16 +7387,14 @@ DoubleDown(qpa, // (nBL, pLn) of link to original switch
     int nDigit = (wKey >> (nBLR - nBW)) & MSK(nBW);
     if (nBLR <= 16) {
 #if 1
-        int nShift = (nBW > cnLogSwCnts + 2)
-                       ? (nBW - cnLogSwCnts - 2) : 0;
+        int nShift = (nBW > nLogSwSubCnts(1)) ? (nBW - nLogSwSubCnts(1)) : 0;
         --((uint16_t*)pwCnts)[nDigit >> nShift];
 #else
         --((uint16_t*)pwCnts)[nDigit >> (nBW - cnLogSwCnts - 2)];
 #endif
     } else if (nBLR <= 32) {
 #if 1
-        int nShift = (nBW > cnLogSwCnts + 1)
-                       ? (nBW - cnLogSwCnts - 1) : 0;
+        int nShift = (nBW > nLogSwSubCnts(2)) ? (nBW - nLogSwSubCnts(2)) : 0;
         --((uint32_t*)pwCnts)[nDigit >> nShift];
 #else
         --((uint32_t*)pwCnts)[nDigit >> (nBW - cnLogSwCnts - 1)];
@@ -8498,13 +8458,13 @@ newSkipToBitmap:;
                         break;
                     }
                 }
-      #if cnSwCnts != 0
+          #if cnSwCnts != 0
                 int nBWMin = LOG(cnSwCnts * sizeof(Word_t) * 8
                                      / (2 << LOG(MAX(nBLNew, 16) - 1)));
                 if (nBW < nBWMin) {
                     nBW = nBWMin;
                 }
-      #endif // cnSwCnts != 0
+          #endif // cnSwCnts != 0
             } else
       #endif // USE_XX_SW_ONLY_AT_DL2
             {
@@ -9086,14 +9046,14 @@ InsertAtList(qpa,
             pwList = NewList(wPopCnt + 1, nBLR);
   #if defined(UA_PARALLEL_128)
             if ((nBL == 16) && (wPopCnt == 0)) {
-      #ifdef XX_LIST
+      #ifdef XX_LISTS
                 assert(nType != T_XX_LIST);
-      #endif // XX_LIST
+      #endif // XX_LISTS
                 set_wr(wRoot, pwList, T_LIST_UA);
             } else if ((nBL == 16) && (wPopCnt == 6)) {
-      #ifdef XX_LIST
+      #ifdef XX_LISTS
                 assert(nType != T_XX_LIST);
-      #endif // XX_LIST
+      #endif // XX_LISTS
                 set_wr(wRoot, pwList, T_LIST);
             } else
   #endif // defined(UA_PARALLEL_128)
@@ -9575,7 +9535,8 @@ wRootNull:;
         assert(tp_bIsList(nType));
         DBGI(printf("IG: wRoot " OWx" nType %d PWR_xListPopCnt %d\n",
                     wRoot, nType,
-                    (int)PWR_xListPopCnt(pwRoot, wr_pwr(*pwRoot), nBL)));
+                    wRoot == WROOT_NULL ? 0
+                        : (int)PWR_xListPopCnt(pwRoot, wr_pwr(*pwRoot), nBL)));
     }
   #endif // defined(EMBED_KEYS)
   #endif // (cwListPopCntMax != 0)
@@ -9682,6 +9643,11 @@ InflateList(qpa, Word_t wKey, int nPopCnt)
     qva;
     Word_t wRootNew = 0;
     Word_t *pwList = NewList(nPopCnt, nBL);
+  #ifdef UA_PARALLEL_128
+    if ((nBL == 16) && (nPopCnt <= 6)) {
+        set_wr(wRootNew, pwList, T_LIST_UA);
+    } else
+  #endif // UA_PARALLEL_128
     set_wr(wRootNew, pwList, T_LIST);
 
     int nPopCntMax = EmbeddedListPopCntMax(nBL); (void)nPopCntMax;
@@ -12268,6 +12234,12 @@ Initialize(void)
 #else //         LOCATE_GE_USING_EQ_M1
     printf("# No LOCATE_GE_USING_EQ_M1\n");
 #endif // #else  LOCATE_GE_USING_EQ_M1
+
+#ifdef           NO_LOCATE_GE_USING_EQ_M1
+    printf("#    NO_LOCATE_GE_USING_EQ_M1\n");
+#else //         NO_LOCATE_GE_USING_EQ_M1
+    printf("# No NO_LOCATE_GE_USING_EQ_M1\n");
+#endif // #else  NO_LOCATE_GE_USING_EQ_M1
 
 #ifdef           DEBUG_LOCATE_GE
     printf("#    DEBUG_LOCATE_GE\n");

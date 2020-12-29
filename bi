@@ -31,7 +31,7 @@ REGRESS=${1:-"regress"}
 CCA=clang
 WFLAGSA_A=-Wno-initializer-overrides
 CCB=gcc
-WFLAGSA_B=-Wno-override-init
+${WFLAGSA_B=-Wno-override-init}
 CC=$CCA
 WFLAGSA=$WFLAGSA_A
 export CC WFLAGSA
@@ -39,13 +39,13 @@ export CC WFLAGSA
 MAKE=make
 
 # How do we tell if AVX2 is supported by the cpu?
-# On Linux: grep avx2 /etc/cpuinfo
+# On Linux: grep avx2 /proc/cpuinfo
 # On Mac: sysctl -a | grep machdep.cpu.leaf7_features | grep AVX2
 # On Windows: ?
 if [ `uname` = Linux ]
 then
     # echo Linux
-    if grep avx2 /etc/cpuinfo
+    if grep avx2 /proc/cpuinfo
     then
         MAVX2=-mavx2
     fi
@@ -131,16 +131,22 @@ fi # [ `uname` = Linux ] else
 && ${REGRESS} \
 && DEFINES="-DDS_8_WAY -DREGRESS -DDEBUG" ${MAKE} clean default \
 && ${REGRESS} \
+&& DEFINES="-DDS_8_WAY -DNO_LOCATE_GE_KEY_X -DDEBUG_LOCATE_GE \
+-DREGRESS -DDEBUG" \
+    ${MAKE} clean default \
+&& ${REGRESS} \
 && DEFINES="-DDS_16_WAY -DREGRESS -DDEBUG" ${MAKE} clean default \
 && ${REGRESS} \
 && DEFINES="-DOLD_HK_128 -DREGRESS -DDEBUG" ${MAKE} clean default \
 && ${REGRESS} \
 && DEFINES="-DNO_PARALLEL_HK_128_64 -DREGRESS -DDEBUG" ${MAKE} clean default \
 && ${REGRESS} \
-&& DEFINES="-DNO_LOCATE_GE_AFTER_LOCATE_EQ -DREGRESS -DDEBUG" \
+&& DEFINES="-DNO_LOCATE_GE_AFTER_LOCATE_EQ -DDEBUG_LOCATE_GE \
+-DREGRESS -DDEBUG" \
     ${MAKE} clean default \
 && ${REGRESS} \
-&& DEFINES="-DNO_LOCATE_GE_KEY_X -DREGRESS -DDEBUG" ${MAKE} clean default \
+&& DEFINES="-DNO_LOCATE_GE_KEY_X -DDEBUG_LOCATE_GE -DREGRESS -DDEBUG" \
+    ${MAKE} clean default \
 && ${REGRESS} \
 && CC_MFLAGS=$MAVX2 DEFINES="-DPARALLEL_256 -DREGRESS -DDEBUG" \
     ${MAKE} clean default \
@@ -356,6 +362,20 @@ done
 && DEFINES="-DSEARCHMETRICS -DREGRESS -DDEBUG_ALL" ${MAKE} clean default \
 && DEFINES="-URAMMETRICS -DSEARCHMETRICS -DREGRESS -DDEBUG_ALL" \
     ${MAKE} clean default \
+&& DEFINES="-DNO_BITMAP -DNO_EMBED_KEYS -DNO_USE_BM_SW -DNO_SKIP_LINKS \
+-DNO_COMPRESSED_LISTS -DNO_PSPLIT_PARALLEL -DNO_PARALLEL_SEARCH_WORD \
+-DGUARDBAND -DTESTCOUNTACCURACY \
+-DDEBUG_LOCATE_GE -DREGRESS -DDEBUG_ALL -DFULL_DUMP -DDEBUG -DEBUG_LOOKUP" \
+    ${MAKE} clean default \
+&& BPW=32 DEFINES="-DDEBUG_LOCATE_GE -DREGRESS -DDEBUG" ${MAKE} clean default \
+&& ${REGRESS} \
+&& BPW=32 ${MAKE} clean default \
+&& ${REGRESS} \
+&& BPW=32 DEFINES="-DNO_BITMAP -DNO_EMBED_KEYS -DNO_USE_BM_SW -DNO_SKIP_LINKS \
+-DNO_COMPRESSED_LISTS -DNO_PSPLIT_PARALLEL -DNO_PARALLEL_SEARCH_WORD \
+-DGUARDBAND -DTESTCOUNTACCURACY \
+-DDEBUG_LOCATE_GE -DREGRESS -DDEBUG_ALL -DFULL_DUMP -DDEBUG -DEBUG_LOOKUP" \
+    ${MAKE} clean default \
 && BPW=32 ${MAKE} clean default \
 && BPW=32 DEFINES="-DREGRESS -DDEBUG" ${MAKE} clean default \
 && BPW=32 DEFINES="-DREGRESS -DDEBUG_ALL" ${MAKE} clean default \
@@ -372,6 +392,8 @@ done
 && BPW=32 DEFINES="-DALL_SKIP_TO_SW_CASES -DREGRESS -DDEBUG" \
     ${MAKE} clean default \
 && BPW=32 DEFINES="-DALL_SKIP_TO_SW_CASES -DREGRESS -DDEBUG_ALL -DFULL_DUMP" \
+    ${MAKE} clean default \
+&& BPW=32 DEFINES="-DNO_LOCATE_GE_KEY_X -DREGRESS -DDEBUG_ALL -DFULL_DUMP" \
     ${MAKE} clean default \
 && BPW=32 CC=$CCB WFLAGSA=$WFLAGSA_B DEFINES="-DALL_SKIP_TO_SW_CASES" \
     ${MAKE} clean default \

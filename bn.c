@@ -72,7 +72,7 @@ Judy1First(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
         Word_t* pwLnX = NULL;
       #endif // REMOTE_LNX
       #endif // !_NEXT_QPA
-        int nPos = SearchList(qya, /*nBLR*/ nBL, *pwKey);
+        int nPos = SearchListWord(qya, /*nBLR*/ nBL, *pwKey);
         if (nPos < 0) {
             int nPopCnt = gnListPopCnt(qy, /*nBLR*/ nBL);
             if ((nPos ^= -1) >= nPopCnt) {
@@ -194,14 +194,14 @@ Judy1Next(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
     (void)PJError;
   #endif // NEXT_CHECK_ARGS else
     DBGN(printf("\n# JxN: *pwKey 0x%zx\n", *pwKey));
-  #ifndef NEW_NEXT_IS_EXCLUSIVE
+  #if defined(NEXT_FROM_WRAPPER) || !defined(NEW_NEXT_IS_EXCLUSIVE)
     Word_t wKey = *pwKey + 1;
       #if defined(DEBUG) || defined(NEXT_CHECK_ARGS)
     if (wKey == 0) {
         return 0; // NULL for JudyL
     }
       #endif // DEBUG || NEXT_CHECK_ARGS
-  #endif // !NEW_NEXT_IS_EXCLUSIVE
+  #endif // NEXT_FROM_WRAPPER || !NEW_NEXT_IS_EXCLUSIVE
   #if defined(_NEXT_QPA) || defined(_NEXT_QP)
     int nBL = cnBitsPerWord;
       #ifdef QP_PLN
@@ -222,7 +222,7 @@ Judy1Next(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
         Word_t* pwLnX = NULL;
       #endif // REMOTE_LNX
       #endif // !_NEXT_QPA
-        int nPos = SearchList(qya, /*nBLR*/ nBL, wKey);
+        int nPos = SearchListWord(qya, /*nBLR*/ nBL, wKey);
         if (nPos < 0) {
             int nPopCnt = gnListPopCnt(qy, /*nBLR*/ nBL);
             if ((nPos ^= -1) >= nPopCnt) {

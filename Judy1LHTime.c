@@ -420,7 +420,7 @@ static Word_t Judy1CountWithNext(Pvoid_t J1, Word_t Key1, Word_t Key2)
         }
         if (Key1 <= PrevKey)
         {
-            printf("\n--OOps, Judy1CountWithNext failed Key1 = 0x%lx >= PrevKey = 0x%lx", Key1, PrevKey);
+            printf("\n--OOps, Judy1CountWithNext failed Key1 = 0x%zx >= PrevKey = 0x%zx", Key1, PrevKey);
             FAILURE("--OOps, Judy1CountWithNext failed at = ", NextCount);
         }
     }
@@ -457,7 +457,7 @@ static Word_t JudyLCountWithNext(Pvoid_t JL, Word_t Key1, Word_t Key2)
         }
         if (Key1 <= PrevKey)
         {
-            printf("\n--OOps, JudyLCountWithNext failed Key1 = 0x%lx >= PrevKey = 0x%lx", Key1, PrevKey);
+            printf("\n--OOps, JudyLCountWithNext failed Key1 = 0x%zx >= PrevKey = 0x%zx", Key1, PrevKey);
             FAILURE("--OOps, JudyLCountWithNext failed at = ", NextCount);
         }
     }
@@ -5360,10 +5360,11 @@ TestJudyCount(void *J1, void *JL, PNewSeed_t PSeed, Word_t Elements)
                     Word_t CountU = Judy1CountWithNext(J1, TstKey0, TstKey);
                     if (Count != CountU)
                     {
+                        printf("\n");
       #ifndef MIKEY_1
-                        printf("\n -- Array Pop1 = %lu\n", ((PWord_t)J1)[0] + 1);
+                        printf(" -- Array Pop1 = %lu\n", ((PWord_t)J1)[0] + 1);
       #endif // !MIKEY_1
-                        printf(" -- Count = %lu, != Debug CountU = %lu\n", Count, CountU);
+                        printf(" -- Count = %zu, != Debug CountU = %zu\n", Count, CountU);
                         FAILURE("Judy1Count at", elm);
                     }
   #endif // TESTCOUNTACCURACY
@@ -5448,10 +5449,11 @@ TestJudyCount(void *J1, void *JL, PNewSeed_t PSeed, Word_t Elements)
                     Word_t CountU = JudyLCountWithNext(JL, TstKey0, TstKey);
                     if (Count != CountU)
                     {
+                        printf("\n");
       #ifndef MIKEY_L
-                        printf("\n -- Array PopL = %lu\n", ((PWord_t)JL)[0] + 1);
+                        printf(" -- Array PopL = %zu\n", ((PWord_t)JL)[0] + 1);
       #endif // !MIKEY_L
-                        printf(" -- Count = %lu, != Debug CountU = %lu\n", Count, CountU);
+                        printf(" -- Count = %zu, != Debug CountU = %zu\n", Count, CountU);
                         FAILURE("JudyLCount at", elm);
                     }
   #endif // TESTCOUNTACCURACY

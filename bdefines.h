@@ -25,14 +25,16 @@
   #undef cnSwCnts
   #undef cnLogSwCnts
 #else
-  #error cnSwCnts must be a power of 2 less than 4
+  #error cnSwCnts must be a power of 2
 #endif
 
 // Enable SW_POP_IN_WR_HB by default.
+#if cnBitsPerWord > 32
 #ifndef    NO_SW_POP_IN_WR_HB
 #undef        SW_POP_IN_WR_HB
 #define       SW_POP_IN_WR_HB
 #endif // !NO_SW_POP_IN_WR_HB
+#endif // cnBitsPerWord > 32
 
 // Enable GPC_ALL_SKIP_TO_SW_CASES by default.
 #ifndef    NO_GPC_ALL_SKIP_TO_SW_CASES
@@ -350,10 +352,15 @@
   #define AUGMENT_TYPE_8 // only until we have _AUG_TYPE_8
 #endif // AUG_TYPE_8_NEXT_EK_XV
 
+#if cnBitsPerDigit == 8
+#if cnBitsInD1 == 8 && cnBitsInD2 == 8 && cnBitsInD3 == 8
+  #define _ALL_DIGITS_ARE_8_BITS
+#endif // cnBitsInD1 == 8 && cnBitsInD2 == 8 && cnBitsInD3 == 8
+#endif // cnBitsPerDigit == 8
+
 // Default is AUGMENT_TYPE_8.
 // It seems to shine for Time -LmeB31.
 #ifndef _AUG_TYPE_X_LOOKUP
-#if cnBitsPerDigit == 8
 #if cnBitsPerWord > 32
 #ifndef USE_XX_SW
 #ifndef DOUBLE_DOWN
@@ -361,17 +368,16 @@
 #ifndef USE_XX_SW_ONLY_AT_DL2
 #ifndef XX_LISTS
 #ifdef COMPRESSED_LISTS
-  #if cnBitsInD1 == 8 && cnBitsInD2 == 8 && cnBitsInD3 == 8
+#ifdef _ALL_DIGITS_ARE_8_BITS
   #ifndef    NO_AUGMENT_TYPE_8
     #undef      AUGMENT_TYPE_8
     #define     AUGMENT_TYPE_8
   #endif // !NO_AUGMENT_TYPE_8
-  #endif // cnBitsInD1 == 8 && cnBitsInD2 == 8 && cnBitsInD3 == 8
-  #ifndef AUGMENT_TYPE_8
+#else // _ALL_DIGITS_ARE_8_BITS
   #ifndef NO_AUGMENT_TYPE_8
 #pragma message("Warning: no default AUGMENT_TYPE_8 without all 8-bit digits.")
   #endif // !NO_AUGMENT_TYPE_8
-  #endif // !AUGMENT_TYPE_8
+#endif // _ALL_DIGITS_ARE_8_BITS else
 #endif // COMPRESSED_LISTS
 #endif // !XX_LISTS
 #endif // !USE_XX_SW_ONLY_AT_DL2
@@ -379,7 +385,6 @@
 #endif // !DOUBLE_DOWN
 #endif // !USE_XX_SW
 #endif // cnBitsPerWord > 32
-#endif // cnBitsPerDigit == 8
 #endif // !_AUG_TYPE_X_LOOKUP
 
 #ifdef AUGMENT_TYPE_8
@@ -559,7 +564,7 @@
 #ifndef CODE_XX_SW
 #if cnBitsPerDigit == cnBitsInD3 && cnBitsInD3 == cnBitsInD2
 #if cnBitsInD2 == cnBitsInD1 && (cnBitsPerWord % cnBitsPerDigit) == 0
-  #define _CONSTANT_NBW
+  #define _CONSTANT_NBPD
 #endif // BitsInD2 == BitsInD1 && (BitsPerWord % BitsPerDigit) == 0
 #endif // cnBitsPerDigit == cnBitsInD3 && cnBitsInD3 == cnBitsInD2
 #endif // CODE_XX_SW
@@ -899,10 +904,12 @@
   #define            NEXT_FROM_WRAPPER
 #endif // #ifndef NO_NEXT_FROM_WRAPPER
 
+#if cnBitsPerWord > 32
 #ifndef NO_BM_POP_IN_WR_HB
   #undef  BM_POP_IN_WR_HB
   #define BM_POP_IN_WR_HB
 #endif // #ifndef NO_BM_POP_IN_WR_HB
+#endif // cnBitsPerWord > 32
 
 #ifndef NO_LKIL8_ONE_BUCKET
     #define LKIL8_ONE_BUCKET
@@ -1104,16 +1111,13 @@
 // which is the default.
 // Hence JudyXNext(wKey) calls internal NextX(wKey+1).
 // And JudyXNext(wKey) is usually done on a key that exists.
-// LOCATE_GE_USING_EQ_M1 (without LOCATE_GE_KEY_<nBL>) causes
-// LocateGeKeyInList(wKey) to use LocateKey(wKey-1) for <nBL> which is faster
-// than LocateGeKey(wKey) when wKey-1 exists.
+// LOCATE_GE_USING_EQ_M1 (for nBL without LOCATE_GE_KEY_<nBL>) causes
+// LocateGeKeyInList(wKey) to use LocateKey(wKey-1) for nBL.
 // Then LocateKeyInList resorts to SearchList only if wKey-1 does not exist.
 // NO_LOCATE_GE_USING_EQ_M1 doesn't bother with LocateKey(wKey) and just
 // starts with Search.
-#ifndef   NO_LOCATE_GE_USING_EQ_M1
-  #undef     LOCATE_GE_USING_EQ_M1
-  #define    LOCATE_GE_USING_EQ_M1
-#endif // NO_LOCATE_GE_USING_EQ_M1
+// NO_LOCATE_GE_USING_EQ_M1 applies to  NEXT
+//    LOCATE_GE_USING_EQ_M1 applies to !NEXT
 
 #ifdef PARALLEL_64
   #undef  NO_LOCATE_GE_KEY_X
@@ -1141,11 +1145,45 @@
   #define LOCATE_GE_KEY_8
   #undef  LOCATE_GE_KEY_16
   #define LOCATE_GE_KEY_16
+    #if cnBitsPerWord > 32 || defined(PARALLEL_SEARCH_WORD)
   #undef  LOCATE_GE_KEY_24
   #define LOCATE_GE_KEY_24
   #undef  LOCATE_GE_KEY_32
   #define LOCATE_GE_KEY_32
+    #endif // cnBitsPerWord > 32 || defined(PARALLEL_SEARCH_WORD)
 #endif //  _LOCATE_GE_KEY_X_NOT_OK
+
+// LOCATE_GE_KEY_<8|16|24|32> are only independent if
+// _ALL_DIGITS_ARE_8_BITS and !USE_XX_SW.
+#if defined(_ALL_DIGITS_ARE_8_BITS) && !defined(USE_XX_SW)
+  #define _INDEPENDENT_LOCATE_GE_KEY_X
+#endif // _ALL_DIGITS_ARE_8_BITS && !USE_XX_SW
+
+#if defined(_INDEPENDENT_LOCATE_GE_KEY_X) && defined(NO_LOCATE_GE_KEY_8)
+  #undef  LOCATE_GE_KEY_8
+#endif // _INDEPENDENT_LOCATE_GE_KEY_X && NO_LOCATE_GE_KEY_8
+#if defined(_INDEPENDENT_LOCATE_GE_KEY_X) && defined(NO_LOCATE_GE_KEY_16)
+  #undef  LOCATE_GE_KEY_16
+#endif // _INDEPENDENT_LOCATE_GE_KEY_X && NO_LOCATE_GE_KEY_16
+#if defined(_INDEPENDENT_LOCATE_GE_KEY_X) && defined(NO_LOCATE_GE_KEY_24)
+  #undef  LOCATE_GE_KEY_24
+#endif // _INDEPENDENT_LOCATE_GE_KEY_X && NO_LOCATE_GE_KEY_24
+#if defined(_INDEPENDENT_LOCATE_GE_KEY_X) && defined(NO_LOCATE_GE_KEY_32)
+  #undef  LOCATE_GE_KEY_32
+#endif // _INDEPENDENT_LOCATE_GE_KEY_X && NO_LOCATE_GE_KEY_32
+
+#if defined(LOCATE_GE_KEY_8) && defined(NO_LOCATE_GE_KEY_8)
+  #error
+#endif // LOCATE_GE_KEY_8 && NO_LOCATE_GE_KEY_8
+#if defined(LOCATE_GE_KEY_16) && defined(NO_LOCATE_GE_KEY_16)
+  #error
+#endif // LOCATE_GE_KEY_16 && NO_LOCATE_GE_KEY_16
+#if defined(LOCATE_GE_KEY_24) && defined(NO_LOCATE_GE_KEY_24)
+  #error
+#endif // LOCATE_GE_KEY_16 && NO_LOCATE_GE_KEY_16
+#if defined(LOCATE_GE_KEY_32) && defined(NO_LOCATE_GE_KEY_32)
+  #error
+#endif // LOCATE_GE_KEY_32 && NO_LOCATE_GE_KEY_32
 
 #ifdef LOCATE_GE_KEY_8
   #define _LOCATE_GE_KEY_X

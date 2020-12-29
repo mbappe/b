@@ -1082,7 +1082,7 @@ TestJudyCount(void *J1, void *JL, Word_t LowIndex, Word_t Elements)
                    Count1, CountL, elm + 1);
             printf("LowIndex 0x%zx TstIndex 0x%zx\n", LowIndex, TstIndex);
             if (Count1 != elm + 1) {
-                Judy1Dump((Word_t)J1, sizeof(Word_t) * 8, 0);
+                Judy1Dump((Word_t)J1, sizeof(Word_t) * 8, TstIndex);
             }
             if (CountL != elm + 1) {
                 JudyLDump((Word_t)JL, sizeof(Word_t) * 8, 0);

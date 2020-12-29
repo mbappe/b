@@ -2014,9 +2014,7 @@ tp_bIsBitmap(int nType)
 #ifdef B_JUDYL
   #ifdef UNPACK_BM_VALUES
   #ifdef PACK_BM_VALUES
-  #if (cnBitsPerWord > 32)
     #define _TEST_BM_UNPACKED
-  #endif // (cnBitsPerWord > 32)
   #endif // PACK_BM_VALUES
   #endif // UNPACK_BM_VALUES
 
@@ -3085,6 +3083,9 @@ snBW(qp, int nBW)
     #define SW_CNTS
 #endif // cnSwCnts != 0 else
 
+#define nLogSwSubCnts(_nLogBytesPerCnt) \
+    (cnLogSwCnts + cnLogBytesPerWord - (_nLogBytesPerCnt))
+
 #if (cnDummiesInSwitch != 0)
     #define SW_DUMMIES  Word_t sw_awDummies[cnDummiesInSwitch];
 #else // (cnDummiesInSwitch != 0)
@@ -3180,10 +3181,10 @@ static int GetBLR(Word_t *pwRoot, int nBL);
 
 // Set the level of the object in number of bits left to decode.
 // Use this only when *pwRoot is a skip link.
-// Hmm. We also use it for XX_LIST aka deferred splay which makes it kind of
+// Hmm. We also use it for XX_LISTS aka deferred splay which makes it kind of
 // a skip up, but we haven't decided if it will be a SKIP_LINK from the
 // ifdef perspective yet.
-//#ifdef SKIP_LINKS
+#if defined(SKIP_LINKS) || defined(XX_LISTS)
 static inline void
 Set_nBLR(Word_t *pwRoot, int nBLR)
 {
@@ -3202,7 +3203,7 @@ Set_nBLR(Word_t *pwRoot, int nBLR)
     set_wr_nBLR(*pwRoot, nBLR);
   #endif // #else LVL_IN_WR_HB
 }
-//#endif // SKIP_LINKS
+#endif // SKIP_LINKS || XX_LISTS
 
 #ifdef _LNX
 // qp is a pointer to the switch containing the link we're interested in.
@@ -3521,9 +3522,14 @@ static void
 snListBLR(qp, int nBLR)
 {
     qv; (void)nBLR;
+  #if defined(SKIP_TO_LIST) || defined(XX_LISTS)
+  // LVL_IN_WR_HB should imply SKIP_LINKS || XX_LISTS.
+  // I don't remember how PP_IN_LINK is sometimes coopted for something
+  // other than prefix and pop.
   #if defined(LVL_IN_WR_HB) || defined(PP_IN_LINK)
     Set_nBLR(pwRoot, nBLR);
-  #endif // defined(LVL_IN_WR_HB) || defined(PP_IN_LINK)
+  #endif // LVL_IN_WR_HBx || PP_IN_LINK
+  #endif // SKIP_TO_LIST || XX_LISTS
 }
 
 #ifdef SKIP_LINKS
@@ -3756,9 +3762,9 @@ GetBLR(Word_t *pwRoot, int nBL)
 {
     (void)pwRoot;
 
-#if defined(NO_TYPE_IN_XX_SW)
+  #if defined(NO_TYPE_IN_XX_SW)
     if (nBL < nDL_to_nBL(2)) { return nBL; }
-#endif // defined(NO_TYPE_IN_XX_SW)
+  #endif // defined(NO_TYPE_IN_XX_SW)
 
     return
   #ifdef SKIP_LINKS
@@ -5623,7 +5629,7 @@ PsplitSearchByKey8(qp, uint8_t *pcKeys, int nPopCnt, uint8_t cKey, int nPos)
             } \
         } \
     } \
-    } /* DSPLIT_EARLY_OUT */ \
+    } /* DS_EARLY_OUT */ \
 }
 
 #define DSPLIT_LOCATEKEY(_b_t, _x_t, _nBL, _pxKeys, _nPopCnt, _xKey, _nPos) \
@@ -7533,23 +7539,22 @@ ls_pxKeyX(Word_t *pwr, int nBL, int nPopCnt, int ii);
 static int
 SearchList(qpa, int nBLR, Word_t wKey)
 {
+  #if !defined(SEARCH_USING_LOCATE_GE) || defined(DEBUG_LOCATE_GE)
     int nPosEq = SearchListGuts(qya, nBLR, wKey);
-  #ifdef DEBUG
-  #ifdef DEBUG_LOCATE_GE
+  #endif // !SEARCH_USING_LOCATE_GE || DEBUG_LOCATE_GE
+  #if defined(SEARCH_USING_LOCATE_GE) || defined(DEBUG_LOCATE_GE)
     Word_t wKeyLocal = wKey;
     int nPosGe = LocateGeKeyInListGuts(qya, nBLR, &wKeyLocal);
-    if (nPosEq >= 0) {
-        assert(nPosGe == nPosEq);
-    } else {
-        if (nPosGe < 0) {
-            assert(nPosGe == nPosEq); // ~nPopCnt
-        } else {
-            assert(nPosGe == ~nPosEq);
-        }
-    }
+    nPosGe ^= -(wKeyLocal != wKey);
+  #endif // SEARCH_USING_LOCATE_GE || DEBUG_LOCATE_GE
+  #ifdef DEBUG_LOCATE_GE
+    assert(nPosGe == nPosEq);
   #endif // DEBUG_LOCATE_GE
-  #endif // DEBUG
+  #ifdef SEARCH_USING_LOCATE_GE
+    return nPosGe;
+  #else // SEARCH_USING_LOCATE_GE
     return nPosEq;
+  #endif // SEARCH_USING_LOCATE_GE
 }
 
 #if cnBitsPerWord > 32
@@ -7587,8 +7592,10 @@ static int
 LocateGeKey128(__m128i *pxBucket, Word_t wKey, int nBL)
 {
     (void)nBL;
-  #ifdef COMPRESSED_LISTS
+  #if defined(COMPRESSED_LISTS) || (cnBitsPerWord == 32)
     Word_t wHasGeKey;
+  #endif // COMPRESSED_LISTS || (cnBitsPerWord == 32)
+  #ifdef COMPRESSED_LISTS
     if (nBL <= 8) {
         wHasGeKey = _mm_movemask_epi8(*(v_t*)pxBucket >= (uint8_t)wKey);
       #ifdef USE_FFS_IN_LK8
@@ -7635,7 +7642,7 @@ LocateGeKey128(__m128i *pxBucket, Word_t wKey, int nBL)
       #endif // HK_MOVEMASK
         return -1;
     }
-  #endif // defined(COMPRESSED_LISTS) || (cnBitsPerWord == 32)
+  #endif // COMPRESSED_LISTS || (cnBitsPerWord == 32)
   #if cnBitsPerWord > 32
     // How do we know a ge key exists?
     // And can we streamline the caller(s) in exchange for fixing this?
@@ -7712,8 +7719,29 @@ LocateGeKeyInListGuts(qpa, int nBLR, Word_t* pwKey)
   // LOCATE_GE_KEY_8 implies PSPLIT_PARALLEL && PARALLEL_[128|256]
   // and COMPRESSED_LISTS.
     int nPos;
+  #if !defined(NEXT) || !defined(NEXT_FROM_WRAPPER)
+    if (nBLR == cnBitsPerWord) {
+        // LocateKeyInList is dumb about Psplit and nBLR == cnBitsPerWord yet.
+        int nPopCnt = gnListPopCnt(qy, nBLR);
+        nPos = SearchListWord(qya, nBLR, wKey);
+        if (nPos < 0) {
+            if (nPos <= ~nPopCnt) {
+                assert(nPos == ~nPopCnt);
+                return nPos;
+            }
+            nPos ^= -1;
+        }
+        *pwKey = ls_pwKeysX(pwr, nBLR, nPopCnt)[nPos];
+        return nPos;
+    }
+  #endif // !NEXT || !NEXT_FROM_WRAPPER
   #ifdef LOCATE_GE_KEY_8
-    if (nBLR <= 8) {
+      #if defined(_ALL_DIGITS_ARE_8_BITS) && !defined(USE_XX_SW)
+    if (nBLR == 8)
+      #else // _ALL_DIGITS_ARE_8_BITS && !USE_XX_SW
+    if (nBLR <= 8)
+      #endif // _ALL_DIGITS_ARE_8_BITS && !USE_XX_SW else
+    {
         int nPopCnt = gnListPopCnt(qy, nBLR);
         uint8_t *pcKeys = ls_pcKeysX(pwr, nBLR, nPopCnt);
       // Because of a surprise/bug in USE_XX_SW_ONLY_AT_DL2 we could end up
@@ -7735,22 +7763,41 @@ LocateGeKeyInListGuts(qpa, int nBLR, Word_t* pwKey)
     }
   #endif // LOCATE_GE_KEY_8
   #ifdef LOCATE_GE_KEY_16
-    if (nBLR <= 16) {
+      #if defined(_ALL_DIGITS_ARE_8_BITS) && !defined(USE_XX_SW)
+    if (nBLR == 16)
+      #else // _ALL_DIGITS_ARE_8_BITS && !USE_XX_SW
+    if (nBLR <= 16)
+      #endif // _ALL_DIGITS_ARE_8_BITS && !USE_XX_SW else
+    {
         int nPopCnt = gnListPopCnt(qy, nBLR);
         uint16_t *psKeys = ls_psKeysX(pwr, nBLR, nPopCnt);
-        uint16_t sKey = (uint16_t)wKey; // Do we need cKey?
-        LOCATE_GE_KEY(Bucket_t,
-                      uint16_t, nBLR, psKeys, nPopCnt, sKey, nPos);
+      #ifdef UA_PARALLEL_128
+        if (nPopCnt <= 6) {
+            nPos = BUCKET_LOCATE_GE_KEY((Bucket_t*)pwr, wKey, nBLR);
+            // Could use a special-purpose LocateGeKey96 and avoid the
+            // following test. But it's not done yet.
+            if (nPos > 5) {
+                return ~nPopCnt;
+            }
+        } else
+      #endif // UA_PARALLEL_128
+        {
+            uint16_t sKey = (uint16_t)wKey; // Do we need cKey?
+            LOCATE_GE_KEY(Bucket_t,
+                          uint16_t, nBLR, psKeys, nPopCnt, sKey, nPos);
+        }
         if (nPos >= 0) {
             *pwKey = (wKey & ~NZ_MSK(nBLR)) | psKeys[nPos];
+            return nPos;
         }
-        return nPos;
+        return ~nPopCnt;
     }
   #endif // LOCATE_GE_KEY_16
-  #if cnBitsPerWord > 32
+  #if defined(_ALL_DIGITS_ARE_8_BITS) && !defined(USE_XX_SW)
       #ifdef LOCATE_GE_KEY_24
-    if (nBLR <= 24) {
+    if (nBLR == 24) {
         int nPopCnt = gnListPopCnt(qy, nBLR);
+          #if cnBitsPerWord > 32
         uint32_t *piKeys = ls_piKeysX(pwr, nBLR, nPopCnt);
         uint32_t iKey = (uint32_t)wKey; // Do we need cKey?
         LOCATE_GE_KEY(Bucket_t,
@@ -7758,11 +7805,26 @@ LocateGeKeyInListGuts(qpa, int nBLR, Word_t* pwKey)
         if (nPos >= 0) {
             *pwKey = (wKey & ~NZ_MSK(nBLR)) | piKeys[nPos];
         }
+          #else // cnBitsPerWord > 32
+        Word_t* pwKeys = ls_pwKeysX(pwr, nBLR, nPopCnt);
+        LOCATE_GE_KEY(Bucket_t,
+                      Word_t, nBLR, pwKeys, nPopCnt, wKey, nPos);
+        if (nPos >= 0) {
+            *pwKey = (wKey & ~NZ_MSK(nBLR)) | pwKeys[nPos];
+        }
+          #endif // cnBitsPerWord > 32 else
         return nPos;
     }
       #endif // LOCATE_GE_KEY_24
+  #endif // _ALL_DIGITS_ARE_8_BITS && !USE_XX_SW
+  #if cnBitsPerWord > 32
       #ifdef LOCATE_GE_KEY_32
-    if (nBLR <= 32) {
+          #if defined(_ALL_DIGITS_ARE_8_BITS) && !defined(USE_XX_SW)
+    if (nBLR == 32)
+          #else // _ALL_DIGITS_ARE_8_BITS && !USE_XX_SW
+    if (nBLR <= 32)
+          #endif // _ALL_DIGITS_ARE_8_BITS && !USE_XX_SW else
+    {
         int nPopCnt = gnListPopCnt(qy, nBLR);
         uint32_t *piKeys = ls_piKeysX(pwr, nBLR, nPopCnt);
         uint32_t iKey = (uint32_t)wKey; // Do we need cKey?
@@ -7775,7 +7837,12 @@ LocateGeKeyInListGuts(qpa, int nBLR, Word_t* pwKey)
     }
       #endif // LOCATE_GE_KEY_32
   #endif // cnBitsPerWord > 32
-  #ifdef LOCATE_GE_USING_EQ_M1
+  #if defined(NEXT) && !defined(NO_LOCATE_GE_USING_EQ_M1)
+    #define _EQ_M1
+  #elif !defined(NEXT) && defined(LOCATE_GE_USING_EQ_M1)
+    #define _EQ_M1
+  #endif // NEXT && !NO_LOCATE_.._EQ_M1 elif !NEXT && LOCATE_GE_..._EQ_M1
+  #ifdef _EQ_M1
     if ((wKey & NZ_MSK(nBLR)) == 0) {
         nPos = 0;
     } else {
@@ -7820,6 +7887,18 @@ LocateGeKeyInListGuts(qpa, int nBLR, Word_t* pwKey)
             else
             if (nBLR <= 16) {
                 uint16_t* psKeys = ls_psKeysX(pwr, nBLR, nPopCnt);
+                  #ifdef DS_EARLY_OUT_CHECK
+                // DSPLIT_SEARCH sometimes returns a precise nPos rather
+                // than simply identifying the bucket.
+                // Is it faster for us to redo the bucket search or to
+                // test to see if it is necessary and do it only if/when
+                // it is necessary?
+#if 0
+                nPos &= ~7;
+#else
+                if (nPos % 8 == 0)
+#endif
+                  #endif // DS_EARLY_OUT_CHECK
                 nPos += LocateGeKey128((__m128i*)&psKeys[nPos],
                                        wKey, nBLR);
                 assert(nPos < nPopCnt);
@@ -7873,7 +7952,7 @@ LocateGeKeyInListGuts(qpa, int nBLR, Word_t* pwKey)
         }
         assert(nPos < nPopCnt);
     }
-  #else // LOCATE_GE_USING_EQ_M1
+  #else // _EQ_M1
     int nPopCnt = gnListPopCnt(qy, nBLR);
     nPos = SearchListGuts(qya, nBLR, wKey);
     if (nPos < 0) {
@@ -7881,28 +7960,56 @@ LocateGeKeyInListGuts(qpa, int nBLR, Word_t* pwKey)
             return ~nPos;
         }
     }
-  #endif // LOCATE_GE_USING_EQ_M1 else
+  #endif // _EQ_M1 else
   #ifdef COMPRESSED_LISTS
       #ifndef LOCATE_GE_KEY_8
-    if (nBLR <= 8) {
+          #if defined(_ALL_DIGITS_ARE_8_BITS) && !defined(USE_XX_SW)
+    if (nBLR == 8)
+          #else // _ALL_DIGITS_ARE_8_BITS && !USE_XX_SW
+    if (nBLR <= 8)
+          #endif // _ALL_DIGITS_ARE_8_BITS && !USE_XX_SW else
+    {
         uint8_t* pcKeys = ls_pcKeysX(pwr, nBLR, nPopCnt);
         *pwKey = (wKey & ~NZ_MSK(nBLR)) | pcKeys[nPos];
     } else
       #endif // !LOCATE_GE_KEY_8
       #ifndef LOCATE_GE_KEY_16
-    if (nBLR <= 16) {
+          #if defined(_ALL_DIGITS_ARE_8_BITS) && !defined(USE_XX_SW)
+    if (nBLR == 16)
+          #else // _ALL_DIGITS_ARE_8_BITS && !USE_XX_SW
+    if (nBLR <= 16)
+          #endif // _ALL_DIGITS_ARE_8_BITS && !USE_XX_SW else
+    {
         uint16_t* psKeys = ls_psKeysX(pwr, nBLR, nPopCnt);
         *pwKey = (wKey & ~NZ_MSK(nBLR)) | psKeys[nPos];
     } else
       #endif // !LOCATE_GE_KEY_16
-      #ifndef LOCATE_GE_KEY_32
+      #if defined(_ALL_DIGITS_ARE_8_BITS) && !defined(USE_XX_SW)
+          #ifndef LOCATE_GE_KEY_24
+    if (nBLR == 24) {
+              #if cnBitsPerWord > 32
+        uint32_t* piKeys = ls_piKeysX(pwr, nBLR, nPopCnt);
+        *pwKey = (wKey & ~NZ_MSK(nBLR)) | piKeys[nPos];
+              #else // cnBitsPerWord > 32
+        Word_t* pwKeys = ls_pwKeysX(pwr, nBLR, nPopCnt);
+        *pwKey = (wKey & ~NZ_MSK(nBLR)) | pwKeys[nPos];
+              #endif // cnBitsPerWord > 32
+    } else
+          #endif // !LOCATE_GE_KEY_24
+      #endif // _ALL_DIGITS_ARE_8_BITS && !USE_XX_SW
       #if cnBitsPerWord > 32
-    if (nBLR <= 32) {
+      #ifndef LOCATE_GE_KEY_32
+          #if defined(_ALL_DIGITS_ARE_8_BITS) && !defined(USE_XX_SW)
+    if (nBLR == 32)
+          #else // _ALL_DIGITS_ARE_8_BITS && !USE_XX_SW
+    if (nBLR <= 32)
+          #endif // _ALL_DIGITS_ARE_8_BITS && !USE_XX_SW else
+    {
         uint32_t* piKeys = ls_piKeysX(pwr, nBLR, nPopCnt);
         *pwKey = (wKey & ~NZ_MSK(nBLR)) | piKeys[nPos];
     } else
-      #endif // cnBitsPerWord > 32
       #endif // !LOCATE_GE_KEY_32
+      #endif // cnBitsPerWord > 32
   #endif // COMPRESSED_LISTS
     {
         Word_t* pwKeys = ls_pwKeysX(pwr, nBLR, nPopCnt);
@@ -7914,22 +8021,14 @@ LocateGeKeyInListGuts(qpa, int nBLR, Word_t* pwKey)
 static inline int
 LocateGeKeyInList(qpa, int nBLR, Word_t* pwKey)
 {
-    int nPosGe = LocateGeKeyInListGuts(qya, nBLR, pwKey);
-  #ifdef DEBUG
   #ifdef DEBUG_LOCATE_GE
     Word_t wKey = *pwKey;
-    int nPosEq = SearchListGuts(qya, nBLR, wKey);
-    if (nPosEq >= 0) {
-        assert(nPosGe == nPosEq);
-    } else {
-        if (nPosGe < 0) {
-            assert(nPosGe == nPosEq); // ~nPopCnt
-        } else {
-            assert(nPosGe == ~nPosEq);
-        }
-    }
   #endif // DEBUG_LOCATE_GE
-  #endif // DEBUG
+    int nPosGe = LocateGeKeyInListGuts(qya, nBLR, pwKey);
+  #ifdef DEBUG_LOCATE_GE
+    int nPosEq = SearchListGuts(qya, nBLR, wKey);
+    assert(nPosEq == (nPosGe ^ -(*pwKey != wKey)));
+  #endif // DEBUG_LOCATE_GE
     return nPosGe;
 }
 
@@ -8979,6 +9078,24 @@ extern Word_t j__AllocWordsJV;   // value area
 // cnBytesListLenAlign is set to the size of a parallel search bucket.
 // This way we don't need any special handling in the parallel search
 // code to handle a partial final bucket.
+  #ifdef UA_PARALLEL_128
+#define PAD(_pxKeys, _nPopCnt) \
+{ \
+    if (ALIGN_LIST_LEN(sizeof(*(_pxKeys)), (_nPopCnt))) { \
+        if ((sizeof(*(_pxKeys)) == 2) && ((_nPopCnt) <= 6)) { \
+            for (int nn = (_nPopCnt); nn < 6; ++nn) { \
+                (_pxKeys)[nn] = (_pxKeys)[nn - 1]; \
+            } \
+        } else { \
+            for (int nn = (_nPopCnt); \
+                 (nn * sizeof(*(_pxKeys))) % sizeof(Bucket_t); ++nn) \
+            { \
+                (_pxKeys)[nn] = (_pxKeys)[nn - 1]; \
+            } \
+        } \
+    } \
+}
+  #else // UA_PARALLEL_128
 #define PAD(_pxKeys, _nPopCnt) \
 { \
     if (ALIGN_LIST_LEN(sizeof(*(_pxKeys)), (_nPopCnt))) { \
@@ -8989,6 +9106,7 @@ extern Word_t j__AllocWordsJV;   // value area
         } \
     } \
 }
+  #endif // UA_PARALLEL_128 else
 
 #ifdef B_JUDYL
 #ifdef SKIP_TO_BITMAP
