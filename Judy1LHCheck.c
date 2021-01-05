@@ -1284,6 +1284,7 @@ TestJudyNextEmpty(void *J1, void *JL, Word_t LowIndex, Word_t Elements)
 
         if (pFlag) { printf("JudyLNextEmpty: elm=%8" PRIuPTR"\t%p\n", elm, (void *)JLindex); }
         PrevKey = JLindex;
+        Word_t PrevKey1 = J1index;
 
 //      Find next Empty Index, JLindex is modified by JLNE
         JLNE(RcodeL, JL, JLindex);      // Rcode = JudyLNextEmpty(JL, &JLindex, PJE0)
@@ -1301,6 +1302,13 @@ TestJudyNextEmpty(void *J1, void *JL, Word_t LowIndex, Word_t Elements)
         if (J1index != JLindex) {
             printf("RcodeL = %d, Rcode1 = %d, Index1 = 0x%" PRIxPTR", IndexL = 0x%" PRIxPTR"\n",
                     RcodeL, Rcode1, J1index, JLindex);
+            printf("PrevKey 0x%zx\n", PrevKey);
+            printf("PrevKey1 0x%zx\n", PrevKey1);
+            Judy1Dump((Word_t)J1, sizeof(Word_t) * 8, PrevKey);
+  #ifndef FULL_DUMP
+            Judy1Dump((Word_t)J1, sizeof(Word_t) * 8, J1index);
+  #endif // !FULL_DUMP
+            JudyLDump((Word_t)JL, sizeof(Word_t) * 8, PrevKey);
             FAILURE("JLNE != J1NE returned index at", elm);
         }
 
