@@ -1364,9 +1364,9 @@ Word_t    GetCallsP;                 // number of search calls
 Word_t    GetCallsM;                 // number of search calls
 Word_t    GetCalls;                  // number of search calls
 
-#ifndef OLD_DS1_GROUPS
-
 #define EXP(x) ((Word_t)1<<(x))
+
+#ifndef OLD_DS1_GROUPS
 
 static Word_t Log16(Word_t n) { return LOG(n) / 4; }
 static Word_t Pow16(Word_t n) { return EXP(4 * n); }
@@ -1556,13 +1556,19 @@ LogIfdefs(void)
     printf("# No NO_TEST_NEXT\n");
   #endif //      NO_TEST_NEXT else
 
+  #ifdef         NO_TEST_NEXT_PROPER // for turn-on; skip TestJudyNext
+    printf("#    NO_TEST_NEXT_PROPER\n");
+  #else //       NO_TEST_NEXT_PROPER
+    printf("# No NO_TEST_NEXT_PROPER\n");
+  #endif //      NO_TEST_NEXT_PROPER else
+
   #ifdef         NO_TEST_NEXT_USING_JUDY_NEXT
     printf("#    NO_TEST_NEXT_USING_JUDY_NEXT\n");
   #else //       NO_TEST_NEXT_USING_JUDY_NEXT
     printf("# No NO_TEST_NEXT_USING_JUDY_NEXT\n");
   #endif //      NO_TEST_NEXT_USING_JUDY_NEXT else
 
-  #ifdef         NO_TEST_PREV // to speed -v
+  #ifdef         NO_TEST_PREV // to speed -v; includes PrevEmpty
     printf("#    NO_TEST_PREV\n");
   #else //       NO_TEST_PREV
     printf("# No NO_TEST_PREV\n");
@@ -3373,7 +3379,6 @@ eopt:
         }
 
         Delta = Pms[grp].ms_delta;
-
         if (Delta == 0)
             break;
 
@@ -5514,6 +5519,11 @@ Word_t
 TestJudyNext(void *J1, void *JL, PNewSeed_t PSeed, Word_t Elements)
 {
     (void)PSeed; // for TEST_NEXT_USING_JUDY_NEXT
+  #ifdef NO_TEST_NEXT_PROPER
+    (void)J1; (void)JL; (void)PSeed; (void)Elements;
+    DeltanSec1 = 0;
+    DeltanSecL = 0;
+  #else // NO_TEST_NEXT_PROPER
 
     Word_t    elm;
 
@@ -5755,6 +5765,7 @@ TestJudyNext(void *J1, void *JL, PNewSeed_t PSeed, Word_t Elements)
         return (JLKey);
     if (J1Flag)
         return (J1Key);
+  #endif // NO_TEST_NEXT_PROPER else
     return (-1);
 }
 
@@ -5766,6 +5777,7 @@ TestJudyPrev(void *J1, void *JL, PNewSeed_t PSeed, Word_t Elements)
 {
   #ifdef NO_TEST_PREV
     (void)J1; (void)JL; (void)PSeed; (void)Elements;
+    DeltanSec1 = 0;
     DeltanSecL = 0;
   #else // NO_TEST_PREV
     (void)PSeed; // for TEST_NEXT_USING_JUDY_NEXT
@@ -5982,6 +5994,7 @@ TestJudyNextEmpty(void *J1, void *JL, PNewSeed_t PSeed, Word_t Elements)
 {
   #ifdef NO_TEST_NEXT_EMPTY
     (void)J1; (void)JL; (void)PSeed; (void)Elements;
+    DeltanSec1 = 0;
     DeltanSecL = 0;
   #else // NO_TEST_NEXT_EMPTY
     Word_t    elm;
@@ -6106,6 +6119,7 @@ TestJudyPrevEmpty(void *J1, void *JL, PNewSeed_t PSeed, Word_t Elements)
 {
   #if defined(NO_TEST_NEXT_EMPTY) || defined(NO_TEST_PREV)
     (void)J1; (void)JL; (void)PSeed; (void)Elements;
+    DeltanSec1 = 0;
     DeltanSecL = 0;
   #else // NO_TEST_NEXT_EMPTY || NO_TEST_PREV
     Word_t    elm;
