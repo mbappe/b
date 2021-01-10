@@ -143,6 +143,9 @@ do
 for SOPT in "" -S1 -DS1 -S7 -DS7
 do
 
+if [ "$B" == "0" -a "$SOPT" == "" ]; then
+    continue; # already did this at the beginning
+fi
 if [ "$SOPT" != "" ]; then
     bOPT=-b0
 fi
