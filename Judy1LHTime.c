@@ -5367,7 +5367,7 @@ TestJudyCount(void *J1, void *JL, PNewSeed_t PSeed, Word_t Elements)
                     {
                         printf("\n");
       #ifndef MIKEY_1
-                        printf(" -- Array Pop1 = %lu\n", ((PWord_t)J1)[0] + 1);
+                        printf(" -- Array Pop1 = %zu\n", ((PWord_t)J1)[0] + 1);
       #endif // !MIKEY_1
                         printf(" -- Count = %zu, != Debug CountU = %zu\n", Count, CountU);
                         FAILURE("Judy1Count at", elm);
