@@ -543,21 +543,21 @@ main(int argc, char *argv[])
         {
             TestJudyCount(J1, JL, LowIndex, Delta);
         }
-#ifndef NO_TEST_NEXT // for turn-on testing
-        Word_t HighIndex;
+  #ifndef NO_TEST_NEXT // for turn-on testing
+        Word_t HighIndex; (void)HighIndex; // n/a if NO_TEST_NEXT_EMPTY
 //      Test JLN, J1N
         HighIndex = TestJudyNext(J1, JL, (Word_t)0, TotalPop);
 
 //      Test JLP, J1P
         TestJudyPrev(J1, JL, (Word_t)~0, TotalPop);
-#endif // #ifndef NO_TEST_NEXT
-#ifndef NO_TEST_NEXT_EMPTY // for turn-on testing
+  #endif // #ifndef NO_TEST_NEXT
+  #ifndef NO_TEST_NEXT_EMPTY // for turn-on testing
 //      Test JLNE, J1NE
         TestJudyNextEmpty(J1, JL, LowIndex, Delta);
 
 //      Test JLPE, J1PE
         TestJudyPrevEmpty(J1, JL, HighIndex, Delta);
-#endif // #ifndef NO_TEST_NEXT_EMPTY
+  #endif // #ifndef NO_TEST_NEXT_EMPTY
 
 //      Test JLD, J1U
         if (dFlag)
