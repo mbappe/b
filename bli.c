@@ -5749,25 +5749,33 @@ break2:;
             case 8: // max for 7-bit keys and 64 bits;
                 wKeyRoot = wRoot >> (cnBitsPerWord - (8 * nBL));
                 if (((wKeyRoot ^ wKey) & MSK(nBL)) == 0) goto foundIt;
+                // fall through
             case 7: // max for 8-bit keys and 64 bits;
                 wKeyRoot = wRoot >> (cnBitsPerWord - (7 * nBL));
                 if (((wKeyRoot ^ wKey) & MSK(nBL)) == 0) goto foundIt;
+                // fall through
             case 6: // max for 9-bit keys and 64 bits;
                 wKeyRoot = wRoot >> (cnBitsPerWord - (6 * nBL));
                 if (((wKeyRoot ^ wKey) & MSK(nBL)) == 0) goto foundIt;
+                // fall through
             case 5: // max for 10 to 11-bit keys and 64 bits;
                 wKeyRoot = wRoot >> (cnBitsPerWord - (5 * nBL));
                 if (((wKeyRoot ^ wKey) & MSK(nBL)) == 0) goto foundIt;
                   #endif // (cnBitsPerWord == 64)
+                // gcc doesn't like "fall through" before endif
+                // fall through
             case 4: // max for 12 to 14-bit keys and 64 bits; 6 for 32
                 wKeyRoot = wRoot >> (cnBitsPerWord - (4 * nBL));
                 if (((wKeyRoot ^ wKey) & MSK(nBL)) == 0) goto foundIt;
+                // fall through
             case 3: // max for 15 to 19-bit keys and 64 bits; 7-9 for 32
                 wKeyRoot = wRoot >> (cnBitsPerWord - (3 * nBL));
                 if (((wKeyRoot ^ wKey) & MSK(nBL)) == 0) goto foundIt;
+                // fall through
             case 2: // max for 20 to 29-bit keys and 64 bits; 10-14 for 32
                 wKeyRoot = wRoot >> (cnBitsPerWord - (2 * nBL));
                 if (((wKeyRoot ^ wKey) & MSK(nBL)) == 0) goto foundIt;
+                // fall through
             default: // max for 30 to 60-bit keys and 64 bits; 15-29 for 32
                 wKeyRoot = wRoot >> (cnBitsPerWord - (1 * nBL));
                 if (((wKeyRoot ^ wKey) & MSK(nBL)) == 0) goto foundIt;

@@ -34,7 +34,7 @@ REGRESS=${1:-"regress"}
 CCA=clang
 WFLAGSA_A=-Wno-initializer-overrides
 CCB=gcc
-: ${WFLAGSA_B:="-Wno-override-init -Wno-implicit-fallthrough"}
+: ${WFLAGSA_B:="-Wno-override-init"}
 CC=$CCA
 WFLAGSA=$WFLAGSA_A
 export CC WFLAGSA
