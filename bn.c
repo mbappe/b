@@ -5,6 +5,7 @@
 
 #define strLookupOrInsertOrRemove  "Next"
 #define IF_NEXT(_stmt)  _stmt
+#define IF_NEXT_OR_NEXT_EMPTY(_stmt)  _stmt
 #define IF_NOT_NEXT(_stmt)
 #define KeyFound  Success
 #define DBGX  DBGN

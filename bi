@@ -28,10 +28,13 @@ REGRESS=${1:-"regress"}
 # Unfortunately, with clang, -Wno-initializer-overrides is cancelled out
 # by -Wextra if -Wextra occurs after -Wno_initializer-overrides on the
 # command line.
+# Use WFLAGSA_B="-Wno-override-init -Wno-psabi" OFLAGS=-O0 nohup bi true
+# to make sure all cases build (without optimization). It's quicker than
+# optimizing.
 CCA=clang
 WFLAGSA_A=-Wno-initializer-overrides
 CCB=gcc
-${WFLAGSA_B=-Wno-override-init}
+: ${WFLAGSA_B:="-Wno-override-init -Wno-implicit-fallthrough"}
 CC=$CCA
 WFLAGSA=$WFLAGSA_A
 export CC WFLAGSA
@@ -136,6 +139,9 @@ fi # [ `uname` = Linux ] else
     ${MAKE} clean default \
 && ${REGRESS} \
 && DEFINES="-DDS_16_WAY -DREGRESS -DDEBUG" ${MAKE} clean default \
+&& ${REGRESS} \
+&& DEFINES="-DBMLF_INTERLEAVE -DNO_NEW_NEXT -DREGRESS -DDEBUG" \
+    ${MAKE} clean default \
 && ${REGRESS} \
 && DEFINES="-DOLD_HK_128 -DREGRESS -DDEBUG" ${MAKE} clean default \
 && ${REGRESS} \
@@ -282,10 +288,10 @@ done
 && ${REGRESS} \
 && DEFINES="-DPP_IN_LINK -DREGRESS -DDEBUG" ${MAKE} clean default \
 && ${REGRESS} \
-&& DEFINES="-DcnBitsPerDigit=16	-Dcn2dBmMaxWpkPercent=0 -DREGRESS -DDEBUG" \
+&& DEFINES="-DcnBitsPerDigit=16 -Dcn2dBmMaxWpkPercent=0 -DREGRESS -DDEBUG" \
    ${MAKE} clean default \
 && ${REGRESS} \
-&& DEFINES="-DcnBitsPerDigit=15	-Dcn2dBmMaxWpkPercent=0 -DREGRESS -DDEBUG" \
+&& DEFINES="-DcnBitsPerDigit=15 -Dcn2dBmMaxWpkPercent=0 -DREGRESS -DDEBUG" \
    ${MAKE} clean default \
 && ${REGRESS} \
 && DEFINES="-DcnBitsPerDigit=14 -Dcn2dBmMaxWpkPercent=0 -DREGRESS -DDEBUG" \
@@ -422,36 +428,36 @@ done
 && DEFINES="-DAUG_TYPE_8_LOOKUP -DBL_SPECIFIC_LIST -DREGRESS -DDEBUG" \
     ${MAKE} clean default \
 && ${REGRESS} \
-&& DEFINES="-DAUG_TYPE_64_LOOKUP -DNO_UNPACK_BM_VALUES -DcnBitsTypeMask=3 \
+&& DEFINES="-DAUG_TYPE_64_LOOKUP -DNO_UNPACK_BM_VALUES -DNO_USE_BM_SW \
+-DcnBitsTypeMask=3 -DREGRESS -DDEBUG" \
+    ${MAKE} clean default \
+&& ${REGRESS} \
+&& DEFINES="-DAUG_TYPE_32_LOOKUP -DNO_SKIP_TO_BM_SW -DNO_FULL_SW \
+-DcnBitsTypeMask=3 -DREGRESS -DDEBUG" \
+    ${MAKE} clean default \
+&& ${REGRESS} \
+&& DEFINES="-DAUG_TYPE_16_LOOKUP -DNO_EK_XV -DNO_USE_BM_SW -DcnBitsTypeMask=3 \
 -DREGRESS -DDEBUG" \
     ${MAKE} clean default \
 && ${REGRESS} \
-&& DEFINES="-DAUG_TYPE_32_LOOKUP -DNO_SKIP_TO_BM_SW -DcnBitsTypeMask=3 \
--DREGRESS -DDEBUG" \
-    ${MAKE} clean default \
-&& ${REGRESS} \
-&& DEFINES="-DAUG_TYPE_16_LOOKUP -DNO_EK_XV -DcnBitsTypeMask=3 \
--DREGRESS -DDEBUG" \
-    ${MAKE} clean default \
-&& ${REGRESS} \
-&& DEFINES="-DAUG_TYPE_8_LOOKUP -DNO_UNPACK_BM_VALUES -DcnBitsTypeMask=3 \
--DREGRESS -DDEBUG" \
+&& DEFINES="-DAUG_TYPE_8_LOOKUP -DNO_UNPACK_BM_VALUES -DNO_FULL_SW \
+-DcnBitsTypeMask=3 -DREGRESS -DDEBUG" \
     ${MAKE} clean default \
 && ${REGRESS} \
 && DEFINES="-DAUG_TYPE_32_LOOKUP -DBL_SPECIFIC_LIST -DNO_UNPACK_BM_VALUES \
--DcnBitsTypeMask=3 -DREGRESS -DDEBUG" \
+-DNO_USE_BM_SW -DcnBitsTypeMask=3 -DREGRESS -DDEBUG" \
     ${MAKE} clean default \
 && ${REGRESS} \
 && DEFINES="-DAUG_TYPE_64_LOOKUP -DBL_SPECIFIC_LIST -DNO_SKIP_TO_BM_SW \
--DcnBitsTypeMask=3 -DREGRESS -DDEBUG" \
+-DNO_FULL_SW -DcnBitsTypeMask=3 -DREGRESS -DDEBUG" \
     ${MAKE} clean default \
 && ${REGRESS} \
-&& DEFINES="-DAUG_TYPE_8_LOOKUP -DBL_SPECIFIC_LIST -DNO_EK_XV \
+&& DEFINES="-DAUG_TYPE_8_LOOKUP -DBL_SPECIFIC_LIST -DNO_EK_XV -DNO_FULL_SW \
 -DcnBitsTypeMask=3 -DREGRESS -DDEBUG" \
     ${MAKE} clean default \
 && ${REGRESS} \
 && DEFINES="-DAUG_TYPE_16_LOOKUP -DBL_SPECIFIC_LIST -DNO_UNPACK_BM_VALUES \
--DcnBitsTypeMask=3 -DREGRESS -DDEBUG" \
+-DNO_USE_BM_SW -DcnBitsTypeMask=3 -DREGRESS -DDEBUG" \
     ${MAKE} clean default \
 && ${REGRESS} \
 && :

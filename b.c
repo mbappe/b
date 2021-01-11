@@ -12801,6 +12801,48 @@ Initialize(void)
     printf("# No NEW_NEXT\n");
 #endif // #else  NEW_NEXT
 
+#ifdef           NEW_NEXT_EMPTY
+    printf("#    NEW_NEXT_EMPTY\n");
+#else //         NEW_NEXT_EMPTY
+    printf("# No NEW_NEXT_EMPTY\n");
+#endif // #else  NEW_NEXT_EMPTY
+
+#ifdef           LOOKUP_BEFORE_NEXT_EMPTY
+    printf("#    LOOKUP_BEFORE_NEXT_EMPTY\n");
+#else //         LOOKUP_BEFORE_NEXT_EMPTY
+    printf("# No LOOKUP_BEFORE_NEXT_EMPTY\n");
+#endif // #else  LOOKUP_BEFORE_NEXT_EMPTY
+
+#ifdef           LOOKUP_BEFORE_FIRST_EMPTY
+    printf("#    LOOKUP_BEFORE_FIRST_EMPTY\n");
+#else //         LOOKUP_BEFORE_FIRST_EMPTY
+    printf("# No LOOKUP_BEFORE_FIRST_EMPTY\n");
+#endif // #else  LOOKUP_BEFORE_FIRST_EMPTY
+
+#ifdef           TINY_SUBS_FOR_NEXT_EMPTY
+    printf("#    TINY_SUBS_FOR_NEXT_EMPTY\n");
+#else //         TINY_SUBS_FOR_NEXT_EMPTY
+    printf("# No TINY_SUBS_FOR_NEXT_EMPTY\n");
+#endif // #else  TINY_SUBS_FOR_NEXT_EMPTY
+
+#ifdef           FULL_SW
+    printf("#    FULL_SW\n");
+#else //         FULL_SW
+    printf("# No FULL_SW\n");
+#endif // #else  FULL_SW
+
+#ifdef           _SKIP_TO_FULL_SW
+    printf("#    _SKIP_TO_FULL_SW\n");
+#else //         _SKIP_TO_FULL_SW
+    printf("# No _SKIP_TO_FULL_SW\n");
+#endif //        _SKIP_TO_FULL_SW else
+
+#ifdef           NEXT_EMPTY_TEST_WHOLE_BEFORE_PART
+    printf("#    NEXT_EMPTY_TEST_WHOLE_BEFORE_PART\n");
+#else //         NEXT_EMPTY_TEST_WHOLE_BEFORE_PART
+    printf("# No NEXT_EMPTY_TEST_WHOLE_BEFORE_PART\n");
+#endif // #else  NEXT_EMPTY_TEST_WHOLE_BEFORE_PART
+
 #ifdef           NEW_NEXT_IS_EXCLUSIVE
     printf("#    NEW_NEXT_IS_EXCLUSIVE\n");
 #else //         NEW_NEXT_IS_EXCLUSIVE
@@ -12824,6 +12866,12 @@ Initialize(void)
 #else //         NO_NEW_NEXT
     printf("# No NO_NEW_NEXT\n");
 #endif // #else  NO_NEW_NEXT
+
+#ifdef           NO_NEW_NEXT_EMPTY
+    printf("#    NO_NEW_NEXT_EMPTY\n");
+#else //         NO_NEW_NEXT_EMPTY
+    printf("# No NO_NEW_NEXT_EMPTY\n");
+#endif // #else  NO_NEW_NEXT_EMPTY
 
 #if defined(NO_OLD_LISTS)
     printf("#    NO_OLD_LISTS\n");
@@ -12914,6 +12962,24 @@ Initialize(void)
 #else //         NEXT_CHECK_ARGS
     printf("# No NEXT_CHECK_ARGS\n");
 #endif //        NEXT_CHECK_ARGS else
+
+#ifdef           RESTART_UP_FOR_NEXT
+    printf("#    RESTART_UP_FOR_NEXT\n");
+#else //         RESTART_UP_FOR_NEXT
+    printf("# No RESTART_UP_FOR_NEXT\n");
+#endif //        RESTART_UP_FOR_NEXT else
+
+#ifdef           RESTART_UP_FOR_NEXT_EMPTY
+    printf("#    RESTART_UP_FOR_NEXT_EMPTY\n");
+#else //         RESTART_UP_FOR_NEXT_EMPTY
+    printf("# No RESTART_UP_FOR_NEXT_EMPTY\n");
+#endif //        RESTART_UP_FOR_NEXT_EMPTY else
+
+#ifdef           USE_BM2CNTS_FOR_NEXT_EMPTY
+    printf("#    USE_BM2CNTS_FOR_NEXT_EMPTY\n");
+#else //         USE_BM2CNTS_FOR_NEXT_EMPTY
+    printf("# No USE_BM2CNTS_FOR_NEXT_EMPTY\n");
+#endif //        USE_BM2CNTS_FOR_NEXT_EMPTY else
 
 #ifdef           NEXT_SHORTCUT
     printf("#    NEXT_SHORTCUT\n");
@@ -13185,6 +13251,12 @@ Initialize(void)
 #else // defined(NO_LVL_IN_WR_HB)
     printf("# No NO_LVL_IN_WR_HB\n");
 #endif // defined(NO_LVL_IN_WR_HB)
+
+#ifdef           _LVL_IN_TYPE
+    printf("#    _LVL_IN_TYPE\n");
+#else //         _LVL_IN_TYPE
+    printf("# No _LVL_IN_TYPE\n");
+#endif //        _LVL_IN_TYPE else
 
 #if defined(NO_SKIP_TO_XX_SW)
     printf("#    NO_SKIP_TO_XX_SW\n");
@@ -13554,6 +13626,12 @@ Initialize(void)
     assert(T_XX_SW <= cnTypeMask);
   #else // SKIP_LINKS elif CODE_XX_SW
     assert(T_SWITCH <= cnTypeMask);
+      #ifdef FULL_SW
+    assert(T_FULL_SW <= cnTypeMask);
+          #ifdef _SKIP_TO_FULL_SW
+    assert(T_SKIP_TO_FULL_SW <= cnTypeMask);
+          #endif // _SKIP_TO_FULL_SW
+      #endif // FULL_SW
   #endif // SKIP_LINKS elif CODE_XX_SW else
 
     printf("\n");
@@ -13613,6 +13691,14 @@ Initialize(void)
 #endif // defined(EMBED_KEYS)
     printf("# 0x%x %-20s\n", T_SWITCH, "T_SWITCH");
     assert(T_SWITCH < EXP(cnBitsMallocMask));
+  #ifdef FULL_SW
+    printf("# 0x%x %-20s\n", T_FULL_SW, "T_FULL_SW");
+    assert(T_FULL_SW < EXP(cnBitsMallocMask));
+      #ifdef _SKIP_TO_FULL_SW
+    printf("# 0x%x %-20s\n", T_SKIP_TO_FULL_SW, "T_SKIP_TO_FULL_SW");
+    assert(T_SKIP_TO_FULL_SW < EXP(cnBitsMallocMask));
+      #endif // _SKIP_TO_FULL_SW
+  #endif // FULL_SW
 #if defined(CODE_XX_SW)
     printf("# 0x%x %-20s\n", T_XX_SW, "T_XX_SW");
     assert(T_XX_SW < EXP(cnBitsMallocMask));
@@ -14159,11 +14245,18 @@ embeddedBitmap:;
   #if defined(SKIP_LINKS)
     default: {
     /* case T_SKIP_TO_SWITCH */
-#if defined(LVL_IN_WR_HB) || defined(LVL_IN_PP)
+      #if defined(LVL_IN_WR_HB) || defined(LVL_IN_PP)
         DBG((nType != T_SKIP_TO_SWITCH)
+          #ifdef _SKIP_TO_FULL_SW
+                && (nType != T_SKIP_TO_FULL_SW)
+          #endif // _SKIP_TO_FULL_SW
             ? printf("NextGuts: Unhandled nType: %d\n", nType) : 0);
-        assert(nType == T_SKIP_TO_SWITCH);
-#endif // ! defined(LVL_IN_WR_HB) && ! defined(LVL_IN_PP)
+        assert((nType == T_SKIP_TO_SWITCH)
+          #ifdef _SKIP_TO_FULL_SW
+                || (nType == T_SKIP_TO_FULL_SW)
+          #endif // _SKIP_TO_FULL_SW
+               );
+      #endif // ! defined(LVL_IN_WR_HB) && ! defined(LVL_IN_PP)
         DBGN(printf("SKIP_TO_SW\n"));
         //A(0);
         nBLR = wr_nBLR(wRoot);
@@ -14200,6 +14293,9 @@ embeddedBitmap:;
         goto t_switch; // address gcc implicit fall-through warning
     }
   #endif // defined(SKIP_LINKS)
+  #ifdef FULL_SW
+    case T_FULL_SW:
+  #endif // FULL_SW
     case T_SWITCH: {
         goto t_switch;
 t_switch:;
@@ -15028,7 +15124,7 @@ Judy1Prev(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
 // Return Failure if all keys bigger (or smaller if bPrev) than or equal
 // to *pwKey are in the array.
 // *pwKey is undefined if Failure is returned.
-static Status_t
+Status_t
 NextEmptyGuts(qpa, Word_t *pwKey, int bPrev)
 {
     qva;
@@ -15293,14 +15389,21 @@ embeddedBitmap:;
       #if defined(LVL_IN_WR_HB) || defined(LVL_IN_PP)
         int nType = wr_nType(wRoot); (void)nType;
         DBG((nType != T_SKIP_TO_SWITCH)
-            ? printf("NextGuts: Unhandled nType: %d\n", nType) : 0);
-        assert(nType == T_SKIP_TO_SWITCH);
+          #ifdef _SKIP_TO_FULL_SW
+                && (nType != T_SKIP_TO_FULL_SW)
+          #endif // _SKIP_TO_FULL_SW
+            ? printf("NextEmptyGuts: Unhandled nType: %d\n", nType) : 0);
+        assert((nType == T_SKIP_TO_SWITCH)
+          #ifdef _SKIP_TO_FULL_SW
+                || (nType == T_SKIP_TO_FULL_SW)
+          #endif // _SKIP_TO_FULL_SW
+               );
       #endif // ! defined(LVL_IN_WR_HB) && ! defined(LVL_IN_PP)
         nBLR = wr_nBLR(wRoot);
         Word_t wPrefix =
-#ifdef PP_IN_LINK
+      #ifdef PP_IN_LINK
             (nBL >= cnBitsPerWord) ? 0 :
-#endif // PP_IN_LINK
+      #endif // PP_IN_LINK
                 PWR_wPrefixBL(pwRoot, (Switch_t *)pwr, nBLR);
         if (wPrefix != (*pwKey & ~MSK(nBLR))) {
             return Success;
@@ -15309,6 +15412,9 @@ embeddedBitmap:;
         goto t_switch; // address gcc implicit fall-through warning
     }
   #endif // defined(SKIP_LINKS)
+  #ifdef FULL_SW
+    case T_FULL_SW:
+  #endif // FULL_SW
     case T_SWITCH: {
         goto t_switch;
 t_switch:;
@@ -15351,6 +15457,97 @@ t_switch:;
   #ifdef REMOTE_LNX
             Word_t* pwLnXLoop = gpwLnX(qy, EXP(nBW), wIndex);
   #endif // REMOTE_LNX
+
+
+#if 0
+    goto t_full_sw;
+t_full_sw:; // check for full sub-expanse if cnSwCnts else for full sw
+    {
+      #if cnSwCnts != 0
+        Word_t* pwCnts = ((Switch_t*)pwr)->sw_awCnts;
+        if (nBLR <= 16) {
+            int nShift
+                = (nBW > nLogSwSubCnts(1)) ? (nBW - nLogSwSubCnts(1)) : 0;
+            int nCntNum = wIndex >> nShift;
+            while (((uint16_t*)pwCnts)[nCntNum--] == EXP(nBLR - nBW + nShift)) {
+                if (nCntNum < 0) {
+                    *pwKey = (*pwKey & ~MSK(nBLR)) - EXP(nBLR);
+                    if (NextEmptyGuts(qyax(Loop), pwKey, bPrev) == Success) {
+                        return Success;
+                    }
+                }
+            }
+            if (nCntNum + 1 < (int)(wIndex >> nShift)) {
+                assert(((nCntNum + 1) << nShift) < (int)wIndex);
+                wIndex = (nCntNum + 1) << nShift;
+                pLnLoop = &pwr_pLinks((Switch_t *)pwr)[wIndex];
+          #ifdef _LNX
+                pwLnXLoop = gpwLnX(qy, EXP(nBW), wIndex);
+          #endif // _LNX
+                *pwKey = (*pwKey & ~MSK(nBLR)) - (wIndex << (nBLR - nBW));
+            }
+          #if cnBitsPerWord > 32
+        } else if (nBLR <= 32) {
+            int nShift
+                = (nBW > nLogSwSubCnts(2)) ? (nBW - nLogSwSubCnts(2)) : 0;
+            int nCntNum = wIndex >> nShift;
+            while (((uint32_t*)pwCnts)[nCntNum--] == EXP(nBLR - nBW + nShift)) {
+                if (nCntNum < 0) {
+                    *pwKey = (*pwKey & ~MSK(nBLR)) - EXP(nBLR);
+                    goto break_from_main_switch;
+                }
+            }
+            if (nCntNum + 1 < (int)(wIndex >> nShift)) {
+                assert(((nCntNum + 1) << nShift) < (int)wIndex);
+                wIndex = (nCntNum + 1) << nShift;
+                pLnLoop = &pwr_pLinks((Switch_t *)pwr)[wIndex];
+              #ifdef _LNX
+                pwLnXLoop = gpwLnX(qy, EXP(nBW), wIndex);
+              #endif // _LNX
+                *pwKey = (*pwKey & ~MSK(nBLR)) - (wIndex << (nBLR - nBW));
+            }
+          #endif // cnBitsPerWord > 32
+        } else {
+          #if cnSwCnts > 1
+            int nShift = (nBW > cnLogSwCnts) ? (nBW - cnLogSwCnts) : 0;
+            int nCntNum = wIndex >> nShift;
+            while (pwCnts[nCntNum--] == EXP(nBLR - nBW + nShift)) {
+                if (nCntNum < 0) {
+                    if (nBLR == cnBitsPerWord) {
+                        return Failure;
+                    }
+                    *pwKey = (*pwKey & ~NZ_MSK(nBLR)) - EXP(nBLR);
+                    goto break_from_main_switch;
+                }
+            }
+            if (nCntNum + 1 < (int)(wIndex >> nShift)) {
+                assert(((nCntNum + 1) << nShift) < (int)wIndex);
+                wIndex = (nCntNum + 1) << nShift;
+                pLnLoop = &pwr_pLinks((Switch_t *)pwr)[wIndex];
+                  #ifdef _LNX
+                pwLnXLoop = gpwLnX(qy, EXP(nBW), wIndex);
+                  #endif // _LNX
+                *pwKey = (*pwKey & ~NZ_MSK(nBLR)) - (wIndex << (nBLR - nBW));
+            }
+          #endif // cnSwCnts > 1
+        }
+        goto switchTail;
+      #else // cnSwCnts != 0
+          #ifdef FULL_SW
+        assert(gwPopCnt(qya, nBLR) == BPW_EXP(nBLR));
+          #else // FULL_SW
+        if (gwPopCnt(qya, nBLR) != BPW_EXP(nBLR)) {
+            goto switchTail;
+        }
+          #endif // FULL_SW else
+        *pwKey = (*pwKey & ~NZ_MSK(nBLR)) + BPW_EXP(nBLR);
+        goto break_from_main_switch;
+      #endif // cnSwCnts != 0 else
+    }
+#endif
+
+
+
             if (NextEmptyGuts(qyax(Loop), pwKey, bPrev) == Success) {
                 return Success;
             }
@@ -15553,86 +15750,6 @@ t_xx_sw:;
 }
 
 // If *pwKey is not in the array then return 1 and leave *pwKey unchanged.
-// Otherwise find the next bigger number than *pwKey which is not in the array.
-// Put the found number in *pwKey.
-// Return 1 if a number is found.
-// Return 0 if all keys bigger than or equal to *pwKey are in the array.
-// Return -1 if pwKey is NULL.
-// *pwKey is undefined if anything other than 1 is returned.
-// But we go to the trouble of preserving *pwKey if anything other than 1
-// is returned to compare with JudyA.
-int
-#ifdef B_JUDYL
-JudyLFirstEmpty(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
-#else // B_JUDYL
-Judy1FirstEmpty(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
-#endif // B_JUDYL
-{
-    DBGN(printf("JxFE: pwKey %p\n", (void *)pwKey));
-    if (pwKey == NULL) {
-        int ret = -1;
-        if (PJError != NULL) {
-            PJError->je_Errno = JU_ERRNO_NULLPINDEX;
-            DBGN(printf("JxFE: je_Errno %d\n", PJError->je_Errno));
-        }
-        DBGN(printf("JxFE: ret %d\n", ret));
-        return ret; // JERRI (for Judy1) or PPJERR (for JudyL)
-    }
-    DBGN(printf("JxFE: *pwKey " OWx"\n", *pwKey));
-    Word_t wKeyLocal = *pwKey;
-    int nBL = cnBitsPerWord;
-    Word_t *pwRoot = (Word_t*)&PArray;
-    Link_t* pLn = STRUCT_OF(pwRoot, Link_t, ln_wRoot); (void)pLn;
-    Word_t* pwLnX = NULL; (void)pwLnX;
-    Status_t status = NextEmptyGuts(qya, &wKeyLocal, /* bPrev */ 0);
-    if (status == Success) {
-        *pwKey = wKeyLocal;
-        DBGN(printf("JxFE: *pwKey " OWx"\n", *pwKey));
-    }
-    return status == Success;
-}
-
-// Find the next bigger number than *pwKey which is not in the array.
-// Put the found number in *pwKey.
-// Return 1 if a number is found.
-// Return 0 if all keys bigger than *pwKey are in the array.
-// Return -1 if pwKey is NULL.
-// *pwKey is undefined if anything other than 1 is returned.
-// But we go to the trouble of preserving *pwKey if anything other than 1
-// is returned to compare with JudyA.
-int
-#ifdef B_JUDYL
-JudyLNextEmpty(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
-#else // B_JUDYL
-Judy1NextEmpty(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
-#endif // B_JUDYL
-{
-    DBGN(printf("\n\nJxNE: pwKey %p\n", (void *)pwKey));
-    if (pwKey == NULL) {
-#ifdef B_JUDYL
-        return JudyLFirstEmpty(PArray, pwKey, PJError);
-#else // B_JUDYL
-        return Judy1FirstEmpty(PArray, pwKey, PJError);
-#endif // B_JUDYL
-    }
-    DBGN(printf("JxNE: *pwKey 0x%zx\n", *pwKey));
-    Word_t wKeyLocal = *pwKey;
-    int ret = 0;
-    if (++wKeyLocal != 0) {
-#ifdef B_JUDYL
-        if ((ret = JudyLFirstEmpty(PArray, &wKeyLocal, PJError)) == 1)
-#else // B_JUDYL
-        if ((ret = Judy1FirstEmpty(PArray, &wKeyLocal, PJError)) == 1)
-#endif // B_JUDYL
-        {
-            *pwKey = wKeyLocal;
-        }
-    }
-    DBGN(printf("JxNE: ret %d\n\n", ret));
-    return ret;
-}
-
-// If *pwKey is not in the array then return 1 and leave *pwKey unchanged.
 // Otherwise find the next smaller number than *pwKey which is not
 // in the array.
 // Put the found number in *pwKey.
@@ -15665,6 +15782,17 @@ Judy1LastEmpty(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
     Word_t *pwRoot = (Word_t*)&PArray;
     Link_t* pLn = STRUCT_OF(pwRoot, Link_t, ln_wRoot); (void)pLn;
     Word_t* pwLnX = NULL; (void)pwLnX;
+  #ifndef NO_LOOKUP_BEFORE_PREV_EMPTY
+      #ifdef B_JUDYL
+    if (JudyLGet(PArray, wKeyLocal, NULL) == NULL)
+      #else // B_JUDYL
+    if (Judy1Test(PArray, wKeyLocal, NULL) == 0)
+      #endif // B_JUDYL else
+    {
+        DBGN(printf("JxLE: returning *pwKey " OWx"\n\n", *pwKey));
+        return 1; // found last empty
+    }
+  #endif // !NO_LOOKUP_BEFORE_PREV_EMPTY
     Status_t status = NextEmptyGuts(qya, &wKeyLocal, /* bPrev */ 1);
     if (status == Success) {
         *pwKey = wKeyLocal;

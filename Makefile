@@ -263,7 +263,7 @@ DEFAULT_DEFINES += -DRAMMETRICS
 # I'm not sure why I chose to separate TIME_DEFINES from DEFAULT_DEFINES.
 DEFINES := $(DEFAULT_DEFINES) $(TIME_DEFINES) $(DEFINES)
 
-FILES_FROM_ME  = b.h b.c bli.c bl.c bi.c br.c bc.c bn.c t.c
+FILES_FROM_ME  = b.h b.c bli.c bl.c bi.c br.c bc.c bn.c bne.c t.c
 FILES_FROM_ME += Makefile
 FILES_FROM_ME += bb forx
 FILES_FROM_ME += README.meb
@@ -275,17 +275,18 @@ FILES = $(FILES_FROM_ME) $(FILES_FROM_DOUG_B_OR_DOUG_LEA)
 EXES = btime bcheck b1time b1check bLtime bLcheck jtime jcheck # t
 EXES += c++time c++check
 LIBS = libb1.a libb1.so libbL.a libbL.so libb.a libb.so
-LIBB1_OBJS = b.o bl.o bi.o br.o bc.o bn.o JudyMalloc.o
-LIBB1_SRCS = b.c bl.c bi.c br.c bc.c bn.c
-LIBBL_OBJS = b-L.o blL.o biL.o brL.o bcL.o bnL.o JudyMalloc.o
-LIBBL_SRCS = b-L.c blL.c biL.c brL.c bcL.c bnL.c
+LIBB1_OBJS = b.o bl.o bi.o br.o bc.o bn.o bne.o JudyMalloc.o
+LIBB1_SRCS = b.c bl.c bi.c br.c bc.c bn.c bne.c
+LIBBL_OBJS = b-L.o blL.o biL.o brL.o bcL.o bnL.o bneL.o JudyMalloc.o
+LIBBL_SRCS = b-L.c blL.c biL.c brL.c bcL.c bnL.c bneL.o
 LIBB_OBJS = $(LIBB1_OBJS) $(LIBBL_OBJS)
 LIBB_SRCS = $(LIBB1_SRCS) $(LIBBL_SRCS)
-ASMS  = b.s bl.s bi.s br.s bc.s bn.s
-ASMS += b-L.s blL.s biL.s brL.s bcL.s bnL.s
+ASMS  = b.s bl.s bi.s br.s bc.s bn.s bne.s
+ASMS += b-L.s blL.s biL.s brL.s bcL.s bnL.s bneL.s
 ASMS += JudyMalloc.s # t.s
 ASMS += Judy1LHTime.s Judy1LHCheck.s
-CPPS  = b.i bl.i bi.i br.i bc.i bn.i b-L.i blL.i biL.i brL.i bcL.i bnL.i
+CPPS  = b.i bl.i bi.i br.i bc.i bn.i bne.i
+CPPS += b-L.i blL.i biL.i brL.i bcL.i bnL.i bneL.i
 CPPS += JudyMalloc.i # t.i
 
 T_OBJS = JudyMalloc.o
@@ -420,6 +421,8 @@ bcL.c: bc.c
 	ln -s $^ $@
 bnL.c: bn.c
 	ln -s $^ $@
+bneL.c: bne.c
+	ln -s $^ $@
 
 # dlmalloc.c needs special accommodations
 # We put them in MALLOC_FLAGS.
@@ -453,6 +456,7 @@ bl.o: bli.c b.h bdefines.h Judy.h
 br.o: bli.c b.h bdefines.h Judy.h
 bc.o: bli.c b.h bdefines.h Judy.h
 bn.o: bli.c b.h bdefines.h Judy.h
+bne.o: bli.c b.h bdefines.h Judy.h
 
 b-L.o: b.c b.h bdefines.h Judy.h
 	$(CC) $(CFLAGS) $(DEFINES) -DB_JUDYL -o $@ -c $<
@@ -467,6 +471,8 @@ brL.o: br.c bli.c b.h bdefines.h Judy.h
 bcL.o: bc.c bli.c b.h bdefines.h Judy.h
 	$(CC) $(CFLAGS) $(DEFINES) -DB_JUDYL -o $@ -c $<
 bnL.o: bn.c bli.c b.h bdefines.h Judy.h
+	$(CC) $(CFLAGS) $(DEFINES) -DB_JUDYL -o $@ -c $<
+bneL.o: bne.c bli.c b.h bdefines.h Judy.h
 	$(CC) $(CFLAGS) $(DEFINES) -DB_JUDYL -o $@ -c $<
 
 # Default MALLOC_ALIGNMENT is 2 * sizeof(void *), except possibly on OSX.
@@ -490,6 +496,7 @@ bl.s: bl.c bli.c b.h bdefines.h Judy.h
 br.s: br.c bli.c b.h bdefines.h Judy.h
 bc.s: bc.c bli.c b.h bdefines.h Judy.h
 bn.s: bn.c bli.c b.h bdefines.h Judy.h
+bne.s: bne.c bli.c b.h bdefines.h Judy.h
 
 b-L.s: b.c b.h bdefines.h Judy.h
 	$(CC) $(CFLAGS) $(DEFINES) -DB_JUDYL -S -o $@ -c $<
@@ -502,6 +509,8 @@ brL.s: br.c bli.c b.h bdefines.h Judy.h
 bcL.s: bc.c bli.c b.h bdefines.h Judy.h
 	$(CC) $(CFLAGS) $(DEFINES) -DB_JUDYL -S -o $@ -c $<
 bnL.s: bn.c bli.c b.h bdefines.h Judy.h
+	$(CC) $(CFLAGS) $(DEFINES) -DB_JUDYL -S -o $@ -c $<
+bneL.s: bne.c bli.c b.h bdefines.h Judy.h
 	$(CC) $(CFLAGS) $(DEFINES) -DB_JUDYL -S -o $@ -c $<
 
 # Suppress warnings. Transitive warnings. t.c just includes other files.
@@ -551,6 +560,9 @@ bc.i: bc.c bli.c b.h bdefines.h Judy.h
 bn.i: bn.c
 	$(CC) $(CFLAGS) $(DEFINES) -E $< | egrep -v "^#[0-9]*|^ *$$" > $@
 
+bne.i: bne.c
+	$(CC) $(CFLAGS) $(DEFINES) -E $< | egrep -v "^#[0-9]*|^ *$$" > $@
+
 b-L.i: b.c b.h bdefines.h Judy.h
 	$(CC) $(CFLAGS) $(DEFINES) -DB_JUDYL -E $< \
  | egrep -v "^#[0-9]*|^ *$$" > $@
@@ -575,6 +587,9 @@ bnL.i: bn.c bli.c b.h bdefines.h Judy.h
 	$(CC) $(CFLAGS) $(DEFINES) -DB_JUDYL -E $< \
  | egrep -v "^#[0-9]*|^ *$$" > $@
 
+bneL.i: bne.c bli.c b.h bdefines.h Judy.h
+	$(CC) $(CFLAGS) $(DEFINES) -DB_JUDYL -E $< \
+ | egrep -v "^#[0-9]*|^ *$$" > $@
 
 Judy1LHTime.i: Judy1LHTime.c
 	$(CC) $(CFLAGS) -DMIKEY_1 -DMIKEY_L $(DEFINES) -E $< \

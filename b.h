@@ -937,6 +937,12 @@ enum {
     T_SWITCH, // Uncompressed, close (i.e. no-skip) switch.
     // All type values bigger than T_SWITCH have to be uncompressed
     // switches. We use it for WROOT_NULL scanning for faster NEW_NEXT.
+      #ifdef FULL_SW
+    T_FULL_SW,
+          #ifdef _SKIP_TO_FULL_SW
+    T_SKIP_TO_FULL_SW,
+          #endif // _SKIP_TO_FULL_SW
+      #endif // FULL_SW
 #if defined(CODE_XX_SW)
     T_XX_SW,
 #endif // defined(CODE_XX_SW)
@@ -1390,12 +1396,15 @@ Clr_bIsSkip(Word_t* pwRoot)
     (void)pwRoot;
 #if defined(SKIP_LINKS)
     int nType = wr_nType(*pwRoot);
-  #if ! defined(LVL_IN_WR_HB) && ! defined(LVL_IN_PP)
+  #ifdef _LVL_IN_TYPE
     if (nType >= T_SKIP_TO_SWITCH) { Set_nType(pwRoot, T_SWITCH); return; }
-  #endif // ! defined(LVL_IN_WR_HB) && ! defined(LVL_IN_PP)
+  #endif // _LVL_IN_TYPE
     switch (nType) {
   #if defined(LVL_IN_WR_HB) || defined(LVL_IN_PP)
     case T_SKIP_TO_SWITCH: Set_nType(pwRoot, T_SWITCH); break;
+      #ifdef _SKIP_TO_FULL_SW
+    case T_SKIP_TO_FULL_SW: Set_nType(pwRoot, T_FULL_SW); break;
+      #endif // _SKIP_TO_FULL_SW
   #endif // defined(LVL_IN_WR_HB) || defined(LVL_IN_PP)
   #if defined(SKIP_TO_LIST_SW)
     case T_SKIP_TO_LIST_SW: Set_nType(pwRoot, T_LIST_SW); break;
@@ -1410,7 +1419,7 @@ Clr_bIsSkip(Word_t* pwRoot)
     case T_SKIP_TO_BITMAP: Set_nType(pwRoot, T_BITMAP); break;
   #endif // defined(SKIP_TO_BITMAP)
     default:
-        DBG(printf("\nnType %d\n", nType));
+        DBG(printf("\nClr_bIsSkip nType %d\n", nType));
         assert(0);
     }
 #endif // defined(SKIP_LINKS)
@@ -1862,6 +1871,12 @@ tp_bIsSwitch(int nType)
 #endif // ! defined(LVL_IN_WR_HB) && ! defined(LVL_IN_PP)
     switch (nType) {
     case T_SWITCH:
+  #ifdef FULL_SW
+    case T_FULL_SW:
+      #ifdef _SKIP_TO_FULL_SW
+    case T_SKIP_TO_FULL_SW:
+      #endif // _SKIP_TO_FULL_SW
+  #endif // FULL_SW
 #if defined(LVL_IN_WR_HB) || defined(LVL_IN_PP)
   #if defined(SKIP_LINKS)
     case T_SKIP_TO_SWITCH:
@@ -1940,6 +1955,9 @@ tp_bIsSkip(int nType)
   #if defined(SKIP_LINKS)
     switch (nType) {
     case T_SKIP_TO_SWITCH:
+      #ifdef _SKIP_TO_FULL_SW
+    case T_SKIP_TO_FULL_SW:
+      #endif // _SKIP_TO_FULL_SW
       #if defined(SKIP_TO_LIST_SW)
     case T_SKIP_TO_LIST_SW:
       #endif // defined(SKIP_TO_LIST_SW)
@@ -2955,7 +2973,7 @@ typedef struct {
 // cbEmbeddedBitmap is for Judy1.
 #ifdef USE_XX_SW_ONLY_AT_DL2 // never defined for B_JUDYL yet
   #ifndef ALLOW_EMBEDDED_BITMAP
-    #error USE_XX_ONLY_AT_DL2 requires ALLOW_EMBEDDED_BITMAP
+    #error USE_XX_SW_ONLY_AT_DL2 requires ALLOW_EMBEDDED_BITMAP
   #endif // #ifndef ALLOW_EMBEDDED_BITMAP
   #define cbEmbeddedBitmap  1
 #elif !defined(B_JUDYL) && defined(ALLOW_EMBEDDED_BITMAP)
@@ -3606,7 +3624,11 @@ gwPopCnt(qpa, int nBLR)
     //assert(nBL < cnBitsPerWord);
     Word_t wPopCnt;
   #ifdef SW_POP_IN_WR_HB
-    if ((nType != T_SWITCH)
+    if (((nType != T_SWITCH)
+      #ifdef FULL_SW
+            && (nType != T_FULL_SW)
+      #endif // FULL_SW
+         )
         || ((wPopCnt = GetBits(*pwRoot, cnBitsPerWord - cnBitsVirtAddr,
                                cnBitsVirtAddr))
             == 0))
@@ -3641,7 +3663,11 @@ swPopCnt(qpa, int nBLR, Word_t wPopCnt)
     // if !POP_WORD.
     set_PWR_wPopCntBL(&pLn->ln_wRoot, pwr, nBLR, wPopCnt);
   #ifdef SW_POP_IN_WR_HB
-    if (nType == T_SWITCH) {
+    if ((nType == T_SWITCH)
+      #ifdef FULL_SW
+            || (nType == T_FULL_SW)
+      #endif // FULL_SW
+        ) {
         // Not using WR_HB for nBLR or nBW.
         // Let's use if for the population of the switch if it fits.
         // How can gwPopCnt know if the true pop fits?
@@ -4364,9 +4390,16 @@ InflateBmSwTest(qpa) // qp points to BM switch
 #define IF_NEXT(_stmt)
 #define IF_NOT_NEXT(_stmt)  _stmt
 #endif // !NEXT
+#ifndef NEXT_EMPTY
+#define IF_NEXT_EMPTY(_stmt)
+#define IF_NOT_NEXT_EMPTY(_stmt)  _stmt
+#endif // !NEXT_EMPTY
 #ifndef IF_INS_OR_REM
 #define IF_INS_OR_REM(_stmt)
-#endif // IF_INS_OR_REM
+#endif // !IF_INS_OR_REM
+#ifndef IF_NEXT_OR_NEXT_EMPTY
+#define IF_NEXT_OR_NEXT_EMPTY(_stmt)
+#endif // !IF_NEXT_OR_NEXT_EMPTY
 
 #ifdef B_JUDYL
   #define Insert  InsertL
@@ -4374,12 +4407,14 @@ InflateBmSwTest(qpa) // qp points to BM switch
   #define Lookup  LookupL
   #define Count   CountL
   #define Next    NextL
+  #define NextEmpty  NextEmptyL
 #else // B_JUDYL
   #define Insert  Insert1
   #define Remove  Remove1
   #define Lookup  Lookup1
   #define Count   Count1
   #define Next    Next1
+  #define NextEmpty  NextEmpty1
 #endif // B_JUDYL else
 
 BJL(Word_t*)BJ1(Status_t) Insert(qpa, Word_t wKey);
@@ -4397,6 +4432,7 @@ Status_t Remove(qpa, Word_t wKey);
 #define RemoveGuts  RemoveGutsL
 #define RemoveCleanup  RemoveCleanupL
 #define NextGuts  NextGutsL
+#define NextEmptyGuts  NextEmptyGutsL
 #define DumpX  DumpXL
 #define Dump  DumpL
 #define Checkpoint CheckpointL
@@ -4412,6 +4448,7 @@ Status_t Remove(qpa, Word_t wKey);
 #define RemoveGuts  RemoveGuts1
 #define RemoveCleanup  RemoveCleanup1
 #define NextGuts  NextGuts1
+#define NextEmptyGuts  NextEmptyGuts1
 #define DumpX  DumpX1
 #define Dump  Dump1
 #define Checkpoint Checkpoint1
@@ -4462,6 +4499,8 @@ Word_t NextGuts(qpa, Word_t *pwKey, Word_t wSkip, int bPrev, int bEmpty
               , Word_t **ppwVal
   #endif // B_JUDYL
                 );
+
+Status_t NextEmptyGuts(qpa, Word_t *pwKey, int bPrev);
 
 #if 0
 #ifdef B_JUDYL
@@ -8812,7 +8851,13 @@ GetPopCnt(qpa)
     #define _GPC_ALL_CASES
   #endif // GPC_ALL_SKIP_TO_SW_CASES elif !LVL_IN_WR_HB && !LVL_IN_PP
         case T_SWITCH:
+      #ifdef FULL_SW
+        case T_FULL_SW:
+      #endif // FULL_SW
   #ifdef SKIP_LINKS
+      #ifdef _SKIP_TO_FULL_SW
+        case T_SKIP_TO_FULL_SW:
+      #endif // _SKIP_TO_FULL_SW
         case T_SKIP_TO_SWITCH:
         // Extra cases so we have at least EXP(cnBitsTypeMask) cases so gcc
         // will create a jump table with no bounds check at the beginning after

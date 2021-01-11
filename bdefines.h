@@ -52,6 +52,11 @@
   #define     NEW_NEXT
 #endif // !NO_NEW_NEXT
 
+#ifndef    NO_FULL_SW
+  #undef      FULL_SW
+  #define     FULL_SW
+#endif // !NO_FULL_SW
+
 // If B_JUDYL is defined then we are building JudyL.
 // Otherwise we are building Judy1.
 // JudyL and Judy1 have different constraints and different defaults.
@@ -987,7 +992,7 @@
 #ifdef ALL_SKIP_TO_SW_CASES
 #ifdef AUGMENT_TYPE
 #ifndef NUM_TYPES
-  #define NUM_TYPES  9
+  #define NUM_TYPES  11
 #endif // !NUM_TYPES
 #endif // AUGMENT_TYPE
 #endif // ALL_SKIP_TO_SW_CASES
@@ -1042,6 +1047,10 @@
   #undef DUMMY_REMOTE_LNX
 #endif // REMOTE_LNX
 
+// Embedded keys were originally sorted with the smallest key in the most
+// significant bits of the word -- opposite of an external list.
+// Hence REVERSE_SORT_EMBEDDED_KEYS means the biggest key is put in the most
+// significant bits of the word -- same as an external list.
 #ifndef   NO_REVERSE_SORT_EMBEDDED_KEYS
   #undef     REVERSE_SORT_EMBEDDED_KEYS
   #define    REVERSE_SORT_EMBEDDED_KEYS
@@ -1057,6 +1066,40 @@
   #undef  NO_EK_CALC_POP
   #define NO_EK_CALC_POP
 #endif // REVERSE_SORT_EMBEDDED_KEYS
+
+// We don't have NEW_NEXT_EMPTY code in Judy1 embedded keys for 32-bit
+// or for NO_REVERSE_SORT_EMBEDDED_KEYS.
+#ifdef EMBED_KEYS
+#if !defined(REVERSE_SORT_EMBEDDED_KEYS) || cnBitsPerWord <= 32
+  #define _NO_NEW_NEXT_EMPTY_FOR_JUDY1
+#endif // !REVERSE_SORT_EMBEDDED_KEYS || cnBitsPerWord <= 32
+#endif // EMBED_KEYS
+#if defined(B_JUDYL) || !defined(_NO_NEW_NEXT_EMPTY_FOR_JUDY1)
+  #ifndef    NO_NEW_NEXT_EMPTY
+    #undef      NEW_NEXT_EMPTY
+    #define     NEW_NEXT_EMPTY
+  #endif // !NO_NEW_NEXT_EMPTY
+#else // B_JUDYL || !_NO_NEW_NEXT_EMPTY_FOR_JUDY1
+  #ifdef      NEW_NEXT_EMPTY
+    #error
+  #endif //   NEW_NEXT_EMPTY
+#endif // B_JUDYL || !_NO_NEW_NEXT_EMPTY_FOR_JUDY1 else
+
+// We can't handle T_SKIP_TO_FULL_SW with _LVL_IN_TYPE.
+#ifdef FULL_SW
+#ifdef SKIP_LINKS
+#ifndef _LVL_IN_TYPE
+  #define _SKIP_TO_FULL_SW
+#endif // _LVL_IN_TYPE
+#endif // SKIP_LINKS
+#endif // FULL_SW
+
+#ifndef _SKIP_TO_FULL_SW
+  #undef  LOOKUP_BEFORE_NEXT_EMPTY
+  #define LOOKUP_BEFORE_NEXT_EMPTY
+  #undef  LOOKUP_BEFORE_FIRST_EMPTY
+  #define LOOKUP_BEFORE_FIRST_EMPTY
+#endif // !SKIP_TO_FULL_SW
 
 #ifndef B_JUDYL
   #undef    PACK_BM_VALUES
@@ -1106,6 +1149,10 @@
 #elif defined(NEXT_SHORTCUT_SWITCH) // NEXT_SHORTCUT_NULL
   #define _NEXT_SHORTCUT
 #endif // NEXT_SHORTCUT_NULL elif NEXT_SHORTCUT_SWITCH
+
+// RESTART_UP_FOR_NEXT[_EMPTY] is not defined by default.
+//#define    RESTART_UP_FOR_NEXT
+//#define    RESTART_UP_FOR_NEXT_EMPTY
 
 // Our internal NextX acts like JudyXFirst(wKey) if !NEW_NEXT_IS_EXCLUSIVE
 // which is the default.

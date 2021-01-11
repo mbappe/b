@@ -3,7 +3,8 @@
 // white-box information.
 //
 // 64-bit released Judy1 version 1.0.5:
-// Leaf 8 up to 31 keys then splay to Branch 7 with Leaf 7s.
+// Leaf 8/Word up to 31 keys then splay to Branch 8/Word with Leaf 7s.
+// - The first word of Leaf 8/Word is a pop count?
 // Linear Branch at any level holds up to 7 JPs. We also uncompress when
 // the population of the branch and below exceeds 1000.
 // Bitmap Branch at any level holds up to 184 JPs. Or more because sometimes we
@@ -23,30 +24,30 @@
 // No Leaf1.
 // Leaf and Bitmap Branch components allocation steps (in words):
 // - 3, 5, 7, 11, 15, 23, 32, 47, 64
+// - Hmm. I guess the leaves never go past 32 words?
 // Leaf holds keys and nothing else. Sorted smallest to largest.
 // Structure of Bitmap Branch:
-// - 4 bitmaps and 4 pointers; the pointers point to arrays of JPs
+// - 4 bitmaps and 4 pointers; the pointers point to arrays of JPs.
 // Structure of a Linear Branch:
-// - 7 JPs plus one word of seven one-byte indexes and one one-byte count of
-// number of valid JPs.
+// - One word of seven one-byte indexes and one one-byte count of
+//   of number of valid JPs plus 7 JPs.
 // Structure of an Uncompressed Branch:
 // - 256 JPs.
 // Structure of a JP:
-// - one word contains seven-byte DCD (which comprises prefix and pop) and
-//   one-byte type field
-//   - no DCD for immediate (immediate has 15-bytes of keys)
-// - other word is a pointer to the object that is specified by the type field
+// - One word contains seven-byte DCD (which comprises prefix and pop) and
+//   one-byte type field.
+// - Other word is a pointer to the object that is specified by the type field.
+// - No DCD word for Immediate type (Immediate type has 15-bytes of keys).
 // One-word root pointer and seven-byte prefix/pop are both reasons why we
 // can't have a narrow pointer to the top branch.
 // Pointers are portable by virtue of type field describing the level of the
 // object pointed to. Think narrow pointers.
-// Type field encodes the population of immediates.
-// All list searches are binary except immeds.
-// When Leaf 8 reaches pop of around 31 we insert a JPM between the root
-// pointer and the top level Branch or Leaf 8.
+// Type field encodes the population of Immediates.
+// All list searches are binary except Immediates.
+// When Leaf 8/Word reaches a pop of around 31 we insert a JPM between the
+// root pointer and the top level Branch or Leaf 8/Word.
 // - JPM has: pop, JP to first Branch or Leaf, pop of last BB uncompression,
-// errno, source line no, total words malloced
-// - Judy Population and Memory.
+// errno, source line no, total words malloced.
 
 // Key differences for JudyL:
 // Value areas.
@@ -55,7 +56,7 @@
 // area.
 // Structure of Bitmap Leaf:
 // - 4 bitmaps and 4 pointers to value areas (if only one bit set, then value
-//   area pointer is used as value area)
+//   area pointer is used as value area).
 
 // Key differences for enhanced, unreleased Judy:
 // Leaf and Bitmap Branch components allocation steps (in words):
@@ -98,9 +99,9 @@
 // JP with 57 keys.
 // Grow Leaf 3 to 85 keys and splay into 7 JPs with one immediate plus one
 // JP with a Leaf 2 with 78 keys.
-// How about Bitmap Branches and 3 and 4 replicated 4G times for a total
+// How about Bitmap Branches at 3 and 4 replicated 4G times for a total
 // pop of 4G * 92 = 400G?
-// Or Bitmap Branches and 3, 4 and 5 replicated 24M times for a total
+// Or Bitmap Branches at 3, 4 and 5 replicated 24M times for a total
 // pop of 4G * 92 = 400G?
 
 // 106-0, [(1<< 8)+14, 1<< 8], [(2<< 8)+14, 2<< 8], [(3<< 8)+14, 3<< 8],
@@ -241,7 +242,7 @@ Next(int nBitsPerDigit, int nDigitsAtBottom, Word_t wKeysAtBottom)
     static Word_t wKeyNext = 0;
     static int nExp = BITSPW;
 
-    int nBitsAtBitmap = nDigitsAtBitmap * nBitsPerDigit;
+    int nBitsAtBitmap = nDigitsAtBottom * nBitsPerDigit;
     Word_t wKeyNow = wKeyNext;
     Word_t wBottomDigitsMax = MASK(EXP(nBitsPerDigit));
 
@@ -258,7 +259,7 @@ Next(int nBitsPerDigit, int nDigitsAtBottom, Word_t wKeysAtBottom)
         = (wKeysAtBottom >> nBitsPerDigit >> nDigitsAtBottom) + 1;
 #endif
 
-    if (((++wKeyNext & wDigitMax) % wKeysPerNow) == 0)
+    if (((++wKeyNext & wBottomDigitsMax) % wKeysPerNow) == 0)
     {
         // We've filled the link/jp.  Next link/jp.
 
@@ -371,17 +372,17 @@ oa2ul(char *str, char **endptr, int base)
 int
 main(int argc, char *argv[])
 {
-    int nBitsPerDigit = 4;
-    int nDigitsAtBottom = 3;
-    Word_t wKeysPerX = 200;
+    int nBitsPerDigit = 4; // 8; // Used 4 for Judy 1.0.5.
+    int nDigitsAtBottom = 3; // 1; // Used 3 for Judy 1.0.5.
+    Word_t wKeysPerX = 200; // 256; // Used 200 for Judy 1.0.5.
     Word_t wKey;
 
     switch (argc)
     {
     default: usage(); // usage exits
-    case 4: wKeysPerX = oa2ul(argv[3], 0, 0);
-    case 3: nDigitsAtBottom = oa2ul(argv[2], 0, 0);
-    case 2: nBitsPerDigit = oa2ul(argv[1], 0, 0);
+    case 4: wKeysPerX = oa2ul(argv[3], 0, 0); /* FALLTHRU */
+    case 3: nDigitsAtBottom = oa2ul(argv[2], 0, 0); /* FALLTHRU */
+    case 2: nBitsPerDigit = oa2ul(argv[1], 0, 0); /* FALLTHRU */
     case 1: ;
     }
 
