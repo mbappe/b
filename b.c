@@ -13492,11 +13492,17 @@ Initialize(void)
 #endif // CODE_BM_SW
     printf("# cnGuardWords %d\n", cnGuardWords);
 
-  #ifdef cnSwCnts
+  #ifdef         cnSwCnts
     printf("#    cnSwCnts %d\n", cnSwCnts);
-  #else // cnSwCnts
+  #else //       cnSwCnts
     printf("# No cnSwCnts\n");
-  #endif // cnSwCnts else
+  #endif //      cnSwCnts else
+
+  #ifdef         cnLogBmlfCnts
+    printf("#    cnLogBmlfCnts %d\n", cnLogBmlfCnts);
+  #else //       cnLogBmlfCnts
+    printf("# No cnLogBmlfCnts\n");
+  #endif //      cnLogBmlfCnts else
 
 #ifndef OLD_LIST_WORD_CNT
     for (int nLogBytesPerKey = cnLogBytesPerWord;
