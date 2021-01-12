@@ -117,7 +117,8 @@ CountSw(qpa,
         DBGC(printf("CountSw nBW %d\n", nBW));
         if (nBLR <= 16) {
       #if !defined(_CONSTANT_NBPD) || cnBitsPerDigit < nLogSwSubCnts(1)
-            int nShift = (nBW > nLogSwSubCnts(1)) ? (nBW - nLogSwSubCnts(1)) : 0;
+            int nShift
+                = (nBW > nLogSwSubCnts(1)) ? (nBW - nLogSwSubCnts(1)) : 0;
             // Would like to resolve this test at compile time if possible.
             if (nShift == 0) {
                 for (int ii = 0; ii < (int)wIndex; ++ii) {
@@ -129,8 +130,8 @@ CountSw(qpa,
             int nShift = nBW - nLogSwSubCnts(1);
       #endif // !_CONSTANT_NBPD || cnBitsPerDigit < nLogSwSubCnts(1)
             {
-                int nCntNum = ((wIndex << nLogSwSubCnts(1)) + (1 << (nBW - 1)))
-                                  >> nBW;
+                int nCntNum
+                    = ((wIndex << nLogSwSubCnts(1)) + (1 << (nBW - 1))) >> nBW;
                 int nCum = 0;
                 for (int ii = 0; ii < nCntNum; ++ii) {
                     nCum += ((uint16_t*)((Switch_t*)pwr)->sw_awCnts)[ii];
@@ -148,7 +149,8 @@ CountSw(qpa,
       #if cnBitsPerWord > 32
         } else if (nBLR <= 32) {
           #if !defined(_CONSTANT_NBPD) || cnBitsPerDigit < cnLogSwCnts + 1
-            int nShift = (nBW > nLogSwSubCnts(2)) ? (nBW - nLogSwSubCnts(2)) : 0;
+            int nShift
+                = (nBW > nLogSwSubCnts(2)) ? (nBW - nLogSwSubCnts(2)) : 0;
             // Would like to resolve this test at compile time if possible.
             if (nShift == 0) {
                 for (int ii = 0; ii < (int)wIndex; ++ii) {
@@ -160,8 +162,8 @@ CountSw(qpa,
             int nShift = nBW - nLogSwSubCnts(2);
           #endif // !_CONSTANT_NBPD || cnBitsPerDigit < cnLogSwCnts + 1 else
             {
-                int nCntNum = ((wIndex << nLogSwSubCnts(2)) + (1 << (nBW - 1)))
-                                  >> nBW;
+                int nCntNum
+                    = ((wIndex << nLogSwSubCnts(2)) + (1 << (nBW - 1))) >> nBW;
                 Word_t wCum = 0;
                 for (int i = 0; i < nCntNum; ++i) {
                     wCum += ((uint32_t*)((Switch_t*)pwr)->sw_awCnts)[i];
@@ -4893,8 +4895,8 @@ t_bitmap:
                              nn < (int)EXP(nBLR - cnLogBitsPerWord); nn++) {
                         wPopCnt -= __builtin_popcountll(pwBitmap[nn]);
                     }
-                    Word_t wBmMask
-                        = ~NZ_MSK((wKey & MSK(nBLR) & (cnBitsPerWord - 1)) + 1);
+                    Word_t wBmMask = ~NZ_MSK((wKey & MSK(nBLR)
+                                       & (cnBitsPerWord - 1)) + 1);
                     wPopCnt -= __builtin_popcountll(pwBitmap[nWordOffset]
                                                         & wBmMask);
                 } else {
@@ -5173,7 +5175,6 @@ t_bitmap:
                 {
                     wBm &= MSK(EXP(nBLR));
                 }
-//printf("\n## wKey 0x%zx nBL %d pwBitmap[nWordNum %d] 0x%zx wBm 0x%zx\n", wKey, nBL, nWordNum, pwBitmap[nWordNum], wBm);
                 for (;;) {
                     if (wBm != 0) {
                         nBitNum = __builtin_ctzll(wBm);
@@ -5614,28 +5615,15 @@ findEmpty:;
               #endif // _PARALLEL_EK else
             {
                 int nPopCntMax = EmbeddedListPopCntMax(nBL);
-//printf("nPopCntMax %d\n", nPopCntMax);
                 wRootLoop >>= cnBitsPerWord - (nPopCntMax * nBL);
-//printf(  "   wRootLoop 0x%zx\n", wRootLoop);
                 do {
                     if ((++wKey & MSK(nBLR)) == 0) {
-//printf(  "   wKey      0x%zx; break\n", wKey);
                         goto break_from_main_switch;
                     }
-//printf(  "   wKey      0x%zx\n", wKey);
-                    if (++nPos == wr_nPopCnt(wRoot, nBL)) {
-//printf("nPos %d; break\n", nPos);
-                        break;
-                    }
-//printf("nPos %d\n", nPos);
-                    if ((((wRootLoop >> nPos * nBL) ^ wKey) & MSK(nBL)) != 0) {
-//printf("break\n");
-                        break;
-                    }
-                } while (1); // ((++nPos != wr_nPopCnt(wRoot, nBL)) && ((((wRootLoop >> nPos * nBL) ^ wKey) & MSK(nBL)) == 0));
+                } while ((++nPos != wr_nPopCnt(wRoot, nBL))
+                    && ((((wRootLoop >> nPos * nBL) ^ wKey) & MSK(nBL)) == 0));
             }
           #endif // B_JUDYL else
-//printf(  "   wKey      0x%zx\n", wKey);
             *pwKey = wKey;
             return Success;
         }
