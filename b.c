@@ -12799,43 +12799,49 @@ Initialize(void)
     printf("#    NEW_NEXT\n");
 #else //         NEW_NEXT
     printf("# No NEW_NEXT\n");
-#endif // #else  NEW_NEXT
+#endif //        NEW_NEXT else
 
 #ifdef           NEW_NEXT_EMPTY
     printf("#    NEW_NEXT_EMPTY\n");
 #else //         NEW_NEXT_EMPTY
     printf("# No NEW_NEXT_EMPTY\n");
-#endif // #else  NEW_NEXT_EMPTY
+#endif //        NEW_NEXT_EMPTY else
 
 #ifdef           LOOKUP_BEFORE_NEXT_EMPTY
     printf("#    LOOKUP_BEFORE_NEXT_EMPTY\n");
 #else //         LOOKUP_BEFORE_NEXT_EMPTY
     printf("# No LOOKUP_BEFORE_NEXT_EMPTY\n");
-#endif // #else  LOOKUP_BEFORE_NEXT_EMPTY
+#endif //        LOOKUP_BEFORE_NEXT_EMPTY else
 
 #ifdef           LOOKUP_BEFORE_FIRST_EMPTY
     printf("#    LOOKUP_BEFORE_FIRST_EMPTY\n");
 #else //         LOOKUP_BEFORE_FIRST_EMPTY
     printf("# No LOOKUP_BEFORE_FIRST_EMPTY\n");
-#endif // #else  LOOKUP_BEFORE_FIRST_EMPTY
+#endif //        LOOKUP_BEFORE_FIRST_EMPTY else
+
+#ifdef           NO_LOOKUP_BEFORE_PREV_EMPTY
+    printf("#    NO_LOOKUP_BEFORE_PREV_EMPTY\n");
+#else //         NO_LOOKUP_BEFORE_PREV_EMPTY
+    printf("# No NO_LOOKUP_BEFORE_PREV_EMPTY\n");
+#endif //        NO_LOOKUP_BEFORE_PREV_EMPTY else
 
 #ifdef           TINY_SUBS_FOR_NEXT_EMPTY
     printf("#    TINY_SUBS_FOR_NEXT_EMPTY\n");
 #else //         TINY_SUBS_FOR_NEXT_EMPTY
     printf("# No TINY_SUBS_FOR_NEXT_EMPTY\n");
-#endif // #else  TINY_SUBS_FOR_NEXT_EMPTY
+#endif // #else  TINY_SUBS_FOR_NEXT_EMPTY else
 
 #ifdef           _NO_NEW_NEXT_EMPTY_FOR_JUDY1`
     printf("#    _NO_NEW_NEXT_EMPTY_FOR_JUDY1\n");
 #else //         _NO_NEW_NEXT_EMPTY_FOR_JUDY1
     printf("# No _NO_NEW_NEXT_EMPTY_FOR_JUDY1\n");
-#endif // #else  _NO_NEW_NEXT_EMPTY_FOR_JUDY1
+#endif //        _NO_NEW_NEXT_EMPTY_FOR_JUDY1 else
 
 #ifdef           FULL_SW
     printf("#    FULL_SW\n");
 #else //         FULL_SW
     printf("# No FULL_SW\n");
-#endif // #else  FULL_SW
+#endif //        FULL_SW else
 
 #ifdef           _SKIP_TO_FULL_SW
     printf("#    _SKIP_TO_FULL_SW\n");
@@ -12847,13 +12853,13 @@ Initialize(void)
     printf("#    NEXT_EMPTY_TEST_WHOLE_BEFORE_PART\n");
 #else //         NEXT_EMPTY_TEST_WHOLE_BEFORE_PART
     printf("# No NEXT_EMPTY_TEST_WHOLE_BEFORE_PART\n");
-#endif // #else  NEXT_EMPTY_TEST_WHOLE_BEFORE_PART
+#endif //        NEXT_EMPTY_TEST_WHOLE_BEFORE_PART else
 
 #ifdef           NEW_NEXT_IS_EXCLUSIVE
     printf("#    NEW_NEXT_IS_EXCLUSIVE\n");
 #else //         NEW_NEXT_IS_EXCLUSIVE
     printf("# No NEW_NEXT_IS_EXCLUSIVE\n");
-#endif // #else  NEW_NEXT_IS_EXCLUSIVE
+#endif //        NEW_NEXT_IS_EXCLUSIVE else
 
 #ifdef           NEXT_QPA
     printf("#    NEXT_QPA\n");
