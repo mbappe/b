@@ -5596,16 +5596,12 @@ findEmpty:;
             // 1. It might cause a bogus match with the next least significant
             // slot if HasKey uses the magic method.
             // 2. It might obfuscate a real match.
-//printf("\n## nBL %d\n", nBL);
-//printf(  "   wKey      0x%zx\n", wKey);
-//printf(  "   wRoot     0x%zx\n", wRoot);
-// Looks like we might have a problem with this. I think it assumes that
-// there is an aligned slot at the least significant end.
-// I wonder if _PARALLEL_EK makes the same assumption.
+            // Looks like we might have a problem with this.
+            // I think it assumes that there is an aligned slot at the least
+            // significant end.
+            // I wonder if _PARALLEL_EK makes the same assumption.
             Word_t wRootLoop = (wRoot & ~(Word_t)1) | ((wKey ^ 1) & 1);
-//printf(  "   wRootLoop 0x%zx\n", wRootLoop);
             int nPos = LocateKey64(&wRootLoop, wKey, nBL) - 1;
-//printf("nPos %d\n", nPos);
             // Already did EmbeddedListHasKey. We know wKey is present.
             assert(nPos >= 0);
               #else // _PARALLEL_EK
