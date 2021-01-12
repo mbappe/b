@@ -12831,7 +12831,7 @@ Initialize(void)
     printf("# No TINY_SUBS_FOR_NEXT_EMPTY\n");
 #endif // #else  TINY_SUBS_FOR_NEXT_EMPTY else
 
-#ifdef           _NO_NEW_NEXT_EMPTY_FOR_JUDY1`
+#ifdef           _NO_NEW_NEXT_EMPTY_FOR_JUDY1
     printf("#    _NO_NEW_NEXT_EMPTY_FOR_JUDY1\n");
 #else //         _NO_NEW_NEXT_EMPTY_FOR_JUDY1
     printf("# No _NO_NEW_NEXT_EMPTY_FOR_JUDY1\n");
