@@ -1031,6 +1031,7 @@ GetNextKey(PNewSeed_t PNewSeed)
 Word_t wPopWidth = 6; // Width of pop field in output.
 Word_t wCloseCountsMask; // Common prefix for keys in Count calls.
 int bCountTwiddledKeys; // Test keys that are probably not present with -S0.
+int bTestFirstEmpty;
 
 static void
 PrintHeaderX(const char *strFirstCol, int nRow)
@@ -1097,14 +1098,25 @@ PrintHeaderX(const char *strFirstCol, int nRow)
             printf(nRow ? "      " : "   J1P");
         if (JLFlag)
             printf(nRow ? "      " : "   JLP");
-        if (J1Flag)
-            printf(nRow ? "      " : "  J1NE");
-        if (JLFlag)
-            printf(nRow ? "      " : "  JLNE");
-        if (J1Flag)
-            printf(nRow ? "      " : "  J1PE");
-        if (JLFlag)
-            printf(nRow ? "      " : "  JLPE");
+        if (bTestFirstEmpty) {
+            if (J1Flag)
+                printf(nRow ? "      " : "  J1FE");
+            if (JLFlag)
+                printf(nRow ? "      " : "  JLFE");
+            if (J1Flag)
+                printf(nRow ? "      " : "  J1LE");
+            if (JLFlag)
+                printf(nRow ? "      " : "  JLLE");
+        } else {
+            if (J1Flag)
+                printf(nRow ? "      " : "  J1NE");
+            if (JLFlag)
+                printf(nRow ? "      " : "  JLNE");
+            if (J1Flag)
+                printf(nRow ? "      " : "  J1PE");
+            if (JLFlag)
+                printf(nRow ? "      " : "  JLPE");
+        }
     }
 
     if (dFlag)
@@ -1544,6 +1556,12 @@ LogIfdefs(void)
     // NO_SPLAY_KEY_BITS
     // NO_SVALUE
 
+  #ifdef         TEST_FIRST_EMPTY // and LAST_EMPTY not [NEXT|PREV]_EMPTY
+    printf("#    TEST_FIRST_EMPTY\n");
+  #else //       TEST_FIRST_EMPTY
+    printf("# No TEST_FIRST_EMPTY\n");
+  #endif //      TEST_FIRST_EMPTY else
+
   #ifdef         NO_TEST_NEXT_EMPTY // for turn-on; includes PrevEmpty
     printf("#    NO_TEST_NEXT_EMPTY\n");
   #else //       NO_TEST_NEXT_EMPTY
@@ -1816,8 +1834,18 @@ main(int argc, char *argv[])
 
     char* strCountTwiddledKeys = getenv("COUNT_TWIDDLED_KEYS");
     if (strCountTwiddledKeys != NULL) {
-        bCountTwiddledKeys = !!strtol(strCountTwiddledKeys, 0, 0);
+        bCountTwiddledKeys = atoi(strCountTwiddledKeys);
     }
+
+    // Use ifdef or environment variable to set bTestFirstEmpty.
+  #ifdef TEST_FIRST_EMPTY
+    bTestFirstEmpty = 1;
+  #else // TEST_FIRST_EMPTY
+    char* strTestFirstEmpty = getenv("TEST_FIRST_EMPTY");
+    if (strTestFirstEmpty != NULL) {
+        bTestFirstEmpty = atoi(strTestFirstEmpty);
+    }
+  #endif // TEST_FIRST_EMPTY else
 
 // ============================================================
 // PARSE INPUT PARAMETERS
@@ -2570,7 +2598,12 @@ eopt:
 //  print Title for plotting -- command + run arguments
 //
 
-    printf("# TITLE %s -W%" PRIuPTR"", argv[0], Warmup);
+    printf("# TITLE");
+    if (wCloseCountsMask) printf(" CLOSE_COUNTS_MASK=0x%zx", wCloseCountsMask);
+    if (bCountTwiddledKeys) printf(" COUNT_TWIDDLED_KEYS=1");
+    if (bTestFirstEmpty) printf(" TEST_FIRST_EMPTY=1");
+    if (wPopWidth != 6) printf(" POP_WIDTH=%zd", wPopWidth);
+    printf(" %s -W%" PRIuPTR"", argv[0], Warmup);
 
     printf(" -");
 
@@ -6021,7 +6054,11 @@ TestJudyNextEmpty(void *J1, void *JL, PNewSeed_t PSeed, Word_t Elements)
                 if (Tit)
                 {
                     Word_t J1KeyBefore = J1Key;
-                    Rc = Judy1NextEmpty(J1, &J1Key, PJE0);
+                    if (bTestFirstEmpty) {
+                        Rc = Judy1FirstEmpty(J1, &J1Key, PJE0);
+                    } else {
+                        Rc = Judy1NextEmpty(J1, &J1Key, PJE0);
+                    }
                     // We know that J1KeyBefore is in the array.
                     // If NextEmpty returns 0, then all of the keys greater
                     // than J1KeyBefore are also in the array.
@@ -6079,7 +6116,11 @@ TestJudyNextEmpty(void *J1, void *JL, PNewSeed_t PSeed, Word_t Elements)
                 if (Tit)
                 {
                     Word_t JLKeyBefore = JLKey;
-                    Rc = JudyLNextEmpty(JL, &JLKey, PJE0);
+                    if (bTestFirstEmpty) {
+                        Rc = JudyLFirstEmpty(JL, &JLKey, PJE0);
+                    } else {
+                        Rc = JudyLNextEmpty(JL, &JLKey, PJE0);
+                    }
                     if ((Rc != 1)
                         && ((JudyLCount(JL, JLKeyBefore, -1, PJE0)
                                 != -JLKeyBefore)
