@@ -45,27 +45,17 @@ Judy1FirstEmpty(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
     }
     DBGN(printf("JxFE: *pwKey " OWx"\n", *pwKey));
     Word_t wKeyLocal = *pwKey;
-  #ifdef LOOKUP_BEFORE_FIRST_EMPTY
+  #ifdef LOOKUP_BEFORE_NEXT_EMPTY
       #ifdef B_JUDYL
     if (JudyLGet(PArray, wKeyLocal, NULL) == NULL)
       #else // B_JUDYL
     if (Judy1Test(PArray, wKeyLocal, NULL) == 0)
       #endif // B_JUDYL else
     {
-        *pwKey = wKeyLocal;
         DBGN(printf("JxFE: returning *pwKey " OWx"\n\n", *pwKey));
         return 1; // found next empty
     }
-  #endif // LOOKUP_BEFORE_FIRST_EMPTY
-  #ifdef B_JUDYL
-    if (JudyLGet(PArray, wKeyLocal, NULL) == NULL)
-  #else // B_JUDYL
-    if (Judy1Test(PArray, wKeyLocal, NULL) == 0)
-  #endif // B_JUDYL else
-    {
-        DBGN(printf("JxFE: returning 1; found first empty key\n\n"));
-        return 1;
-    }
+  #endif // LOOKUP_BEFORE_NEXT_EMPTY
   #ifdef NEW_NEXT_EMPTY
     Status_t status = NextEmpty((Word_t)PArray, &wKeyLocal);
   #else // NEW_NEXT_EMPTY
@@ -114,33 +104,17 @@ Judy1NextEmpty(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
         DBGN(printf("JxNE: returning 0; no next empty key\n\n"));
         return 0; // no empty exists after *pwKey
     }
-  #ifdef LOOKUP_BEFORE_NEXT_EMPTY
       #ifdef B_JUDYL
-    if (JudyLGet(PArray, wKeyLocal, NULL) == NULL)
+    if (JudyLFirstEmpty(PArray, &wKeyLocal, PJError) == 1)
       #else // B_JUDYL
-    if (Judy1Test(PArray, wKeyLocal, NULL) == 0)
+    if (Judy1FirstEmpty(PArray, &wKeyLocal, PJError) == 1)
       #endif // B_JUDYL else
     {
         *pwKey = wKeyLocal;
         DBGN(printf("JxNE: returning *pwKey " OWx"\n\n", *pwKey));
         return 1; // found next empty
     }
-  #endif // LOOKUP_BEFORE_NEXT_EMPTY
-  #ifdef NEW_NEXT_EMPTY
-    Status_t status = NextEmpty((Word_t)PArray, &wKeyLocal);
-  #else // NEW_NEXT_EMPTY
-    int nBL = cnBitsPerWord;
-    Word_t *pwRoot = (Word_t*)&PArray;
-    Link_t* pLn = STRUCT_OF(pwRoot, Link_t, ln_wRoot); (void)pLn;
-    Word_t* pwLnX = NULL; (void)pwLnX;
-    Status_t status = NextEmptyGuts(qya, &wKeyLocal, /* bPrev */ 0);
-  #endif // NEW_NEXT_EMPTY else
-    if (status == Success) {
-        *pwKey = wKeyLocal;
-        DBGN(printf("JxNE: returning *pwKey " OWx"\n\n", *pwKey));
-    } else {
-        DBGN(printf("JxNE: returning 0\n\n"));
-    }
-    return status == Success;
+    DBGN(printf("JxNE: returning 0\n\n"));
+    return 0;
 }
 

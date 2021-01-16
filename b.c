@@ -11495,6 +11495,12 @@ Initialize(void)
     printf("# No AUG_TYPE_8_NEXT_EK_XV\n");
 #endif //        AUG_TYPE_8_NEXT_EK_XV else
 
+#ifdef           AUG_TYPE_8_NEXT_EMPTY
+    printf("#    AUG_TYPE_8_NEXT_EMPTY\n");
+#else //         AUG_TYPE_8_NEXT_EMPTY
+    printf("# No AUG_TYPE_8_NEXT_EMPTY\n");
+#endif //        AUG_TYPE_8_NEXT_EMPTY else
+
 #ifdef           AUGMENT_TYPE_NOT
     printf("#    AUGMENT_TYPE_NOT\n");
 #else //         AUGMENT_TYPE_NOT
@@ -12812,12 +12818,6 @@ Initialize(void)
 #else //         LOOKUP_BEFORE_NEXT_EMPTY
     printf("# No LOOKUP_BEFORE_NEXT_EMPTY\n");
 #endif //        LOOKUP_BEFORE_NEXT_EMPTY else
-
-#ifdef           LOOKUP_BEFORE_FIRST_EMPTY
-    printf("#    LOOKUP_BEFORE_FIRST_EMPTY\n");
-#else //         LOOKUP_BEFORE_FIRST_EMPTY
-    printf("# No LOOKUP_BEFORE_FIRST_EMPTY\n");
-#endif //        LOOKUP_BEFORE_FIRST_EMPTY else
 
 #ifdef           NO_LOOKUP_BEFORE_PREV_EMPTY
     printf("#    NO_LOOKUP_BEFORE_PREV_EMPTY\n");

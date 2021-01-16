@@ -419,6 +419,14 @@
   #define AUGMENT_TYPE
 #endif // AUGMENT_TYPE_NOT
 
+#ifdef AUG_TYPE_8_NEXT_EMPTY
+#ifdef AUGMENT_TYPE_8
+#ifdef NEXT_EMPTY
+  #define _AUG_TYPE_8_NEXT_EMPTY
+#endif // NEXT_EMPTY
+#endif // AUGMENT_TYPE_8
+#endif // AUG_TYPE_8_NEXT_EMPTY
+
 #ifdef B_JUDYL
 #ifndef    NO_SW_POP_IN_LNX
   #undef      SW_POP_IN_LNX
@@ -1097,8 +1105,6 @@
 #ifndef _SKIP_TO_FULL_SW
   #undef  LOOKUP_BEFORE_NEXT_EMPTY
   #define LOOKUP_BEFORE_NEXT_EMPTY
-  #undef  LOOKUP_BEFORE_FIRST_EMPTY
-  #define LOOKUP_BEFORE_FIRST_EMPTY
 #endif // !SKIP_TO_FULL_SW
 
 #ifndef B_JUDYL

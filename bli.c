@@ -743,6 +743,8 @@ PrefixCheckAtLeaf(qp, Word_t wKey
 
 #if defined(AUGMENT_TYPE_8) && defined(LOOKUP)
     #define _AUG_TYPE_8_SW
+#elif defined(_AUG_TYPE_8_NEXT_EMPTY)
+    #define _AUG_TYPE_8_SW
 #elif defined(AUG_TYPE_8_SW_NEXT) && defined(NEXT)
     #define _AUG_TYPE_8_SW
 #endif // AUGMENT_TYPE_8 && LOOKUP elif AUG_TYPE_8_SW_NEXT && NEXT
@@ -1104,8 +1106,11 @@ AugTypeBitsInv(int nAugTypeBits)
     SearchList##_suffix(qya, nBLR, wKey)
 #endif // no-search elif _USE_HAS_KEY elif _USE_LOCATE_KEY else
 
-IF_LOOKUP(static BJL(Word_t*)BJ1(Status_t) Lookup(Word_t wRootArg,
-                                                   Word_t wKey))
+#define LIST_HAS_KEY(_suffix, qya, _nBLR, _wKey) \
+    ListHasKey##_suffix(qya, nBLR, wKey)
+
+IF_LOOKUP(static inline BJL(Word_t*)BJ1(Status_t) Lookup(Word_t wRootArg,
+                                                         Word_t wKey))
 #ifdef NEXT_QPA
 IF_NEXT(static inline BJL(Word_t*)BJ1(Status_t) Next(qpa, Word_t* pwKey))
 #elif defined(NEXT_QP) // NEXT_QPA
@@ -1114,7 +1119,7 @@ IF_NEXT(static inline BJL(Word_t*)BJ1(Status_t) Next(qp, Word_t* pwKey))
 IF_NEXT(static inline BJL(Word_t*)BJ1(Status_t) Next(Word_t wRootArg,
                                                      Word_t* pwKey))
 #endif // NEXT_QPA elif NEXT_QP else
-IF_NEXT_EMPTY(Status_t NextEmpty(Word_t wRootArg, Word_t* pwKey))
+IF_NEXT_EMPTY(static inline Status_t NextEmpty(Word_t wRootArg, Word_t* pwKey))
 IF_INSERT(       BJL(Word_t*)BJ1(Status_t) Insert(qpa, Word_t wKey))
 IF_REMOVE(                       Status_t  Remove(qpa, Word_t wKey))
 #ifdef COUNT_2
@@ -1295,10 +1300,9 @@ IF_COUNT(static inline Word_t Count(qpa, Word_t wKey))
   #endif // _AUG_TYPE
   #ifdef GOTO_AT_FIRST_IN_LOOKUP
   #ifdef SKIP_LINKS
-  #if defined(LOOKUP) // || defined(NEXT)
-    // This shortcut made LOOKUP faster in my original testing.
-    // It make NEXT a lot slower just after splay.
-    // I don't know why.
+  #if defined(LOOKUP) || defined(NEXT_EMPTY)
+    // This shortcut made LOOKUP and NEXT_EMPTY faster in my original testing.
+    // It made NEXT slower.
     nType = wr_nType(wRoot);
     pwr = wr_pwr(wRoot);
     // nBL, pLn, wRoot, nType and pwr of qy are set up
@@ -1314,7 +1318,7 @@ IF_COUNT(static inline Word_t Count(qpa, Word_t wKey))
       #endif // !AUGMENT_TYPE_NOT
       #endif // _AUG_TYPE
     goto fastAgain;
-  #endif // LOOKUP || NEXT
+  #endif // LOOKUP || NEXT_EMPTY
   #endif // SKIP_LINKS
   #endif // GOTO_AT_FIRST_IN_LOOKUP
   #if !defined(LOOKUP) || defined(B_JUDYL)
@@ -1966,22 +1970,23 @@ fastAgain:;
     case T_LIST + ((16 / 8 - 1) << cnBitsTypeMask): goto t_list_16;
     case T_LIST + (( 8 / 8 - 1) << cnBitsTypeMask): goto t_list_8;
       #else // AUG_TYPE_64_LOOKUP && LOOKUP
-          #if defined(AUGMENT_TYPE_8) && defined(LOOKUP)
+          #ifdef NEXT
+              #if defined(AUG_TYPE_8_SW_NEXT) || defined(AUG_TYPE_8_NEXT_EK_XV)
+    CASES_AUG_TYPE(T_LIST)
+              #endif // AUG_TYPE_8_SW_NEXT || AUG_TYPE_8_NEXT_EK_XV
+          #else // NEXT
+              #if defined(AUGMENT_TYPE_8) && defined(_AUG_TYPE)
     case T_LIST + 7 * (1 << cnBitsTypeMask): goto t_list112;
     case T_LIST + 6 * (1 << cnBitsTypeMask): goto t_list96;
     case T_LIST + 5 * (1 << cnBitsTypeMask): goto t_list80;
     case T_LIST + 4 * (1 << cnBitsTypeMask): goto t_list64;
-          #endif // AUGMENT_TYPE_8 && LOOKUP
-          #if defined(AUGMENT_TYPE) && defined(LOOKUP)
+              #endif // AUGMENT_TYPE_8 && _AUG_TYPE
+              #if defined(AUGMENT_TYPE) && defined(_AUG_TYPE)
     case T_LIST + 3 * (1 << cnBitsTypeMask): goto t_list48;
     case T_LIST + 2 * (1 << cnBitsTypeMask): goto t_list32;
     case T_LIST + 1 * (1 << cnBitsTypeMask): goto t_list16;
-          #endif // AUGMENT_TYPE && LOOKUP
-          #ifdef NEXT
-          #if defined(AUG_TYPE_8_SW_NEXT) || defined(AUG_TYPE_8_NEXT_EK_XV)
-    CASES_AUG_TYPE(T_LIST)
-          #endif // AUG_TYPE_8_SW_NEXT || AUG_TYPE_8_NEXT_EK_XV
-          #endif // NEXT
+              #endif // AUGMENT_TYPE && _AUG_TYPE
+          #endif // NEXT else
       #endif // AUG_TYPE_64_LOOKUP && LOOKUP
   #endif // (cwListPopCntMax != 0)
   #ifndef _AUG_TYPE_X
@@ -3828,6 +3833,20 @@ t_skip_to_list:
   #endif // SKIP_TO_LIST
 
   #if (cwListPopCntMax != 0)
+  #ifdef NEXT_EMPTY
+#define T_LIST_LOOKUP_GUTS(_nBL, pLn, pwRoot, pwLnX, _wKey, _wRoot, _suffix) \
+{ \
+    nBLR = nBL = _nBL; \
+    int nPos; /* nPos is not used after break_from_main_switch for LOOKUP */ \
+    if (WROOT_IS_NULL(T_LIST, _wRoot) \
+        || (PREFIX_CHECK_AT_LEAF(qy, _wKey) != Success) \
+        || ((nPos = -!LIST_HAS_KEY(_suffix, qya, nBLR, _wKey)) < 0)) \
+    { \
+        *pwKey = wKey; return Success; /* return from NextEmpty */ \
+    } \
+    goto t_list_tail; \
+}
+  #else // NEXT_EMPTY
 #define T_LIST_LOOKUP_GUTS(_nBL, pLn, pwRoot, pwLnX, _wKey, _wRoot, _suffix) \
 { \
     nBLR = nBL = _nBL; \
@@ -3842,6 +3861,7 @@ t_skip_to_list:
     SMETRICS_GET(++j__GetCalls); \
     return BJL(&gpwValues(qy)[~nPos]) BJ1(KeyFound); \
 }
+  #endif // NEXT_EMPTY
   #endif // (cwListPopCntMax != 0)
 
   #if (cwListPopCntMax != 0)
@@ -3897,9 +3917,10 @@ t_list112: // nDL == 8
   #endif // AUGMENT_TYPE_8
   #endif // (cwListPopCntMax != 0)
 
+  #ifndef NEXT
   #ifndef _AUG_TYPE_X
   #if (cwListPopCntMax != 0)
-  #if defined(AUGMENT_TYPE_8) && defined(LOOKUP)
+  #if defined(AUGMENT_TYPE_8) && defined(_AUG_TYPE)
   #ifdef BL_SPECIFIC_LIST
 t_list96: // nDL == 7
     {
@@ -3911,7 +3932,7 @@ t_list96: // nDL == 7
   #endif // (cwListPopCntMax != 0)
 
   #if (cwListPopCntMax != 0)
-  #if defined(AUGMENT_TYPE) && defined(LOOKUP)
+  #if defined(AUGMENT_TYPE) && defined(_AUG_TYPE)
   #ifdef BL_SPECIFIC_LIST
 t_list80: // nDL == 6
     {
@@ -3923,7 +3944,7 @@ t_list80: // nDL == 6
   #endif // (cwListPopCntMax != 0)
 
   #if (cwListPopCntMax != 0)
-  #if defined(AUGMENT_TYPE) && defined(LOOKUP)
+  #if defined(AUGMENT_TYPE) && defined(_AUG_TYPE)
       #ifdef AUGMENT_TYPE_8
           #ifndef BL_SPECIFIC_LIST
 t_list112: // nDL == 8
@@ -3947,7 +3968,7 @@ t_list48: // nBL > 32
   #endif // (cwListPopCntMax != 0)
 
   #if (cwListPopCntMax != 0)
-  #if defined(AUGMENT_TYPE_8) && defined(LOOKUP)
+  #if defined(AUGMENT_TYPE_8) && defined(_AUG_TYPE)
   #ifdef BL_SPECIFIC_LIST
 t_list48: // nDL == 4
     {
@@ -3963,7 +3984,7 @@ t_list48: // nDL == 4
   #endif // (cwListPopCntMax != 0)
 
   #if (cwListPopCntMax != 0)
-  #if defined(AUGMENT_TYPE) && defined(LOOKUP)
+  #if defined(AUGMENT_TYPE) && defined(_AUG_TYPE)
       #if defined(AUGMENT_TYPE_8) && !defined(BL_SPECIFIC_LIST)
       #if cnBitsLeftAtDl3 <= 24
 t_list48: // nDL == 4
@@ -3988,7 +4009,7 @@ t_list16: // nDL == 2
   #endif // (cwListPopCntMax != 0)
 
   #if (cwListPopCntMax != 0)
-  #if defined(AUGMENT_TYPE) && defined(LOOKUP)
+  #if defined(AUGMENT_TYPE) && defined(_AUG_TYPE)
       #ifndef AUGMENT_TYPE_8
 t_list16:
       #elif defined(BL_SPECIFIC_LIST) || cnBitsLeftAtDl2 <= 16
@@ -4028,6 +4049,7 @@ t_list: // nDL == 1
   #endif // AUGMENT_TYPE && LOOKUP
   #endif // (cwListPopCntMax != 0)
   #endif // !_AUG_TYPE_X
+  #endif // !NEXT
 
 // Notes on LOOKUP for AUGMENT_TYPE_8_PLUS_4 without BL_SPECIFIC_LIST.
 // We want at most 4 code blocks. nBL <= 8, 16, 32, 64.
@@ -4129,7 +4151,7 @@ t_list:
       #elif defined(NEXT) || defined(COUNT) // LOOKUP
         if ((nPos = LocateGeKeyInList(qya, nBLR, &wKey)) >= 0)
       #elif defined(NEXT_EMPTY) // LOOKUP elif NEXT || COUNT elif
-        if ((nPos = LocateKeyInList(qya, nBLR, wKey)) >= 0)
+        if ((nPos = -!ListHasKey(qya, nBLR, wKey)) >= 0)
       #else // LOOKUP elif NEXT || COUNT elif NEXT_EMPTY
         if ((nPos = SearchList(qya, nBLR, wKey)) >= 0)
       #endif // LOOKUP elif NEXT || COUNT elif NEXT_EMPTY else
@@ -4143,9 +4165,12 @@ t_list:
             IF_COUNT(wPopCntSum += (nPos + (wKeyGe == wKey)));
             IF_COUNT(goto break_from_main_switch);
       #ifdef NEXT_EMPTY
+            goto t_list_tail;
+t_list_tail:;
             int nPopCnt = gnListPopCnt(qy, nBLR);
             Word_t wIncr = BPW_EXP(nBLR);
             Word_t wKeyX = (wKey & ~(wIncr - 1)) + wIncr;
+            nPos = LocateKeyInList(qya, nBLR, wKey);
             assert((Word_t)nPopCnt - nPos <= wKeyX - wKey);
             if (nPopCnt - nPos == (int)(wKeyX - wKey)) {
                 wKey = wKeyX;
@@ -5460,6 +5485,9 @@ t_unpacked_bm:
     #define EK_WROOT_IS_NULL(_wRoot)  WROOT_IS_NULL(T_EMBEDDED_KEYS, (_wRoot))
           #endif // NO_TYPE_IN_XX_SW else
 
+          #ifdef NEXT_EMPTY
+    #define T_EK_X(_nBL, _wRoot, _pwLnX, _wKey) goto t_embedded_keys;
+          #else // NEXT_EMPTY
     #define T_EK_X(_nBL, _wRoot, _pwLnX, _wKey) \
         SMETRICS_EK_GUTS((_nBL), (_wRoot)); \
         if (EK_WROOT_IS_NULL((_wRoot))) { goto break_from_main_switch; } \
@@ -5468,6 +5496,7 @@ t_unpacked_bm:
             return BJL(pwLnX)BJ1(KeyFound); \
         } \
         goto break_from_main_switch
+          #endif // NEXT_EMPTY
 
           #ifdef _AUG_TYPE_X_EK
 t_ek_56:  T_EK_X(56, wRoot, pwLnX, wKey);

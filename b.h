@@ -6763,7 +6763,7 @@ SearchList8(qpa, int nBLR, Word_t wKey)
     return nPos;
 }
 
-static int
+static inline int
 ListHasKey8(qpa, int nBLR, Word_t wKey)
 {
     qva; (void)nBLR;
@@ -7042,7 +7042,7 @@ ListHasKey1696(qpa, int nBLR, Word_t wKey)
   #endif // PARALLEL_128
 #endif // PSPLIT_PARALLEL
 
-static int
+static inline int
 ListHasKey16(qpa, int nBLR, Word_t wKey)
 {
     qva; (void)nBLR;
@@ -7149,7 +7149,7 @@ SearchList32(qpa, int nBLR, Word_t wKey)
     return nPos;
 }
 
-static int
+static inline int
 ListHasKey32(qpa, int nBLR, Word_t wKey)
 {
     qva; (void)nBLR;
@@ -7407,10 +7407,7 @@ BinaryHasKeyWord(Word_t *pwKeys, Word_t wKey, int nBL, int nPopCnt)
 }
 #endif // PARALLEL_SEARCH_WORD
 
-#ifdef LOOKUP
-#if !defined(B_JUDYL) || defined(HASKEY_FOR_JUDYL_LOOKUP)
-
-static int
+static inline int
 ListHasKeyWord(qpa, int nBLR, Word_t wKey)
 {
     qva; (void)nBLR;
@@ -7461,9 +7458,6 @@ ListHasKeyWord(qpa, int nBLR, Word_t wKey)
     DBGX(printf("LHKW: returning %d\n", nPos >= 0));
     return nPos >= 0;
 }
-
-#endif // !defined(B_JUDYL) || defined(HASKEY_FOR_JUDYL_LOOKUP)
-#endif // LOOKUP
 
 #if JUNK
 #define MAGIC1(_nBL)  MAXUINT / ((1 << (_nBL)) - 1)
@@ -8071,15 +8065,12 @@ LocateGeKeyInList(qpa, int nBLR, Word_t* pwKey)
     return nPosGe;
 }
 
-#ifdef LOOKUP
-#if !defined(B_JUDYL) || defined(HASKEY_FOR_JUDYL_LOOKUP)
-
 // Figure out if the key is in the sorted list.
 // Return any non-negative number if the key is in the list.
 // Return any negative number if the key is not in the list.
 // ListHasKey is the list search function called by Judy1Lookup.
 // It may also be used for Time -LV experiments by JudyLLookup.
-static int
+static inline int
 ListHasKey(qpa, int nBLR, Word_t wKey)
 {
     qva;
@@ -8098,9 +8089,6 @@ ListHasKey(qpa, int nBLR, Word_t wKey)
   #endif // defined(COMPRESSED_LISTS)
     return ListHasKeyWord(qya, nBLR, wKey);
 }
-
-#endif // !defined(B_JUDYL) || defined(HASKEY_FOR_JUDYL_LOOKUP)
-#endif // LOOKUP
 
 #if 0
 // Locate the key in the sorted list.
