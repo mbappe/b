@@ -359,13 +359,13 @@ c++check: Judy1LHCheck.c libb.a
     -x c++ Judy1LHCheck.c -x none libb.a -lm
 
 libb.a: $(LIBB_OBJS)
-	ar -r $@ $^
+	ar -r $@ $^ 2>&1 | grep -v creating | cat
 
 libb1.a: $(LIBB1_OBJS)
-	ar -r $@ $^
+	ar -r $@ $^ 2>&1 | grep -v creating | cat
 
 libbL.a: $(LIBBL_OBJS)
-	ar -r $@ $^
+	ar -r $@ $^ 2>&1 | grep -v creating | cat
 
 # Targets 1, b1time and b1check link with libb1 to get Judy1 from libb1.a
 # and JudyL from libJudy.a
@@ -446,12 +446,16 @@ JudyMalloc.so: JudyMalloc.c dlmalloc.c Judy.h
 #
 ############################
 
+CFLAGSI = $(CFLAGS)
+ifeq "$(CC)" "clang"
+  CFLAGSI += -mllvm -inline-threshold=20000
+endif
+
 .c.o:
-	$(CC) $(CFLAGS) $(DEFINES) -c $<
+	$(CC) $(CFLAGSI) $(DEFINES) -c $<
 
 b.o: b.h bdefines.h Judy.h
-b1.o: bli.c b.h bdefines.h Judy.h
-bi.o: bli.c b.h bdefines.h Judy.h
+bi.o: bi.c bli.c b.h bdefines.h Judy.h
 bl.o: bli.c b.h bdefines.h Judy.h
 br.o: bli.c b.h bdefines.h Judy.h
 bc.o: bli.c b.h bdefines.h Judy.h
@@ -459,21 +463,19 @@ bn.o: bli.c b.h bdefines.h Judy.h
 bne.o: bli.c b.h bdefines.h Judy.h
 
 b-L.o: b.c b.h bdefines.h Judy.h
-	$(CC) $(CFLAGS) $(DEFINES) -DB_JUDYL -o $@ -c $<
-b1L.o: b1.c bli.c b.h bdefines.h Judy.h
-	$(CC) $(CFLAGS) $(DEFINES) -DB_JUDYL -o $@ -c $<
+	$(CC) $(CFLAGSI) $(DEFINES) -DB_JUDYL -o $@ -c $<
 biL.o: bi.c bli.c b.h bdefines.h Judy.h
-	$(CC) $(CFLAGS) $(DEFINES) -DB_JUDYL -o $@ -c $<
+	$(CC) $(CFLAGSI) $(DEFINES) -DB_JUDYL -o $@ -c $<
 blL.o: bl.c bli.c b.h bdefines.h Judy.h
-	$(CC) $(CFLAGS) $(DEFINES) -DB_JUDYL -o $@ -c $<
+	$(CC) $(CFLAGSI) $(DEFINES) -DB_JUDYL -o $@ -c $<
 brL.o: br.c bli.c b.h bdefines.h Judy.h
-	$(CC) $(CFLAGS) $(DEFINES) -DB_JUDYL -o $@ -c $<
+	$(CC) $(CFLAGSI) $(DEFINES) -DB_JUDYL -o $@ -c $<
 bcL.o: bc.c bli.c b.h bdefines.h Judy.h
-	$(CC) $(CFLAGS) $(DEFINES) -DB_JUDYL -o $@ -c $<
+	$(CC) $(CFLAGSI) $(DEFINES) -DB_JUDYL -o $@ -c $<
 bnL.o: bn.c bli.c b.h bdefines.h Judy.h
-	$(CC) $(CFLAGS) $(DEFINES) -DB_JUDYL -o $@ -c $<
+	$(CC) $(CFLAGSI) $(DEFINES) -DB_JUDYL -o $@ -c $<
 bneL.o: bne.c bli.c b.h bdefines.h Judy.h
-	$(CC) $(CFLAGS) $(DEFINES) -DB_JUDYL -o $@ -c $<
+	$(CC) $(CFLAGSI) $(DEFINES) -DB_JUDYL -o $@ -c $<
 
 # Default MALLOC_ALIGNMENT is 2 * sizeof(void *), except possibly on OSX.
 JudyMalloc.o: JudyMalloc.c dlmalloc.c Judy.h
