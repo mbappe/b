@@ -363,35 +363,14 @@
 #endif // cnBitsInD1 == 8 && cnBitsInD2 == 8 && cnBitsInD3 == 8
 #endif // cnBitsPerDigit == 8
 
-// Default is AUGMENT_TYPE_8.
-// It seems to shine for Time -LmeB31.
-#ifndef _AUG_TYPE_X_LOOKUP
-#if cnBitsPerWord > 32
-#ifndef USE_XX_SW
-#ifndef DOUBLE_DOWN
-#ifndef USE_LOWER_XX_SW
-#ifndef USE_XX_SW_ONLY_AT_DL2
-#ifndef XX_LISTS
-#ifdef COMPRESSED_LISTS
-#ifdef _ALL_DIGITS_ARE_8_BITS
-  #ifndef    NO_AUGMENT_TYPE_8
-    #undef      AUGMENT_TYPE_8
-    #define     AUGMENT_TYPE_8
-  #endif // !NO_AUGMENT_TYPE_8
-#else // _ALL_DIGITS_ARE_8_BITS
-  #ifndef NO_AUGMENT_TYPE_8
-#pragma message("Warning: no default AUGMENT_TYPE_8 without all 8-bit digits.")
-  #endif // !NO_AUGMENT_TYPE_8
-#endif // _ALL_DIGITS_ARE_8_BITS else
-#endif // COMPRESSED_LISTS
-#endif // !XX_LISTS
-#endif // !USE_XX_SW_ONLY_AT_DL2
-#endif // !USE_LOWER_XX_SW
-#endif // !DOUBLE_DOWN
-#endif // !USE_XX_SW
-#endif // cnBitsPerWord > 32
-#endif // !_AUG_TYPE_X_LOOKUP
-
+// Default is no AUGMENT_TYPE.
+// Unequivocal performance tests with AUGMENT_TYPE_8 have been elusive.
+// AUGMENT_TYPE_8 doesn't seem to cost too much but I'm also not sure it
+// helps much with _ALL_DIGITS_ARE_8_BITS.
+// I have seen some small differences, mostly at high populations, show up with
+// -e and other splay masks that cause a deep tree.
+// Maybe when gnBW is more costly we will see bigger differences.
+// Not sure about JudyL vs Judy1.
 #ifdef AUGMENT_TYPE_8
   #if cnBitsPerDigit != 8 || cnBitsPerWord <= 32
     #error

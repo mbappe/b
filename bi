@@ -467,8 +467,9 @@ for sfw in "" -DNO_SEARCH_FROM_WRAPPER
 do
 for qpln in "" -DQP_PLN
 do
-for augtype in "" "-DNO_AUGMENT_TYPE_8 -DAUGMENT_TYPE" \
-                  "-DNO_AUGMENT_TYPE_8 -DAUGMENT_TYPE -DMASK_TYPE" \
+for augtype in "" "-DAUGMENT_TYPE_8" \
+                  "-DAUGMENT_TYPE_8 -DMASK_TYPE" \
+                  "-DAUGMENT_TYPE -DMASK_TYPE" \
                   "-DAUGMENT_TYPE_8_PLUS_4 -DcnBitsInD1=4 -DNO_EK_XV" \
                   "-DAUGMENT_TYPE_8_PLUS_4 -DcnBitsInD1=11" \
                   "-DAUGMENT_TYPE_8_PLUS_4 -DcnBitsInD2=6" \

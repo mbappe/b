@@ -3522,18 +3522,22 @@ static int
 gnListBLR(qp)
 {
     qv;
+  #if defined(SKIP_TO_LIST) || defined(XX_LISTS)
     assert(tp_bIsList(nType));
-    if (tp_bIsList(wr_nType(WROOT_NULL)) && (nType == WROOT_NULL)) {
+    if (tp_bIsList(wr_nType(WROOT_NULL)) && (wRoot == WROOT_NULL)) {
         return nBL;
     }
-  #ifdef LVL_IN_WR_HB
+      #ifdef LVL_IN_WR_HB
     int nBLR = GetBits(wRoot, cnBitsLvlM1, cnLsbLvlM1) + 1;
     return nBLR;
-  #elif defined(PP_IN_LINK)
+      #elif defined(PP_IN_LINK)
     return wr_nBLR(wRoot);
-  #else // LVL_IN_WR_HB #elif def(PP_IN_LINK)
+      #else // LVL_IN_WR_HB #elif def(PP_IN_LINK)
     return nBL;
-  #endif // LVL_IN_WR_HB #elif def(PP_IN_LINK) #else
+      #endif // LVL_IN_WR_HB #elif def(PP_IN_LINK) #else
+  #else // SKIP_TO_LIST || XX_LISTS
+    return nBL;
+  #endif // SKIP_TO_LIST || XX_LISTS else
 }
 
 static void
