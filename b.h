@@ -390,18 +390,27 @@
   #define CODE_LIST_SW
 #endif // defined(USE_LIST_SW)
 
-// Default cnBW is 1 if CODE_XX_SW.
-// cnBW is the minimum width of a narrow switch.
+// Default cnBWMin is 1 if CODE_XX_SW unless RIGID_XX_SW in which case it is 4.
+// cnBWMin is the minimum width of a narrow switch.
 #if defined(CODE_XX_SW)
-  #if ! defined(cnBW)
-      #define cnBW  1
-  #endif // ! defined(cnBW)
+  #if ! defined(cnBWMin)
+    #ifdef RIGID_XX_SW
+      #define cnBWMin  4
+    #else // RIGID_XX_SW
+      #define cnBWMin  1
+    #endif // RIGID_XX_SW else
+  #endif // ! defined(cnBWMin)
 #endif // defined(CODE_XX_SW)
 
-// Default cnBWIncr is 1 if CODE_XX_SW.
+// Default cnBWIncr is 1 if CODE_XX_SW
+// unless RIGID_XX_SW in which case it is 4.
 #if defined(CODE_XX_SW)
   #if ! defined(cnBWIncr)
+    #ifdef RIGID_XX_SW
+      #define cnBWIncr  4
+    #else // RIGID_XX_SW
       #define cnBWIncr  1
+    #endif // RIGID_XX_SW else
   #endif // ! defined(cnBWIncr)
 #endif // defined(CODE_XX_SW)
 
@@ -754,6 +763,7 @@ typedef Word_t Bucket_t;
 #endif // #else BITMAP
 
 #define MAX(_x, _y)  ((_x) > (_y) ? (_x) : (_y))
+//#define MIN(_a, _b)  ((_a) < (_b) ? (_a) : (_b))
 
 #if (cnBitsPerWord >= 64)
   #define _cnListPopCntMax0 \
@@ -3003,10 +3013,8 @@ typedef struct {
 #endif //#ifndef BITMAP
 #endif // cnListPopCntMaxDl1 < (1 << cnBitsInD1)
 
-// Get the width of the switch in bits.
-// nBLR includes any skip specified in the qp link.
 static inline int
-gnBW(qp, int nBLR)
+gnBWGuts(int nType, Word_t wRoot, int nBLR)
 {
     // nType may not be wr_nType(wRoot).
     // It may be T_XX_SW for (wr_nType(wRoot) == T_SKIP_TO_XX_SW) or
@@ -3014,7 +3022,7 @@ gnBW(qp, int nBLR)
     // It is a silly performance hack for Lookup where we use a literal in
     // case T_XX_SW and T_SWITCH and ... because we have already 'switch'ed
     // on nType.
-    qv; (void)nBLR;
+    (void)nType; (void)wRoot; (void)nBLR;
     int nBW;
   #ifdef CODE_XX_SW
     if ((nType == T_XX_SW)
@@ -3023,19 +3031,32 @@ gnBW(qp, int nBLR)
       #endif // SKIP_TO_XX_SW
         )
     {
+      #ifdef RIGID_XX_SW
+        nBW = cnBWMin;
+      #else // RIGID_XX_SW
         if (cnBitsPerWord == 64) {
             // WIDTH_IN_WR_HB
             nBW = GetBits(wRoot, cnBitsXxSwWidth, cnLsbXxSwWidth);
         } else {
             // use the malloc preamble word
-            nBW = GetBits(pwr[-1], cnBitsXxSwWidth, cnLsbXxSwWidth);
+            nBW = GetBits(wr_pwr(wRoot)[-1], cnBitsXxSwWidth, cnLsbXxSwWidth);
         }
         assert(nBW <= cnBitsPerWord);
         assert(nBW > 0);
+      #endif // RIGID_XX_SW else
     } else
   #endif // CODE_XX_SW
     { nBW = nBLR_to_nBW(nBLR); }
     return nBW;
+}
+
+// Get the width of the switch in bits.
+// nBLR includes any skip specified in the qp link.
+static inline int
+gnBW(qp, int nBLR)
+{
+    qv;
+    return gnBWGuts(nType, wRoot, nBLR);
 }
 
 #ifdef QP_PLN
@@ -8619,38 +8640,27 @@ LocateKeyInList16(qpa, int nBLR, Word_t wKey)
     int nPos = 0;
   #if defined(PSPLIT_SEARCH_16)
       #ifdef PSPLIT_PARALLEL
-          #if defined(BL_SPECIFIC_PSPLIT_SEARCH)
-    if (nBLR == 16) {
+          #if defined(_ALL_DIGITS_ARE_8_BITS) && !defined(USE_XX_SW)
               #ifdef DSPLIT_16
-        DSPLIT_LOCATEKEY(Bucket_t, uint16_t, 16, psKeys, nPopCnt, sKey, nPos);
+    DSPLIT_LOCATEKEY(Bucket_t, uint16_t, 16, psKeys, nPopCnt, sKey, nPos);
               #else // DSPLIT_16
-        PSPLIT_LOCATEKEY(Bucket_t, uint16_t, 16, psKeys, nPopCnt, sKey, nPos);
+    PSPLIT_LOCATEKEY(Bucket_t, uint16_t, 16, psKeys, nPopCnt, sKey, nPos);
               #endif // else DSPLIT_16
+          #else // _ALL_DIGITS_ARE_8_BITS && !USE_XX_SW
+              #if defined(BL_SPECIFIC_PSPLIT_SEARCH)
+    if (nBLR == 16) {
+                  #ifdef DSPLIT_16
+        DSPLIT_LOCATEKEY(Bucket_t, uint16_t, 16, psKeys, nPopCnt, sKey, nPos);
+                  #else // DSPLIT_16
+        PSPLIT_LOCATEKEY(Bucket_t, uint16_t, 16, psKeys, nPopCnt, sKey, nPos);
+                  #endif // else DSPLIT_16
     } else
-          #endif // defined(BL_SPECIFIC_PSPLIT_SEARCH)
+              #endif // defined(BL_SPECIFIC_PSPLIT_SEARCH)
     {
-          // This ifdef does not appear to make any difference.
-          // I suspect the compiler already knows that nBLR == 16.
-          #if defined(AUGMENT_TYPE_8) && !defined(AUGMENT_TYPE_8_PLUS_4)
-        PSPLIT_LOCATEKEY(Bucket_t,
-                         uint16_t, 16, psKeys, nPopCnt, sKey, nPos);
-          #elif cnBitsInD1 == 16
-        PSPLIT_LOCATEKEY(Bucket_t,
-                         uint16_t, 16, psKeys, nPopCnt, sKey, nPos);
-          #elif cnBitsInD2 == 16 && cnBitsInD1 <= 8
-        PSPLIT_LOCATEKEY(Bucket_t,
-                         uint16_t, 16, psKeys, nPopCnt, sKey, nPos);
-          #elif cnBitsInD3 == 16 && cnBitsInD2 <= 8
-        PSPLIT_LOCATEKEY(Bucket_t,
-                         uint16_t, 16, psKeys, nPopCnt, sKey, nPos);
-          #elif cnBitsInD3 + cnBitsPerDigit == 16 && cnBitsInD3 <= 8
-        PSPLIT_LOCATEKEY(Bucket_t,
-                         uint16_t, 16, psKeys, nPopCnt, sKey, nPos);
-          #else // AUGMENT_TYPE_8 && !AUGMENT_TYPE_8_PLUS_4
         PSPLIT_LOCATEKEY(Bucket_t,
                          uint16_t, nBLR, psKeys, nPopCnt, sKey, nPos);
-          #endif // AUGMENT_TYPE_8 && !AUGMENT_TYPE_8_PLUS_4
     }
+          #endif // _ALL_DIGITS_ARE_8_BITS && !USE_XX_SW else
       #else // PSPLIT_PARALLEL
     PSPLIT_SEARCH_BY_KEY(uint16_t, nBLR, psKeys, nPopCnt, sKey, nPos);
       #endif // #else PSPLIT_PARALLEL

@@ -1185,6 +1185,7 @@ NewSwitchX(qpa, Word_t wKey, int nBLR,
            Word_t wPopCnt)
 {
     qva;
+    wRoot = 0; // wRootNew
     nType = nTypeBase; // Co-opt parameter. Used only if CODE_BM_SW?
     DBGI(printf("NewSwitch: pwRoot %p wKey " OWx" nBLR %d nType %d nBL %d"
                     " wPopCnt %" _fw"d.\n",
@@ -1199,7 +1200,7 @@ NewSwitchX(qpa, Word_t wKey, int nBLR,
         nType = T_SWITCH;
     }
       #endif // CODE_BM_SW
-    if ((nBWX != nBLR_to_nBW(nBLR)) /*&& (nBWX != cnBW)*/) {
+    if ((nBWX != nBLR_to_nBW(nBLR)) /*&& (nBWX != cnBWMin)*/) {
         DBGI(printf("# NewSwitch(nBWX %d)\n", nBWX));
     }
 #endif // defined(CODE_XX_SW)
@@ -1307,8 +1308,6 @@ NewSwitchX(qpa, Word_t wKey, int nBLR,
     }
 #endif // defined(CODE_BM_SW) && !defined(BM_IN_LINK)
     DBGI(printf("pwr %p\n", pwr));
-    set_wr_pwr(wRoot, pwr);
-    *pwRoot = wRoot;
 
 #if defined(USE_LIST_SW)
     if (bLsSw) {
@@ -7422,8 +7421,8 @@ DoubleDown(qpa, // (nBL, pLn) of link to original switch
 
 // Insert a narrow switch before the list.
 // Splay the list if cnSwCnts != 0,
-// otherwise convert the list to a shared list and fill all the links in the
-// new switch with links to the shared list.
+// otherwise convert the list to a shared list and fill the appropriate links
+// in the new switch with links to the shared list.
 // Then insert wKey.
   #ifdef B_JUDYL
 static Word_t*
@@ -7447,18 +7446,25 @@ InsertXxSw(qpa, // (nBL, pLn) of link to list
     assert(0);
   #endif // defined(NO_TYPE_IN_XX_SW)
     int nBitCnt = SignificantBitCnt(qy, wKey, nPopCnt);
+    // All keys have the same prefix of 64 - nBitCnt bits.
+    DBGX(printf("\n## nBitCnt %d\n", nBitCnt));
+    // Max nBL after new switch decode that will divide the list is nBitCnt-1.
     int nBLNew = nBitCnt - 1; // two links will point to the list
     assert(nBLNew < nBL);
     int nDLRUpNew = nBL_to_nDL(nBLNew + 1); (void)nDLRUpNew;
-    int nBLRUpNew = nDL_to_nBL(nDLRUpNew);
-  #if cnSwCnts != 0
+    int nBLRUpNew = nDL_to_nBL(nDLRUpNew); // nBLR of new switch
+  #if cnSwCnts == 0
+    int nBWMin = cnBWMin;
+  #else // cnSwCnts == 0
     // What is the smallest nBW we can use to make sure we never have a shared
     // list with keys in different subexpanses.
     // How many subexpanses do we have at nBL (nBLR if we ever support skip to
     // T_LIST)?
     // cnSwCnts * sizeof(Word_t) / (2 << LOG(MAX(nBL, 16) - 1))
-    int nBWMin
-        = LOG(cnSwCnts * sizeof(Word_t) * 8 / (2 << LOG(MAX(nBL, 16) - 1)));
+    int nBWMin = MAX(cnBWMin,
+                     LOG(cnSwCnts * sizeof(Word_t) * 8
+                         / (2 << LOG(MAX(nBL, 16) - 1))));
+  #endif // cnSwCnts == 0 else
     if (nBLRUpNew - nBLNew < nBWMin) {
         DBGI(printf("# IXS nBitCnt %d nBLNew %d\n", nBitCnt, nBLNew));
         nBLNew = nBLRUpNew - nBWMin;
@@ -7466,21 +7472,28 @@ InsertXxSw(qpa, // (nBL, pLn) of link to list
                     nBWMin, nBLNew));
         assert(nBL_to_nDL(nBLNew + 1) == nDLRUpNew);
     }
-  #endif // cnSwCnts != 0
     assert(nBLNew >= cnBitsInD1);
     assert(nBLRUpNew >= cnBitsLeftAtDl2);
-    int nBWRUpNew = nBLRUpNew - nBLNew;
-    DBGI(printf("# With nBLRUpNew %d nBWRUpNew %d.\n", nBLRUpNew, nBWRUpNew));
+    int nBWUpNew = nBLRUpNew - nBLNew; // nBW of new switch
+    DBGI(printf("# With nBLRUpNew %d nBWUpNew %d.\n", nBLRUpNew, nBWUpNew));
     DBGI(Dump(pwRootLast, /* wPrefix */ (Word_t)0, cnBitsPerWord));
   #ifndef SKIP_TO_XX_SW
+    // nBLRUpNew is nBitCnt rounded up to the nearest digit.
+    // A full-width switch at nBLRUpNew will splay the list.
     if (nBLRUpNew != nBL) {
+        // Why aren't we getting here with our testing?
+        assert(0); // Do we have any tests that get us here?
+        // Darn. We need to skip and we can't.
+        // Maybe we should just forget about inserting a narrow switch here.
+        // Just because we can't skip to a narrow switch doesn't mean we can't
+        // skip to a bitmap or uncompressed switch.
+        // What are the other options?
         assert(nBLRUpNew < nBL);
         nBLRUpNew = nBL;
-        if (nBLNew < nBLRUpNew - nBLR_to_nBW(nBLRUpNew)) {
-            nBWRUpNew = 1; // too bad we can't use zero yet
-        } else {
-            nBWRUpNew = nBLRUpNew - nBLNew;
-        }
+        // nBLRUpNew is now nBL of list.
+        // nBLNew is nBitCnt-1 reduced if necessary to satisfy nBWMin.
+        assert(nBLNew < nBLRUpNew - nBLR_to_nBW(nBLRUpNew));
+        nBWUpNew = 1; // too bad we can't use zero yet
     }
   #endif // #ifndef SKIP_TO_XX_SW
 
@@ -7498,7 +7511,7 @@ InsertXxSw(qpa, // (nBL, pLn) of link to list
         assert(sizeof(Link_t) == sizeof(wRoot));
   #endif // !_LNX || REMOTE_LNX
     }
-    NewSwitch(qya, wKey, nBLRUpNew, nBWRUpNew, T_SWITCH, 0);
+    NewSwitch(qya, wKey, nBLRUpNew, nBWUpNew, T_SWITCH, 0);
 
     DBGI(printf("\n# InsertXxSw just after NewSwitch new tree "));
     DBGI(Dump(pwRootLast, /* wPrefix */ (Word_t)0, cnBitsPerWord));
@@ -7518,16 +7531,21 @@ InsertXxSw(qpa, // (nBL, pLn) of link to list
     linkNewModel.ln_wRoot = wRoot;
     set_wr_nType(linkNewModel.ln_wRoot, T_XX_LIST);
     pwr = wr_pwr(*pwRoot);
-    int nDigit = (wKey >> nBLNew) & ~MSK(nBWRUpNew);
+    int nDigit = (wKey >> nBLNew) & ~MSK(nBWUpNew);
     DBGI(printf("\n# IXS nBLNew %d nDigit 0x%02x.\n", nBLNew, nDigit));
     int nBLLoop = nBLNew;
-    for (int nIndex = nDigit; nIndex < 2; nIndex++) {
+    assert(nBLNew < nBitCnt); // just checking to see if this is true
+    int nBLRNew = nBitCnt;
+    // We have nBitCnt aka nBLRNew and nBLNew.
+    int nFirstDigit = nDigit & ~NBPW_MSK(nBLRNew - nBLNew);
+    int nLastDigit = nFirstDigit + NBPW_EXP(nBLRNew - nBLNew);
+    for (int nIndex = nFirstDigit; nIndex < nLastDigit; nIndex++) {
         Link_t *pLnLoop = &pwr_pLinks((Switch_t*)pwr)[nIndex];
         *pLnLoop = linkNewModel;
       #ifndef QP_PLN
         Word_t* pwRootLoop = &pLnLoop->ln_wRoot;
       #endif // !QP_PLN
-        snListBLR(qyx(Loop), nBLNew + 1);
+        snListBLR(qyx(Loop), nBLRNew);
     }
     swPopCnt(qya, nBLRUpNew, nPopCnt);
   #endif // cnSwCnts != 0 else
@@ -7749,6 +7767,7 @@ DoubleIt(qpa, // (nBL, pLn) of list
               T_SWITCH, /* wPopCnt */ 0);
     nBL = nBLSave; // back to nBLR
 
+    assert(gnBW(qy, nBL) == nBW); // make sure its not overwritten
     if (nBL <= nDL_to_nBL(2)) {
   #if defined(USE_XX_SW_ALWAYS) || defined(USE_XX_SW_ONLY_AT_DL2)
         assert(tp_bIsXxSw(wr_nType(*pwRoot)));
@@ -7760,33 +7779,6 @@ DoubleIt(qpa, // (nBL, pLn) of list
         // Why don't we pass T_XX_SW in to NewSwitch instead of T_SWITCH?
         assert(!tp_bIsXxSw(wr_nType(*pwRoot)));
   #endif // defined(USE_XX_SW_ALWAYS) || defined(USE_XX_SW_ONLY_AT_DL2) else
-  #if defined(SKIP_TO_XX_SW)
-        if (nBL != nBLOld) {
-            assert(nBL == nDL_to_nBL(nBL_to_nDL(nBL)));
-            assert(GetBLR(pwRoot, nBLOld) == nBL);
-      #if !defined(USE_XX_SW_ALWAYS) && !defined(USE_XX_SW_ONLY_AT_DL2)
-            set_wr_nType(*pwRoot, T_SKIP_TO_XX_SW);
-            snBW(qy, nBW);
-      #endif // !defined(USE_XX_SW_ALWAYS) && !defined(USE_XX_SW_ONLY_AT_DL2)
-            assert(tp_bIsXxSw(wr_nType(*pwRoot)));
-            assert(GetBLR(pwRoot, nBLOld) == nBL);
-        } else
-  #endif // defined(SKIP_TO_XX_SW)
-        {
-            if (nBW >= 7) {
-                DBGI(printf("# Setting T_XX_SW nBW %d nBL %d gnBW %d.\n",
-                            nBW, nBL, gnBW(qy, gnBLR(qy))));
-            }
-  #if !defined(USE_XX_SW_ALWAYS) && !defined(USE_XX_SW_ONLY_AT_DL2)
-            set_wr_nType(*pwRoot, T_XX_SW);
-            // NewSwitchX sets nBW even for non-XX_SW then promptly overwrites
-            // it by calling swPopCnt which writes all of the wRoot high bits
-            // because it doesn't know we want XX_SW.
-            snBW(qy, nBW);
-  #endif // !defined(USE_XX_SW_ALWAYS) && !defined(USE_XX_SW_ONLY_AT_DL2)
-            DBGI(printf("# After setting T_XX_SW gnBW %d.\n",
-                        gnBW(qy, gnBLR(qy))));
-        }
     }
 
     if (nBL == nBLOld) {
@@ -8435,16 +8427,16 @@ newSkipToBitmap:;
                 DBGR(printf("Skip to T_XX_SW nBL %d\n", nBL));
             }
       #endif // defined(SKIP_TO_XX_SW)
-            // cnBW may not be wide enough to splay the list.
+            // cnBWMin may not be wide enough to splay the list.
             // What happens if it's not?
             // I suspect we would end up recursively widening the list
             // in a DoubleIt, InsertAll, Insert, InsertGuts, InsertAtList,
             // TransformList cycle. Yuck.
       #ifdef USE_XX_SW_ONLY_AT_DL2
-            // cnBW may not be wide enough to splay the list into lists
+            // cnBWMin may not be wide enough to splay the list into lists
             // that can all be embedded.
             if (nBLNew == nDL_to_nBL(2)) {
-                nBW = cnBW; // nBWUp? nBWNew?
+                nBW = cnBWMin; // nBWUp? nBWNew?
                 int nSplayMaxPopCnt
                     = SplayMaxPopCnt(pwRoot, nBL, wKey, nBLNew - nBW);
                 while (nSplayMaxPopCnt > EmbeddedListPopCntMax(nBLNew - nBW)) {
@@ -8474,7 +8466,7 @@ newSkipToBitmap:;
                 assert(nBLNew == nBL);
       #endif // #else SKIP_LINKS
                 if ((nBW = nBLR_to_nBW(nBLNew)) >= 2) {
-                    int nBWTopPart = 2;
+                    int nBWTopPart = MAX(cnBWMin, 2);
       #ifdef USE_LOWER_XX_SW // implies SKIP_LINKS
                     if ((nBLNew > cnBitsLeftAtDl2) // temp
                         && (nBitCnt <= nBLNew - nBWTopPart))
@@ -8497,15 +8489,23 @@ newSkipToBitmap:;
 //fprintf(stderr, "\n# Creating upper xx sw nBLUp %d.\n", nBLUp);
                         nBW = nBWTopPart;
                     }
+      #ifdef XX_LISTS
       #if cnSwCnts != 0
+                    // Don't bother creating a narrow switch with lists whose
+                    // expanses are too big to be converted to shared lists
+                    // when we want to double the switch.
                     int nBWMin = LOG(cnSwCnts * sizeof(Word_t) * 8
                                          / (2 << LOG(MAX(nBLNew, 16) - 1)));
                     if (nBW < nBWMin) {
                         nBLNew = nDL_to_nBL(nDLNew);
+          #ifdef RIGID_XX_SW
+                        nBW += cnBWIncr;
+          #else // RIGID_XX_SW
                         nBW = nBWMin;
-//printf("\n## nBLNew %d nBW %d\n", nBLNew, nBW);
+          #endif // RIGID_XX_SW
                     }
       #endif // cnSwCnts != 0
+      #endif // XX_LISTS
                 }
             }
       #ifdef USE_XX_SW_ALWAYS
@@ -8866,7 +8866,6 @@ InsertAtList(qpa,
 
     if ((int)wPopCnt < auListPopCntMax[nBLR]) {
         // Here only if list has room for another key.
-
   #ifdef DOUBLE_DOWN
         if (wPopCnt != 0)
         if (((int)wPopCnt >= auListPopCntMax[nBLR] - cnSplayPrepThreshold)
@@ -8880,12 +8879,24 @@ InsertAtList(qpa,
 // w.r.t. nBL?
 // I can't remember why we are testing pLnUp?
 // Is if supposed to signal something for NO_TYPE_IN_XX_SW?
+        if (nType != T_XX_LIST) { // temp code limitation
         if (nBL < cnBitsPerWord /*pLnUp != NULL*/) {
 // Someday we may be able to convert a shared list to a new nBLR but not yet.
-          if (nType != T_XX_LIST) {
+            Word_t* pwRootUp = &pLnUp->ln_wRoot; (void)pwRootUp;
+          #if cnSwCnts != 0
+            // Make sure shared list expanse is small enough.
+            int nBLRUp = gnBLR(qyx(Up));
+            int nBWUp = gnBW(qyx(Up), nBLRUp);
+            int nBWMin = LOG(cnSwCnts * sizeof(Word_t) * 8
+                                 / (2 << LOG(MAX(nBLRUp, 16) - 1)));
+            // If nBWUp < nBWMin, then the resulting shared list expanse
+            // would be bigger than a subexpanse count in the switch.
+            if (nBWUp >= nBWMin)
+          #endif // cnSwCnts != 0
+            {
             int nBitCnt = SignificantBitCnt(qy, wKey, wPopCnt);
 // Don't DoubleDown if we can't splay within the digit.
-          if (nBitCnt > nDL_to_nBL(nDL - 1))
+          if (nBitCnt > nDL_to_nBL(nDL - 1)) {
           if (nBL != nDL_to_nBL(nDL)) { // check for lower switch
             assert(nBL != nDL_to_nBL(nDL)); // temp code expectation
             if (ListSlotCnt(wPopCnt, nBLR) >= (int)wPopCnt + 1) {
@@ -8895,26 +8906,27 @@ InsertAtList(qpa,
                 DBGI(printf("IAL: DoubleDown nBL %d nBLUp %d\n",
                             nBL, nBLUp));
                 Word_t* pwRootUp = &pLnUp->ln_wRoot; (void)pwRootUp;
-                int nBWRUpNew;
+                int nBWUpNew;
                 if (cnBWIncrDD != 0) {
-                    nBWRUpNew = nDL_to_nBL(nDL) - nBL + cnBWIncrDD;
-                    int nBWRUpMax = nDL_to_nBL(nDL) - nDL_to_nBL(nDL - 1);
-                    if (nBWRUpNew > nBWRUpMax) {
-                        nBWRUpNew = nBWRUpMax;
+                    nBWUpNew = nDL_to_nBL(nDL) - nBL + cnBWIncrDD;
+                    int nBWUpMax = nDL_to_nBL(nDL) - nDL_to_nBL(nDL - 1);
+                    if (nBWUpNew > nBWUpMax) {
+                        nBWUpNew = nBWUpMax;
                     }
                 } else {
-                    nBWRUpNew = nDL_to_nBL(nDL) - nBitCnt + 1;
+                    nBWUpNew = nDL_to_nBL(nDL) - nBitCnt + 1;
                 }
                 return DoubleDown(qyax(Up), wKey,
                                   GetPopCnt(qyax(Up)),
-                                  nBWRUpNew
+                                  nBWUpNew
                                   );
             }
             assert((ListSlotCnt(wPopCnt + 1, nBLR) >= (int)wPopCnt + 2)
                || ((int)wPopCnt == auListPopCntMax[nBLR] - 1));
           }
           }
-        } else if (nType != T_XX_LIST) { // temp code limitation
+            }
+        } else {
           if (nBLR > cnBitsInD1)
           {
             int nBitCnt = SignificantBitCnt(qy, wKey, wPopCnt);
@@ -8924,6 +8936,7 @@ InsertAtList(qpa,
                 return InsertXxSw(qya, wKey, wPopCnt);
             }
           }
+        }
         }
         }
   #endif // DOUBLE_DOWN
@@ -9288,41 +9301,52 @@ copyWithInsertWord:
         // if !USE_XX_SW_ONLY_AT_DL2 || (nBLR > cnBitsLeftAtDl2).
         // We don't send it to TransformList with a digit-unaligned list.
         if (nBL != nDL_to_nBL(nBL_to_nDL(nBL))) {
-#ifdef DOUBLE_DOWN
-            int nBitCnt = SignificantBitCnt(qy, wKey, wPopCnt);
-// Don't DoubleDown if we can't splay within the digit.
+      #ifdef DOUBLE_DOWN
+            Word_t* pwRootUp = &pLnUp->ln_wRoot; (void)pwRootUp;
+          #if cnSwCnts != 0
+            // Make sure shared list expanse is small enough.
+            int nBLRUp = gnBLR(qyx(Up));
+            int nBWUp = gnBW(qyx(Up), nBLRUp);
+            int nBWMin = LOG(cnSwCnts * sizeof(Word_t) * 8
+                                 / (2 << LOG(MAX(nBLRUp, 16) - 1)));
+            // If nBWUp < nBWMin, then the resulting shared list expanse
+            // would be bigger than a subexpanse count in the switch.
+            if (nBWUp >= nBWMin)
+          #endif // cnSwCnts != 0
+            {
+                int nBitCnt = SignificantBitCnt(qy, wKey, wPopCnt);
+// Don't DoubleDown if we can't splay within the digit?
             DBGI(printf("IAL: ListIsFull DoubleDown nBL %d nBLUp %d\n",
                         nBL, nBLUp));
-            Word_t* pwRootUp = &pLnUp->ln_wRoot; (void)pwRootUp;
-            int nBWRUpNew;
-            if (cnBWIncrDD != 0) {
-                nBWRUpNew = nDL_to_nBL(nDL) - nBL + cnBWIncrDD;
-                int nBWRUpMax = nDL_to_nBL(nDL) - nDL_to_nBL(nDL - 1);
-                if (nBWRUpNew > nBWRUpMax) {
-                    nBWRUpNew = nBWRUpMax;
-                }
-            } else {
-                nBWRUpNew = nDL_to_nBL(nDL) - nBitCnt + 1;
-                int nBWRUpMax = nDL_to_nBL(nDL) - nDL_to_nBL(nDL - 1);
-                if (nBWRUpNew > nBWRUpMax) {
+                int nBWUpNew;
+                if (cnBWIncrDD != 0) {
+                    nBWUpNew = nDL_to_nBL(nDL) - nBL + cnBWIncrDD;
+                    int nBWUpMax = nDL_to_nBL(nDL) - nDL_to_nBL(nDL - 1);
+                    if (nBWUpNew > nBWUpMax) {
+                        nBWUpNew = nBWUpMax;
+                    }
+                } else {
+                    nBWUpNew = nDL_to_nBL(nDL) - nBitCnt + 1;
+                    int nBWUpMax = nDL_to_nBL(nDL) - nDL_to_nBL(nDL - 1);
+                    if (nBWUpNew > nBWUpMax) {
 // We need to enhance TransformList so we don't have to do a useless
 // DoubleDown here.
-                    nBWRUpNew = nBWRUpMax;
+                        nBWUpNew = nBWUpMax;
+                    }
                 }
+                return DoubleDown(qyax(Up), wKey,
+                                  GetPopCnt(qyax(Up)),
+                                  nBWUpNew
+                                  );
             }
-            return DoubleDown(qyax(Up), wKey,
-                              GetPopCnt(qyax(Up)),
-                              nBWRUpNew
-                              );
-#else // DOUBLE_DOWN
+      #endif // DOUBLE_DOWN
             DBGI(printf("IAL: ListIsFull DoubleIt nBL %d nBLUp %d\n",
                         nBL, nBLUp));
             return DoubleIt(qya, wKey, nBLUp, pLnUp,
-  #ifdef REMOTE_LNX
+          #ifdef REMOTE_LNX
                             pwLnXUp,
-  #endif // REMOTE_LNX
+          #endif // REMOTE_LNX
                             wPopCnt);
-#endif // #else DOUBLE_DOWN
         }
   #endif // CODE_XX_SW
         {
@@ -9470,8 +9494,9 @@ InsertGuts(qpa, Word_t wKey, int nPos
     // I think the idea was to do some work now in order to avoid some
     // later in an effort to control the worst-case insert time.
     // I fear the idea was ill-conceived.
+    // I think we need a better way of deciding when to widen.
+  #ifdef USE_XX_SW
   #ifndef DOUBLE_DOWN
-  #ifdef SKIP_TO_XX_SW
     if ((nBL != nDL_to_nBL(nBL_to_nDL(nBL))) && tp_bIsList(nType)) {
         // What about when nBL <= nDL_to_nBL(2)?
         // And USE_XX_SW_ONLY_AT_DL2?
@@ -9490,8 +9515,8 @@ InsertGuts(qpa, Word_t wKey, int nPos
                             PWR_xListPopCnt(pwRoot, pwr, nBL));
         }
     }
-  #endif // SKIP_TO_XX_SW
-  #endif // #ifndef DOUBLE_DOWN
+  #endif // !DOUBLE_DOWN
+  #endif // USE_XX_SW
 
     // Should the following be moved into the if ! switch block?
   #if (cwListPopCntMax != 0)
@@ -11385,7 +11410,7 @@ Initialize(void)
 
   #if defined(CODE_XX_SW)
     // Make sure nBW field is big enough.
-    assert((cnBitsLeftAtDl2 - cnBW - (cnLogBitsPerWord + 1))
+    assert((cnBitsLeftAtDl2 - cnBWMin - (cnLogBitsPerWord + 1))
         <= (int)MSK(cnBitsXxSwWidth));
   #endif // defined(CODE_XX_SW)
 
@@ -12048,6 +12073,12 @@ Initialize(void)
 #else // defined(USE_XX_SW)
     printf("# No USE_XX_SW\n");
 #endif // defined(USE_XX_SW)
+
+#ifdef           RIGID_XX_SW
+    printf("#    RIGID_XX_SW\n");
+#else //         RIGID_XX_SW
+    printf("# No RIGID_XX_SW\n");
+#endif //        RIGID_XX_SW
 
 #if defined(CODE_XX_SW)
     printf("#    CODE_XX_SW\n");
@@ -13551,9 +13582,12 @@ Initialize(void)
 
 #if defined(CODE_XX_SW)
     printf("\n");
-    printf("# cnBW %d\n", cnBW);
+    printf("# cnBWMin %d\n", cnBWMin);
     printf("# cnBWIncr %d\n", cnBWIncr);
 #endif // defined(CODE_XX_SW)
+  #ifdef DOUBLE_DOWN
+    printf("# cnBWIncrDD %d\n", cnBWIncrDD);
+  #endif // DOUBLE_DOWN
 
     printf("\n");
     printf("# cnBinarySearchThresholdWord %d\n", cnBinarySearchThresholdWord);

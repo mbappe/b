@@ -135,6 +135,12 @@
 
 #define cnBitsLeftAtDl3     (cnBitsLeftAtDl2 + cnBitsInD3)
 
+#if cnBitsPerDigit == 8
+#if cnBitsInD1 == 8 && cnBitsInD2 == 8 && cnBitsInD3 == 8
+  #define _ALL_DIGITS_ARE_8_BITS
+#endif // cnBitsInD1 == 8 && cnBitsInD2 == 8 && cnBitsInD3 == 8
+#endif // cnBitsPerDigit == 8
+
 // Default is -DCOMPRESSED_LISTS.
 #ifndef    NO_COMPRESSED_LISTS
   #undef      COMPRESSED_LISTS
@@ -203,6 +209,17 @@
   #define NO_SKIP_TO_BITMAP
   #define NO_SKIP_TO_LIST
 #endif // _LVL_IN_TYPE
+
+#ifdef RIGID_XX_SW
+  #ifndef _ALL_DIGITS_ARE_8_BITS
+    #error
+  #endif // _ALL_DIGITS_ARE_8_BITS
+  #ifdef USE_XX_SW_ONLY_AT_DL2
+    #error
+  #endif // USE_XX_SW_ONLY_AT_DL2
+  #undef  USE_XX_SW
+  #define USE_XX_SW
+#endif // RIGID_XX_SW
 
 // Apply JudyL-specific constraints to ifdefs from the build process.
 #ifdef B_JUDYL
@@ -331,11 +348,9 @@
 #endif // _AUG_TYPE_X_LOOKUP
 
 #ifdef AUGMENT_TYPE_8_PLUS_4
-  #if cnBitsPerDigit == 8
-  #if cnBitsInD1 == 8 && cnBitsInD2 == 8 && cnBitsInD3 == 8
+  #ifdef _ALL_DIGITS_ARE_8_BITS
     #pragma message("AUGMENT_TYPE_8_PLUS_4 is not needed.")
-  #endif // cnBitsInD1 == 8 && cnBitsInD2 == 8 && cnBitsInD3 == 8
-  #endif // cnBitsPerDigit == 8
+  #endif // _ALL_DIGITS_ARE_8_BITS
   #undef  AUGMENT_TYPE_8
   #define AUGMENT_TYPE_8 // only until we have _AUG_TYPE_8
 #endif // AUGMENT_TYPE_8_PLUS_4
@@ -356,12 +371,6 @@
   #undef  AUGMENT_TYPE_8
   #define AUGMENT_TYPE_8 // only until we have _AUG_TYPE_8
 #endif // AUG_TYPE_8_NEXT_EK_XV
-
-#if cnBitsPerDigit == 8
-#if cnBitsInD1 == 8 && cnBitsInD2 == 8 && cnBitsInD3 == 8
-  #define _ALL_DIGITS_ARE_8_BITS
-#endif // cnBitsInD1 == 8 && cnBitsInD2 == 8 && cnBitsInD3 == 8
-#endif // cnBitsPerDigit == 8
 
 // Default is no AUGMENT_TYPE.
 // Unequivocal performance tests with AUGMENT_TYPE_8 have been elusive.
@@ -493,14 +502,22 @@
 #endif // DSPLIT_16
 
 #ifdef XX_LISTS
+#ifdef NO_SKIP_TO_XX_SW
+  #undef  USE_XX_SW
+  #define USE_XX_SW
+#else // NO_SKIP_TO_XX_SW
   #undef  SKIP_TO_XX_SW
   #define SKIP_TO_XX_SW
+#endif // NO_SKIP_TO_XX_SW else
 #endif // XX_LISTS
 
 // USE_LOWER_XX_SW turns on the use of narrow switches that decode the
 // least significant bits of a digit.
 // Default is -UUSE_LOWER_XX_SW
 #ifdef USE_LOWER_XX_SW
+  #ifdef NO_SKIP_TO_XX_SW
+    #error
+  #endif // NO_SKIP_TO_XX_SW
   #undef  USE_XX_SW
   #define USE_XX_SW
   #undef  SKIP_TO_XX_SW

@@ -3021,7 +3021,7 @@ t_switch:
             goto break_from_main_switch;
         }
         DBGX(Checkpoint(qya, "t_switch"));
-        nBW = gnBW(qy, nBLR); // num bits decoded
+        nBW = gnBWGuts(T_SWITCH, wRoot, nBLR); // gnBLR may be slower
         wDigit = (wKey >> (nBLR - nBW)) & MSK(nBW); // extract bits from key
         // ((uint8_t *)&wKey)[(cnBitsPerWord - nBL) >> 3];
         // ((uint8_t *)&wKey)[cnDigitsPerWord - nDL];
@@ -3306,7 +3306,7 @@ t_full_sw:; // check for full sub-expanse if cnSwCnts else for full sw
 t_xx_sw:
     {
         DBGX(Checkpoint(qya, "t_xx_sw"));
-        nBW = gnBW(qy, nBLR); // num bits decoded
+        nBW = gnBWGuts(T_XX_SW, wRoot, nBLR); // num bits decoded
         wDigit = (wKey >> (nBLR - nBW)) & MSK(nBW);
         pLnNew = &pwr_pLinks((Switch_t *)pwr)[wDigit];
       #ifdef _LNX
@@ -4620,9 +4620,9 @@ t_bm_plus_16:
 // one-digit bitmap bypassing DL2.
             // We just double until we end up with one big bitmap at DL2.
             // But what about when we create XX_SW at (nBLR == nBitsLeftAtDl2)
-            // and cbEmbeddedBitmap and nBLR - cnBW == cnBitsInD1? We did not
-            // explicitly double.
-            // Or nBLR - cnBW <= cnLogBitsPerLink?
+            // and cbEmbeddedBitmap and nBLR - cnBWMin == cnBitsInD1? We did
+            // not explicitly double.
+            // Or nBLR - cnBWMin <= cnLogBitsPerLink?
             // We end up with one big bitmap at DL2 but it is
             // represented by an XX_SW and embedded bitmaps?
             // What if cnBitsInD1 > cnLogBitsPerLink?
@@ -4957,9 +4957,9 @@ t_bitmap:
 // one-digit bitmap bypassing DL2.
             // We just double until we end up with one big bitmap at DL2.
             // But what about when we create XX_SW at (nBLR == nBitsLeftAtDl2)
-            // and cbEmbeddedBitmap and nBLR - cnBW == cnBitsInD1? We did not
-            // explicitly double.
-            // Or nBLR - cnBW <= cnLogBitsPerLink?
+            // and cbEmbeddedBitmap and nBLR - cnBWMin == cnBitsInD1? We did
+            // not explicitly double.
+            // Or nBLR - cnBWMin <= cnLogBitsPerLink?
             // We end up with one big bitmap at DL2 but it is
             // represented by an XX_SW and embedded bitmaps?
             // What if cnBitsInD1 > cnLogBitsPerLink?
