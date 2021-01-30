@@ -80,6 +80,23 @@ then
     exit 1
 fi
 
+# Targeted regression test for a bug fix in TestJudyPrev.
+cmd="${TIME} -W0 -l -1LgCv -s0 -S1 -n1"
+echo $cmd
+$cmd > /dev/null
+if [ $? != 0 ]
+then
+    exit 1
+fi
+# Targeted regression test for a bug fix in TestJudyPrev.
+cmd="${TIME} -W0 -l -1LgCv -s-1 -S-1 -n1"
+echo $cmd
+$cmd > /dev/null
+if [ $? != 0 ]
+then
+    exit 1
+fi
+
 # Test keys going from small negative numbers to small positive numbers
 # relative to a particular BValue and vice versa.
 for Judy in 1 R # L
