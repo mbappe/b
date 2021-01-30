@@ -5832,8 +5832,7 @@ TestJudyPrev(void *J1, void *JL, PNewSeed_t PSeed, Word_t Elements)
             int Rc;
             Word_t J1KeyBefore;
 #ifdef TEST_NEXT_USING_JUDY_NEXT
-            J1KeyBefore = 0;
-            J1Key = -1;
+            J1KeyBefore = J1Key = -1;
             Rc = Judy1Last(J1, &J1Key, PJE0);
 #else // TEST_NEXT_USING_JUDY_NEXT
             Word_t J1FirstKey = 0;
@@ -5881,7 +5880,12 @@ TestJudyPrev(void *J1, void *JL, PNewSeed_t PSeed, Word_t Elements)
                         Rc = Judy1Last(J1, &J1Key, PJE0);
                     }
 #endif // #ifndef TEST_NEXT_USING_JUDY_NEXT
-                    if ((Rc != 1) || (J1Key == J1KeyBefore))
+                    if ((Rc != 1)
+                        || ((J1Key == J1KeyBefore)
+  #ifdef TEST_NEXT_USING_JUDY_NEXT
+                                && (elm != 0) // did Last for elm==0; not Prev
+  #endif // TEST_NEXT_USING_JUDY_NEXT
+                             ))
                     {
                         printf("\n");
 #ifndef TEST_NEXT_USING_JUDY_NEXT
@@ -5923,8 +5927,7 @@ TestJudyPrev(void *J1, void *JL, PNewSeed_t PSeed, Word_t Elements)
             Word_t JLKeyBefore;
             Word_t *PValue = NULL;
 #ifdef TEST_NEXT_USING_JUDY_NEXT
-            JLKeyBefore = 0;
-            JLKey = -1;
+            JLKeyBefore = JLKey = -1;
             PValue = (Word_t*)JudyLLast(JL, &JLKey, PJE0);
 #else // TEST_NEXT_USING_JUDY_NEXT
             Word_t JLFirstKey = 0;
@@ -5973,8 +5976,12 @@ TestJudyPrev(void *J1, void *JL, PNewSeed_t PSeed, Word_t Elements)
                     }
 #endif // #ifndef TEST_NEXT_USING_JUDY_NEXT
                     if ((PValue == NULL)
-                        || (JLKey == JLKeyBefore)
-                        || (VFlag && (*PValue != JLKey)))
+                        || (VFlag && (*PValue != JLKey))
+                        || ((JLKey == JLKeyBefore)
+  #ifdef TEST_NEXT_USING_JUDY_NEXT
+                                && (elm != 0) // did Last for elm==0; not Prev
+  #endif // TEST_NEXT_USING_JUDY_NEXT
+                             ))
                     {
                         printf("\n");
 #ifndef TEST_NEXT_USING_JUDY_NEXT
