@@ -70,6 +70,7 @@ Word_t TestJudyGet(void *J1, void *JL, void *JH, Word_t Seed, Word_t Elements);
 int TestJudyCount(void *J1, void *JL, Word_t LowIndex, Word_t Elements);
 
 #ifdef NO_TEST_NEXT // for turn-on testing
+  #undef  NO_TEST_NEXT_EMPTY
   #define NO_TEST_NEXT_EMPTY // NO_TEST_NEXT ==> NO_TEST_NEXT_EMPTY
 #else // NO_TEST_NEXT
 
@@ -185,6 +186,8 @@ Swizzle(Word_t word)
 Word_t dFlag = 1;
 Word_t pFlag = 0;
 #ifdef NO_TEST_COUNT // for turn-on testing
+  #undef  NO_TEST_BY_COUNT
+  #define NO_TEST_BY_COUNT // NO_TEST_COUNT ==> NO_TEST_BY_COUNT
 Word_t CFlag = 1;
 #else // NO_TEST_COUNT
 Word_t CFlag = 0;
@@ -548,15 +551,21 @@ main(int argc, char *argv[])
 //      Test JLN, J1N
         HighIndex = TestJudyNext(J1, JL, (Word_t)0, TotalPop);
 
+    #ifndef NO_TEST_PREV
 //      Test JLP, J1P
         TestJudyPrev(J1, JL, (Word_t)~0, TotalPop);
+    #endif // !NO_TEST_PREV
   #endif // #ifndef NO_TEST_NEXT
   #ifndef NO_TEST_NEXT_EMPTY // for turn-on testing
 //      Test JLNE, J1NE
         TestJudyNextEmpty(J1, JL, LowIndex, Delta);
 
+    #ifndef NO_TEST_PREV
+    #ifndef NO_TEST_PREV_EMPTY
 //      Test JLPE, J1PE
         TestJudyPrevEmpty(J1, JL, HighIndex, Delta);
+    #endif // !NO_TEST_PREV_EMPTY
+    #endif // !NO_TEST_PREV
   #endif // #ifndef NO_TEST_NEXT_EMPTY
 
 //      Test JLD, J1U
