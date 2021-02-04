@@ -2929,7 +2929,8 @@ typedef struct {
 #ifdef BM_IN_LINK
   // Requires cnBitsInD2 <= cnBitsPerDigits && cnBitsInD3 <= cnBitsPerDigit.
   #define N_WORDS_SW_BM(_nBW) \
-      (int)DIV_UP_X(((Word_t)(1 + _SW_BM_HALF_WORDS) << cnBitsPerDigit), \
+      (int)DIV_UP_X(((Word_t)(1 + _SW_BM_HALF_WORDS) \
+                        << (cnBitsPerDigit - cnLogBmSwLinksPerBit)), \
                     cnBitsPerWord)
 #else // BM_IN_LINK
   #if (cnBitsInD2 == cnBitsPerDigit) && (cnBitsInD3 == cnBitsInD2)
@@ -2939,11 +2940,13 @@ typedef struct {
   #endif // (cnBitsInD2 == cnBitsPerDigit) && (cnBitsInD3 == cnBitsInD2)
   #ifdef _CONSTANT_N_WORDS_SW_BM
     #define N_WORDS_SW_BM(_nBW) \
-        (int)DIV_UP_X(((Word_t)(1 + _SW_BM_HALF_WORDS) << cnBitsPerDigit), \
+        (int)DIV_UP_X(((Word_t)(1 + _SW_BM_HALF_WORDS) \
+                          << (cnBitsPerDigit - cnLogBmSwLinksPerBit)), \
                       cnBitsPerWord)
   #else // _CONSTANT_N_WORDS_SW_BM
     #define N_WORDS_SW_BM(_nBW) \
-        (int)DIV_UP_X(((Word_t)(1 + _SW_BM_HALF_WORDS) << (_nBW)), \
+        (int)DIV_UP_X(((Word_t)(1 + _SW_BM_HALF_WORDS) \
+                          << ((_nBW) - cnLogBmSwLinksPerBit)), \
                       cnBitsPerWord)
   #endif // _CONSTANT_N_WORDS_SW_BM else
 #endif // else BM_IN_LINK
@@ -3616,39 +3619,37 @@ gwPopCnt(qpa, int nBLR)
         return 0;
     }
   #endif
+    // So many ifdefs.
+    // wPopCnt is modulo EXP(nBLR) in some and not others.
+    // Insert can temporarily increment above EXP(nBLR).
+    // What about Remove decrementing below zero?
+  #ifdef BM_SW_BM_IN_LNX
+    if (!tp_bIsBmSw(nType))
+  #endif // BM_SW_BM_IN_LNX
+    {
   #ifdef SW_POP_IN_LNX
-    if (nBL < cnBitsPerWord) {
-        // So many ifdefs.
-        // wPopCnt is modulo EXP(nBLR) in some and not others.
-        // Insert can temporarily increment above EXP(nBLR).
-        // What about Remove decrementing below zero?
-        if ((PWR_wPopCntBL(pwRoot, pwr, nBLR) & NZ_MSK(nBLR))
-                   != (*pwLnX & NZ_MSK(nBLR)))
-        {
-            Word_t wPopCnt = PWR_wPopCntBL(pwRoot, pwr, nBLR); (void)wPopCnt;
-            DBGI(printf("nBL %d nBLR %d wPopCnt %zd *pwLnX %zd\n",
-                        nBL, nBLR, wPopCnt, *pwLnX));
+        if (nBL < cnBitsPerWord) {
+            assert((PWR_wPopCntBL(pwRoot, pwr, nBLR) & NZ_MSK(nBLR))
+                       == (*pwLnX & NZ_MSK(nBLR)));
+            return *pwLnX;
         }
-        assert((PWR_wPopCntBL(pwRoot, pwr, nBLR) & NZ_MSK(nBLR))
-                   == (*pwLnX & NZ_MSK(nBLR)));
-        return *pwLnX;
+        assert(pwLnX == NULL);
+  #endif // SW_POP_IN_LNX
     }
-    assert(pwLnX == NULL);
     // For now, while we still might have a redundant pop count field in
     // the switch, we prefer it to SumPopCnt.
-  #endif // SW_POP_IN_LNX
   #if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
     if (nBL >= cnBitsPerWord) {
         return SumPopCnt(qya);
     }
   #endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
-    // This assertion blows because of a DEBUG call from swPopCnt.
-    // Can we restore it if we clean up swPopCnt?
-    // Or do we want to handle this case anyway so the caller
-    // doesn't have to worry about it by using a wrapper or something?
-    //assert(nBL < cnBitsPerWord);
     Word_t wPopCnt;
   #ifdef SW_POP_IN_WR_HB
+    // Use high bits of wRoot for pop count of T_SWITCH (and T_FULL_SW)
+    // if current pop count fits.
+    // We could avoid the test if we determine nBLR <= 16 at compile time.
+    // Skip uses wRoot high bits.
+    // Other switch types use wRoot high bits.
     if (((nType != T_SWITCH)
       #ifdef FULL_SW
             && (nType != T_FULL_SW)
@@ -3704,16 +3705,20 @@ swPopCnt(qpa, int nBLR, Word_t wPopCnt)
                 (wPopCnt < EXP(cnBitsPerWord - cnBitsVirtAddr)) ? wPopCnt : 0);
     }
   #endif // SW_POP_IN_WR_HB
+  #ifdef BM_SW_BM_IN_LNX
+    if (!tp_bIsBmSw(nType))
+  #endif // BM_SW_BM_IN_LNX
+    {
   #ifdef SW_POP_IN_LNX
-    // We could probably just ignore swPopCnt if nBL < cnBitsPerWord.
-    //assert(nBL < cnBitsPerWord);
-    if (pwLnX != NULL) {
-        assert(nBL < cnBitsPerWord);
-        *pwLnX = wPopCnt;
-    } else {
-        assert(nBL == cnBitsPerWord);
-    }
+        // We could probably just ignore swPopCnt if nBL < cnBitsPerWord.
+        if (pwLnX != NULL) {
+            assert(nBL < cnBitsPerWord);
+            *pwLnX = wPopCnt;
+        } else {
+            assert(nBL == cnBitsPerWord);
+        }
   #endif // SW_POP_IN_LNX
+    }
     assert((gwPopCnt(qya, nBLR) & NZ_MSK(nBLR)) == (wPopCnt & NZ_MSK(nBLR)));
 }
 
@@ -8372,9 +8377,9 @@ gnWordNumInSwBm(Word_t wDigit)
 #if defined(OFFSET_IN_SW_BM_WORD) || defined(X_SW_BM_HALF_WORDS)
     // We use only one-half of a word for bitmap bits.
     // We use the other half for a starting offset in the array of links.
-    return wDigit >> (cnLogBitsPerWord - 1);
+    return wDigit >> (cnLogBitsPerWord - 1 + cnLogBmSwLinksPerBit);
 #else // defined(OFFSET_IN_SW_BM_WORD) || defined(X_SW_BM_HALF_WORDS)
-    return wDigit >> cnLogBitsPerWord;
+    return wDigit >> (cnLogBitsPerWord + cnLogBmSwLinksPerBit);
 #endif // defined(OFFSET_IN_SW_BM_WORD) || defined(X_SW_BM_HALF_WORDS)
 
 }
@@ -8385,9 +8390,9 @@ gnBitNumInSwBmWord(Word_t wDigit)
 #if defined(OFFSET_IN_SW_BM_WORD) || defined(X_SW_BM_HALF_WORDS)
     // We use only one-half of a word for bitmap bits.
     // We use the other half for a starting offset in the array of links.
-    return wDigit & (cnBitsPerWord/2 - 1);
+    return (wDigit >> cnLogBmSwLinksPerBit) & (cnBitsPerWord/2 - 1);
 #else // defined(OFFSET_IN_SW_BM_WORD) || defined(X_SW_BM_HALF_WORDS)
-    return wDigit & (cnBitsPerWord - 1);
+    return (wDigit >> cnLogBmSwLinksPerBit) & (cnBitsPerWord - 1);
 #endif // defined(OFFSET_IN_SW_BM_WORD) || defined(X_SW_BM_HALF_WORDS)
 }
 
@@ -8397,91 +8402,116 @@ gwBitMaskInSwBmWord(Word_t wDigit)
     return (Word_t)1 << gnBitNumInSwBmWord(wDigit);
 }
 
+#ifdef CODE_BM_SW
 static inline int
-BmSwLinkCnt(qp)
+BmSwLinkCnt(qpa)
 {
-    qv;
+    qva;
+    int nBW = gnBWGuts(T_BM_SW, wRoot, gnBLR(qy)); (void)nBW;
   #ifdef BM_SW_CNT_IN_WR
       #if (cnBitsPerWord <= 32)
           #error BM_SW_CNT_IN_WR with cnBitsPerWord <= 32.
       #endif // (cnBitsPerWord <= 32)
     return (int)GetBits(*pwRoot, cnBitsCnt, cnLsbCnt) + 1;
   #else // BM_SW_CNT_IN_WR
-    int nBW = gnBW(qy, gnBLR(qy)); (void)nBW; // BW is width of switch
-    Word_t *pwBmWords = PWR_pwBm(pwRoot, wr_pwr(*pwRoot), nBW);
+      #ifdef USE_BM_SW_BM_IN_WR_HB
+    int nLinks = __builtin_popcountll(wRoot >> cnBitsVirtAddr);
+      #elif defined(USE_BM_SW_BM_IN_LNX) && defined(NO_BM_SW_AT_TOP)
+    int nLinks = __builtin_popcountll(*pwLnX);
+      #else // USE_BM_SW_BM_IN_WR_HB elif BM_SW_BM_IN_LNX && NO_BM_SW_AT_TOP
+    Word_t *pwBmWords =
+          #ifdef USE_BM_SW_BM_IN_LNX
+        (nBL < cnBitsPerWord) ? pwLnX :
+          #endif // USE_BM_SW_BM_IN_LNX
+            PWR_pwBm(pwRoot, wr_pwr(*pwRoot), nBW);
     int nLinks = 0;
     for (int nn = 0; nn < N_WORDS_SW_BM(nBW); ++nn) {
         nLinks += __builtin_popcountll(pwBmWords[nn]
-      #if defined(OFFSET_IN_SW_BM_WORD) || defined(X_SW_BM_HALF_WORDS)
+          #if defined(OFFSET_IN_SW_BM_WORD) || defined(X_SW_BM_HALF_WORDS)
                           & (((Word_t)1 << (cnBitsPerWord / 2)) - 1)
-      #endif // defined(OFFSET_IN_SW_BM_WORD) || defined(X_SW_BM_HALF_WORDS)
+          #endif // OFFSET_IN_SW_BM_WORD || X_SW_BM_HALF_WORDS
                                        );
     }
-      #ifndef BM_SW_FOR_REAL
+          #ifndef BM_SW_FOR_REAL
     assert(nLinks
         == (cnBitsPerWord
-          #if defined(OFFSET_IN_SW_BM_WORD) || defined(X_SW_BM_HALF_WORDS)
-               / 2
-          #endif // defined(OFFSET_IN_SW_BM_WORD) || def(X_SW_BM_HALF_WORDS)
-               * N_WORDS_SW_BM(nBW)));
-      #endif // BM_SW_FOR_REAL
-    return nLinks;
-  #endif // #else BM_SW_CNT_IN_WR
+              #if defined(OFFSET_IN_SW_BM_WORD) || defined(X_SW_BM_HALF_WORDS)
+                / 2
+              #endif // OFFSET_IN_SW_BM_WORD || X_SW_BM_HALF_WORDS
+                * N_WORDS_SW_BM(nBW)) << cnLogBmSwLinksPerBit);
+          #endif // !BM_SW_FOR_REAL
+          #ifdef BM_SW_BM_IN_WR_HB
+        assert(__builtin_popcountll(wRoot >> cnBitsVirtAddr) == nLinks);
+          #endif // BM_SW_BM_IN_WR_HB
+      #endif // USE_BM_SW_BM_IN_WR_HB elif BM_SW_BM_IN_LNX else
+    return nLinks << cnLogBmSwLinksPerBit;
+  #endif // BM_SW_CNT_IN_WR else
 }
+#endif // CODE_BM_SW
 
+#ifdef CODE_BM_SW
 // Get bitmap switch link index (offset) from digit (virtual index)
 // extracted from key.
 // If the index is not present then return the index at which it would be.
+// Should we return the bit at which it would be for cnLogBmSwLinksPerBit > 1?
 static inline void
-BmSwIndex(qp, Word_t wDigit,
+BmSwIndex(qpa, Word_t wDigit,
           Word_t *pwSwIndex, int *pbLinkPresent)
 {
-    qv;
-    int nBW = gnBW(qy, gnBLR(qy)); (void)nBW; // BW is width of switch
-    Word_t *pwBmWords = PWR_pwBm(pwRoot, wr_pwr(*pwRoot), nBW);
+    qva;
+    int nBW = gnBWGuts(T_BM_SW, wRoot, gnBLR(qy)); (void)nBW;
+    Word_t wBmBitMask = gwBitMaskInSwBmWord(wDigit);
+  #if defined(USE_BM_SW_BM_IN_WR_HB) || defined(USE_BM_SW_BM_IN_LNX)
+      #ifdef USE_BM_SW_BM_IN_WR_HB
+    Word_t wBmWord = wRoot >> cnBitsVirtAddr;
+      #else // USE_BM_SW_BM_IN_WR_HB
+    Word_t wBmWord =
+          #ifndef NO_BM_SW_AT_TOP
+        (nBL == cnBitsPerWord) ? *PWR_pwBm(pwRoot, wr_pwr(*pwRoot), nBW) :
+          #endif // !NO_BM_SW_AT_TOP
+            *pwLnX;
+      #endif // USE_BM_SW_BM_IN_WR_HB else
+    Word_t wSwIndex = __builtin_popcountll(wBmWord & (wBmBitMask - 1));
+  #else // USE_BM_SW_BM_IN_WR_HB || USE_BM_SW_BM_IN_LNX
+    Word_t* pwBmWords = PWR_pwBm(pwRoot, wr_pwr(*pwRoot), nBW);
     // The bitmap may have more than one word.
     // nBmWordNum is the number of the word which contains the bit we want.
     int nBmWordNum = gnWordNumInSwBm(wDigit);
     Word_t wBmWord = pwBmWords[nBmWordNum]; // word we want
-    Word_t wBmBitMask = gwBitMaskInSwBmWord(wDigit);
-    if (pwSwIndex != NULL) {
-#ifdef X_ADD_ALL_SW_BM_WORDS
-  #if defined(OFFSET_IN_SW_BM_WORD) || defined(X_SW_BM_HALF_WORDS)
-#error X_ADD_ALL_SW_BM_WORDS with OFFSET_IN_SW_BM_WORD or X_SW_BM_HALF_WORDS
-  #endif // defined(OFFSET_IN_SW_BM_WORD) || defined(X_SW_BM_HALF_WORDS)
-        Word_t wSwIndex = 0;
-        for (int nn = 0; nn < N_WORDS_SW_BM(nBW); nn++) {
-            wSwIndex += __builtin_popcountll(pwBmWords[nn])
-                            * ((int)wDigit >= (nn + 1) * cnBitsPerWord);
-        }
-        wSwIndex += __builtin_popcountll(wBmWord & (wBmBitMask - 1));
-        *pwSwIndex = wSwIndex;
-#else // X_ADD_ALL_SW_BM_WORDS
-  #ifdef OFFSET_IN_SW_BM_WORD
-      #ifdef USE_BM_SW
-      #ifndef BM_SW_FOR_REAL
+      #ifdef OFFSET_IN_SW_BM_WORD
+          #ifdef USE_BM_SW
+          #ifndef BM_SW_FOR_REAL
         #error OFFSET_IN_SW_BM_WORD without BM_SW_FOR_REAL
-      #endif // #ifndef BM_SW_FOR_REAL
-      #endif // USE_BM_SW
-        *pwSwIndex = (wBmWord >> (cnBitsPerWord / 2))
-                      + __builtin_popcountll(wBmWord & (wBmBitMask - 1));
-  #else // OFFSET_IN_SW_BM_WORD
-        *pwSwIndex = 0;
-        for (int nn = 0; nn < nBmWordNum; nn++) {
-            *pwSwIndex += __builtin_popcountll(pwBmWords[nn]
-      #ifdef X_SW_BM_HALF_WORDS
-                              & (((Word_t)1 << (cnBitsPerWord / 2)) - 1)
-      #endif // X_SW_BM_HALF_WORDS
-                                               );
-        }
-        *pwSwIndex += __builtin_popcountll(wBmWord & (wBmBitMask - 1));
-  #endif // OFFSET_IN_SW_BM_WORD
-#endif // X_ADD_ALL_SW_BM_WORDS
+          #endif // #ifndef BM_SW_FOR_REAL
+          #endif // USE_BM_SW
+    Word_t wSwIndex = (wBmWord >> (cnBitsPerWord / 2))
+                        + __builtin_popcountll(wBmWord & (wBmBitMask - 1));
+      #else // OFFSET_IN_SW_BM_WORD
+    Word_t wSwIndex = 0;
+    for (int nn = 0; nn < nBmWordNum; nn++) {
+        wSwIndex += __builtin_popcountll(pwBmWords[nn]
+          #ifdef X_SW_BM_HALF_WORDS
+                     & (((Word_t)1 << (cnBitsPerWord / 2)) - 1)
+          #endif // X_SW_BM_HALF_WORDS
+                                         );
+    }
+    wSwIndex += __builtin_popcountll(wBmWord & (wBmBitMask - 1));
+      #endif // OFFSET_IN_SW_BM_WORD
+      #ifdef BM_SW_BM_IN_WR_HB
+    assert((wRoot >> cnBitsVirtAddr) == wBmWord);
+      #endif // BM_SW_BM_IN_WR_HB
+  #endif // BM_SW_BM_IN_WR_HB elif BM_SW_BM_IN_LNX else
+    if (pwSwIndex != NULL) {
+        wSwIndex <<= cnLogBmSwLinksPerBit;
+        wSwIndex += (wDigit & NBPW_MSK(cnLogBmSwLinksPerBit))
+                     * !!(wBmWord & wBmBitMask);
+        *pwSwIndex = wSwIndex;
     }
     if (pbLinkPresent != NULL) {
         *pbLinkPresent = ((wBmWord & wBmBitMask) != 0);
     }
 }
+#endif // CODE_BM_SW
 
 #if defined(COMPRESSED_LISTS)
 
@@ -8994,7 +9024,7 @@ CountSwLoop(qpa, int nLinkStart, int nLinkCnt)
     int nLinks; (void)nLinks;
   #ifdef CODE_BM_SW
     if (tp_bIsBmSw(nType)) {
-        nLinks = BmSwLinkCnt(qy);
+        nLinks = BmSwLinkCnt(qya);
     } else
   #endif // CODE_BM_SW
     { nLinks = EXP(nBW); }
@@ -9046,7 +9076,7 @@ SumPopCnt(qpa)
     int nBW = nBLR_to_nBW(nBLR);
     int nLinkCnt =
   #if defined(CODE_BM_SW)
-        tp_bIsBmSw(nType) ? BmSwLinkCnt(qy) :
+        tp_bIsBmSw(nType) ? BmSwLinkCnt(qya) :
   #endif // defined(CODE_BM_SW)
         (int)EXP(nBW);
     return CountSwLoop(qya, /*nLinkStart*/ 0, nLinkCnt);

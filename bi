@@ -258,6 +258,16 @@ done
 && ${REGRESS} \
 && DEFINES="-DRIGID_XX_SW -DREGRESS -DDEBUG" ${MAKE} clean default \
 && ${REGRESS} \
+&& DEFINES="-DcnLogBmSwLinksPerBit=3 -DcnListPopCntMax=32 -DREGRESS -DDEBUG" \
+    ${MAKE} clean default \
+&& ${REGRESS} \
+&& DEFINES="-DcnLogBmSwLinksPerBit=1 -DcnListPopCntMax=32 -DREGRESS -DDEBUG" \
+    ${MAKE} clean default \
+&& ${REGRESS} \
+&& DEFINES="-DUSE_BM_SW_BM_IN_WR_OR_LNX -DcnListPopCntMax=32 -DREGRESS \
+-DDEBUG" \
+    ${MAKE} clean default \
+&& ${REGRESS} \
 && DEFINES="-DDOUBLE_DOWN -DUSE_LOWER_XX_SW -DcnListPopCntMax64=64 \
 -DNO_EMBED_KEYS -DREGRESS -DDEBUG" ${MAKE} clean default \
 && ${REGRESS} \

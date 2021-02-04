@@ -3416,7 +3416,7 @@ t_skip_to_bm_sw:
                     int nBW = gnBW(qy, nBLR); // num bits decoded
                     (void)nBW;
                     // Abuse CountSw into counting whole switch.
-                    int nLinkCnt = BmSwLinkCnt(qy);
+                    int nLinkCnt = BmSwLinkCnt(qya);
                     wPopCnt = CountSw(qya,
                                       /*wIndex*/ nLinkCnt,
                                       /*nLinks*/ nLinkCnt);
@@ -3464,9 +3464,8 @@ t_full_bm_sw:
 t_bm_sw:
     {
 //printf("# t_bm_sw\n");
-        nBW = gnBW(qy, nBLR); // num bits decoded
+        nBW = gnBWGuts(T_BM_SW, wRoot, nBLR); // num bits decoded
         wDigit = (wKey >> (nBLR - nBW)) & MSK(nBW);
-
         Word_t wSwIndex;
       #if defined(BM_IN_LINK) && defined(SKIP_TO_BM_SW)
         wSwIndex = wDigit; // in case the condition below is false
@@ -3502,22 +3501,28 @@ t_bm_sw:
             char* pcPrefetch; (void)pcPrefetch;
 // Why are we prefetching here if !LOOKUP?
 // Why are we prefetching here if !B_JUDYL?
-          #ifndef OFFSET_IN_SW_BM_WORD
+          #ifdef PF_SW_BM_WORDS
+          //#ifndef OFFSET_IN_SW_BM_WORD
+// Why are we prefetching the bitmap at all?
+// We first go after the word with the bit.
+// If the bit is set then we go after all of the words before it.
+// But I think the cpu can figure that out.
             pcPrefetch = (void*)PWR_pwBm(&pLn->ln_wRoot, pwr, nBW);
             PREFETCH(pcPrefetch);
             PREFETCH(pcPrefetch + 64);
-          #endif // #ifndef OFFSET_IN_SW_BM_WORD
+          //#endif // #ifndef OFFSET_IN_SW_BM_WORD
+          #endif // PF_SW_BM_WORDS
           #ifdef B_JUDYL
           #if (cnBitsPerWord > 32)
-            int nLinkCnt = BmSwLinkCnt(qy);
+            int nLinkCnt = BmSwLinkCnt(qya);
             wSwIndex = Psplit(nLinkCnt, nBW, /*nShift*/ 0, wDigit);
             (void)wSwIndex;
-              #ifdef PREFETCH_BM_LN
+              #ifdef PF_BM_SW_LN
             pcPrefetch = (void*)&pwr_pLinks((BmSwitch_t*)pwr)[wSwIndex];
             PREFETCH(pcPrefetch - 64);
             PREFETCH(pcPrefetch);
             PREFETCH(pcPrefetch + 64);
-              #endif // PREFETCH_BM_LN
+              #endif // PF_BM_SW_LN
               #ifdef _LNX
               #ifdef PREFETCH_BM_EK
             pcPrefetch = (void*)gpwLnX(qy, nLinkCnt, wSwIndex);
@@ -3530,10 +3535,10 @@ t_bm_sw:
           #endif // B_JUDYL
 //printf("# wDigit %zd\n", wDigit);
           #ifdef ONE_BM_SW_INDEX_CALL
-            BmSwIndex(qy, wDigit, &wSwIndex, &bLinkPresent);
+            BmSwIndex(qya, wDigit, &wSwIndex, &bLinkPresent);
 //printf("# wSwIndex %zd\n", wSwIndex);
           #else // ONE_BM_SW_INDEX_CALL
-            BmSwIndex(qy, wDigit, /* pwSwIndex */ NULL, &bLinkPresent);
+            BmSwIndex(qya, wDigit, /* pwSwIndex */ NULL, &bLinkPresent);
           #endif // ONE_BM_SW_INDEX_CALL
 //printf("# bLinkPresent %d\n", bLinkPresent);
       #else // defined(BM_SW_FOR_REAL)
@@ -3585,10 +3590,10 @@ t_bm_sw:
             bLinkPresent = *(Word_t *)wAddr ^ ~(Word_t)0x12484210;
             wSwIndex = wDigit + !bLinkPresent;
               #else
-            BmSwIndex(qy, wDigit, &wSwIndex, &bLinkPresent);
+            BmSwIndex(qya, wDigit, &wSwIndex, &bLinkPresent);
               #endif // defined(BM_SW_FOR_REAL) && defined(SW_BM_DEREF_ONLY)
           #else // LOOKUP
-            BmSwIndex(qy, wDigit, &wSwIndex, &bLinkPresent);
+            BmSwIndex(qya, wDigit, &wSwIndex, &bLinkPresent);
           #endif // LOOKUP
       #endif // defined(BM_SW_FOR_REAL)
       #if ! defined(COUNT)
@@ -3604,8 +3609,10 @@ t_bm_sw:
               #else // OFFSET_IN_SW_BM_WORD || X_SW_BM_HALF_WORDS
                 #define cnLogBmBitsPerBmWord  cnLogBitsPerWord
               #endif // OFFSET_IN_SW_BM_WORD || X_SW_BM_HALF_WORDS else
-                int nWordNum = wDigit >> cnLogBmBitsPerBmWord;
-                int nBitNum = wDigit & MSK(cnLogBmBitsPerBmWord);
+                int nWordNum
+                    = (wDigit >> cnLogBmSwLinksPerBit) >> cnLogBmBitsPerBmWord;
+                int nBitNum = (wDigit >> cnLogBmSwLinksPerBit)
+                                & MSK(cnLogBmBitsPerBmWord);
                 Word_t wBm = pwBmWords[nWordNum] & ~MSK(nBitNum);
                 //printf("wDigit 0x%zx nBitNum %d\n", wDigit, nBitNum);
                 for (;;) {
@@ -3616,6 +3623,8 @@ t_bm_sw:
                         //printf("nBitNum %d\n", nBitNum);
                         wDigit = nWordNum << cnLogBmBitsPerBmWord;
                         wDigit |= nBitNum;
+                        wDigit <<= cnLogBmSwLinksPerBit;
+                        // Might be WROOT_NULL, but link will be present.
                         //printf("wDigit 0x%zx\n", wDigit);
                         wKey &= ~NZ_MSK(nBLR);
                         wKey |= (wDigit << (nBLR - nBW));
@@ -3623,8 +3632,11 @@ t_bm_sw:
                         goto restart;
                     }
                     if ((Word_t)++nWordNum
-                        >= ((nBW <= cnLogBmBitsPerBmWord)
-                            ? 0 : EXP(nBW - cnLogBmBitsPerBmWord)))
+                        >= (((nBW - cnLogBmSwLinksPerBit)
+                                <= cnLogBmBitsPerBmWord)
+                            ? 0
+                            : EXP((nBW - cnLogBmSwLinksPerBit)
+                                      - cnLogBmBitsPerBmWord)))
                     {
                         if (nBL >= cnBitsPerWord) {
                             //printf("# break\n");
@@ -3645,13 +3657,13 @@ t_bm_sw:
             }
       #endif // ! defined(COUNT)
       #if defined(BM_SW_FOR_REAL) && !defined(ONE_BM_SW_INDEX_CALL)
-            BmSwIndex(qy, wDigit, &wSwIndex, /* pbPresent */ NULL);
+            BmSwIndex(qya, wDigit, &wSwIndex, /* pbPresent */ NULL);
       #endif // defined(BM_SW_FOR_REAL) && !defined(ONE_BM_SW_INDEX_CALL)
         }
 
         pLnNew = &pwr_pLinks((BmSwitch_t *)pwr)[wSwIndex];
       #ifdef _LNX
-        int nLinkCnt = BmSwLinkCnt(qy);
+        int nLinkCnt = BmSwLinkCnt(qya);
           #ifndef BM_SW_FOR_REAL
         assert(nLinkCnt == (1<<nBW));
           #endif // BM_SW_FOR_REAL
@@ -6908,7 +6920,7 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
   #endif // defined(DEBUG)
     }
 
-    if (BJL(*pwValue != 0)BJ1(status == Success)) {
+    if (BJL(pwValue != 0)BJ1(status == Success)) {
   #ifdef B_JUDYL
         DBGI(printf("\n# After InsertL(wKey " OWx") Dump\n", wKey));
   #else // B_JUDYL

@@ -28,6 +28,43 @@
   #error cnSwCnts must be a power of 2
 #endif
 
+// BM_SW_BM_IN_WR_OR_LNX, as is, requires us to give up the following:
+// - SW_POP_IN_LNX for JudyL
+//   - consider separating BM_SW_POP_IN_LNX from SWITCH_POP_IN_LNX
+// - OFFSET_IN_SW_BM_WORD (don't care much) for JudyL
+// - SKIP_TO_BM_SW for Judy1
+//   - consider NO_SKIP_TO_BM_SW_LVL_IN_WR
+//   - consider SKIP_TO_BM_SW_LVL_IN_TYPE
+// - BM_SW_CNT_IN_WR (link count - don't care) for Judy1
+
+#ifdef USE_BM_SW_BM_IN_WR_OR_LNX
+  #ifdef B_JUDYL
+    #undef  USE_BM_SW_BM_IN_LNX
+    #define USE_BM_SW_BM_IN_LNX
+  #else // B_JUDYL
+    #undef  USE_BM_SW_BM_IN_WR_HB
+    #define USE_BM_SW_BM_IN_WR_HB
+  #endif // B_JUDYL
+#endif // USE_BM_SW_BM_IN_WR_OR_LNX
+
+#ifdef    USE_BM_SW_BM_IN_LNX
+  #undef      BM_SW_BM_IN_LNX
+  #define     BM_SW_BM_IN_LNX
+#endif // USE_BM_SW_BM_IN_LNX
+
+#ifdef    USE_BM_SW_BM_IN_WR_HB
+  #undef      BM_SW_BM_IN_WR_HB
+  #define     BM_SW_BM_IN_WR_HB
+#endif // USE_BM_SW_BM_IN_WR_HB
+
+// Not sure of NO_BM_SW_AT_TOP is the way to go for BM_SW_BM_IN_LNX.
+// Maybe just test nBL and leave/use the bitmap in the switch.
+#ifdef BM_SW_BM_IN_LNX
+  #undef  NO_BM_SW_AT_TOP
+  #define NO_BM_SW_AT_TOP
+#endif // BM_SW_BM_IN_LNX
+
+// Enable SW_POP_IN_WR_HB by default.
 // Enable SW_POP_IN_WR_HB by default.
 #if cnBitsPerWord > 32
 #ifndef    NO_SW_POP_IN_WR_HB
@@ -176,6 +213,13 @@
   #endif // !defined(NO_LVL_IN_WR_HB) && !defined(LVL_IN_PP)
 #endif // (cnBitsPerWord > 32)
 
+#ifdef BM_SW_BM_IN_WR_HB
+#ifdef LVL_IN_WR_HB
+  #undef  NO_SKIP_TO_BM_SW
+  #define NO_SKIP_TO_BM_SW
+#endif // LVL_IN_WR_HB
+#endif // BM_SW_BM_IN_WR_HB
+
 // NO_SKIP_LINKS means no skip links of any kind.
 // SKIP_LINKS allows the type-specific SKIP_TO_<BLAH> to be defined.
 // Default is -DSKIP_LINKS.
@@ -204,6 +248,7 @@
 
 #ifdef _LVL_IN_TYPE
   #define NO_SKIP_TO_XX_SW
+  #undef  NO_SKIP_TO_BM_SW
   #define NO_SKIP_TO_BM_SW
   #define NO_SKIP_TO_LIST_SW
   #define NO_SKIP_TO_BITMAP
@@ -422,6 +467,19 @@
 #endif // !NO_SW_POP_IN_LNX
 #endif // B_JUDYL
 
+#ifdef BM_SW_BM_IN_WR_HB
+#ifdef       BM_SW_CNT_IN_WR
+  #error
+#endif //    BM_SW_CNT_IN_WR
+  #undef  NO_BM_SW_CNT_IN_WR
+  #define NO_BM_SW_CNT_IN_WR
+#endif // BM_SW_BM_IN_WR_HB
+
+#ifdef BM_SW_BM_IN_LNX
+  #undef  _LNX
+  #define _LNX
+#endif // BM_SW_BM_IN_LNX
+
 #ifdef SW_POP_IN_LNX
   #undef  _LNX
   #define _LNX
@@ -577,6 +635,16 @@
 #endif // BitsInD2 == BitsInD1 && (BitsPerWord % BitsPerDigit) == 0
 #endif // cnBitsPerDigit == cnBitsInD3 && cnBitsInD3 == cnBitsInD2
 #endif // CODE_XX_SW
+
+#ifndef cnLogBmSwLinksPerBit
+  #ifdef BM_SW_BM_IN_WR_HB
+    #define cnLogBmSwLinksPerBit 4 // A lot of assumptions here.
+  #elif defined(BM_SW_BM_IN_LNX) // BM_SW_BM_IN_WR_HB
+    #define cnLogBmSwLinksPerBit 2 // A lot of assumptions here.
+  #else // BM_SW_BM_IN_WR_HB elif BM_SW_BM_IN_LNX
+    #define cnLogBmSwLinksPerBit 0
+  #endif // BM_SW_BM_IN_WR_HB elif BM_SW_BM_IN_LNX else
+#endif // !cnLogBmSwLinksPerBit
 
 // Define USE_BM_SW by default.
 #ifndef   NO_USE_BM_SW
@@ -946,6 +1014,13 @@
 #endif // B_JUDYL
 #endif // USE_BM_SW
 
+#ifdef BM_SW_BM_IN_LNX
+#if cnLogBmSwLinksPerBit < 3
+  #undef  NO_OFFSET_IN_SW_BM_WORD
+  #define NO_OFFSET_IN_SW_BM_WORD
+#endif // cnLogBmSwLinksPerBit < 3
+#endif // BM_SW_BM_IN_LNX
+
 // Default is OFFSET_IN_SW_BM_WORD for B_JUDYL unless NO_OFFSET_IN_SW_BM_WORD.
 // OFFSET_IN_SW_BM_WORD is not used for Judy1.
 #undef              OFFSET_IN_SW_BM_WORD
@@ -955,10 +1030,14 @@
 #endif // ifndef NO_OFFSET_IN_SW_BM_WORD
 #endif // B_JUDYL
 
-#ifndef   NO_PREFETCH_BM_LN
-    #undef   PREFETCH_BM_LN
-    #define  PREFETCH_BM_LN
-#endif // NO_PREFETCH_BM_LN
+#ifndef USE_BM_SW_BM_IN_WR_HB
+#ifndef USE_BM_SW_BM_IN_LNX
+#ifndef   NO_PF_BM_SW_LN
+    #undef   PF_BM_SW_LN
+    #define  PF_BM_SW_LN
+#endif // NO_PF_BM_SW_LN
+#endif // !USE_BM_SW_BM_IN_LNX
+#endif // !USE_BM_SW_BM_IN_WR_HB
 
 // Default is REMOTE_LNX if _LNX.
 // Ultimately, I think upper level switches will have no or a remote

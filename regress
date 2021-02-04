@@ -219,5 +219,7 @@ then
     exit 1
 fi
 
+echo "--- regress success ---"
+
 exit 0
 
