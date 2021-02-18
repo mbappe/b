@@ -3050,7 +3050,7 @@ t_switch:
               #endif // cnSwCnts == 0
         assert(gwPopCnt(qya, nBLR) != BPW_EXP(nBLR));
           #else // FULL_SW
-        goto t_full_sw;
+        goto t_full_sw_guts;
           #endif // FULL_SW else
       #endif // NEXT_EMPTY
         goto switchTail; // in case other uses go away by ifdef
@@ -3148,6 +3148,8 @@ t_full_sw:; // check for full sub-expanse if cnSwCnts else for full sw
         pwLnXNew = gpwLnX(qy, /* wLinks */ EXP(nBW), /* wIndex */ wDigit);
       #endif // _LNX
         pLnNew = &pwr_pLinks((Switch_t *)pwr)[wDigit];
+        goto t_full_sw_guts;
+t_full_sw_guts:;
       #if cnSwCnts != 0
           #ifdef NEXT_EMPTY_TEST_WHOLE_BEFORE_PART
         if (gwPopCnt(qya, nBLR) == BPW_EXP(nBLR)) {
@@ -3390,7 +3392,15 @@ t_xx_sw:
         goto t_embedded_keys;
       #endif // _XX_SW_TAIL
       #ifdef NEXT_EMPTY
-        goto t_full_sw; // check for full sub-expanse or full sw
+          #if cnSwCnts != 0
+        goto t_full_sw_guts; // check for full sub-expanses
+          #else // cnSwCnts != 0
+        if (gwPopCnt(qya, nBLR) != BPW_EXP(nBLR)) {
+            goto switchTail;
+        }
+        wKey = (wKey & ~NZ_MSK(nBLR)) + BPW_EXP(nBLR);
+        goto break_from_main_switch;
+          #endif // cnSwCnts != 0 else
       #endif // NEXT_EMPTY
         goto switchTail;
     } // end of t_xx_sw
