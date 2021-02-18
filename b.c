@@ -8160,7 +8160,7 @@ InsertAtFullUnalignedXxList(qpa, Word_t wKey, int nPopCnt, int nPos,
     // spans a subexpanse boundary.
     DBGI(printf("\n# IAFUXL nBWRUp %d nPopCnt %d\n", nBWRUp, nPopCnt));
     int nDigitUp = (wKey >> nBL) & MSK(nBWRUp);
-    int nBLR = gnListBLR(qy);
+    int nBLR = gnListBLR(qy); (void)nBLR;
     DBGI(printf("\n# IAFUXL nBLR %d nBLRUp %d\n", nBLR, nBLRUp));
     Word_t* pwCnts = ((Switch_t*)wr_pwr(wRootUp))->sw_awCnts;
     if (nBLRUp <= 16) {
