@@ -7811,9 +7811,19 @@ LocateGeKeyInListGuts(qpa, int nBLR, Word_t* pwKey)
       // with a Dl1 list that is bigger than 16 even if
       // cnListPopCntMaxDl1 <= 16. We have since fixed the bug and
       // commented out the !defined(USE_XX_SW_ONLY_AT_DL2) workaround here.
+      // But what about nBLR < cnListPopCntMaxDl1 for USE_XX_SW_ONLY_AT_DL2?
       #if cnListPopCntMaxDl1 <= 16 // && !defined(USE_XX_SW_ONLY_AT_DL2)
-        nPos = BUCKET_LOCATE_GE_KEY((Bucket_t*)pwr, wKey, nBLR);
-        if (nPos < 0) { nPos = ~nPopCnt; }
+          #ifdef USE_XX_SW_ONLY_AT_DL2
+        if (nBLR != cnBitsInD1) {
+            uint8_t cKey = (uint8_t)wKey; // Do we need cKey?
+            LOCATE_GE_KEY(Bucket_t,
+                          uint8_t, nBLR, pcKeys, nPopCnt, cKey, nPos);
+        } else
+          #endif // USE_XX_SW_ONLY_AT_DL2
+        {
+            nPos = BUCKET_LOCATE_GE_KEY((Bucket_t*)pwr, wKey, nBLR);
+            if (nPos < 0) { nPos = ~nPopCnt; }
+        }
       #else // cnListPopCntMaxDl1 <= 16
         uint8_t cKey = (uint8_t)wKey; // Do we need cKey?
         LOCATE_GE_KEY(Bucket_t,
