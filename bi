@@ -6,8 +6,8 @@
 # Turn on non-default features that change the structure.
 # Change algorithms without changing the structure.
 # Non-default combinations.
-# Test key builds with both compilers.
-# 32-bit doesn't work anymore but we still test key builds.
+# Test basic builds with both compilers.
+# Test basic 32-bit builds.
 # Targeted bug-fix or code capability regression tests.
 
 # Wish we could do more to regression test DEBUG_ALL. It might not take too
@@ -17,24 +17,18 @@
 # This lengthy regression test script has the structure required to be used by
 # git bisect run, i.e. exit status indicates success or failure.
 # But running it takes too long for it to be used in that way.
+# We should make sure Check and Time and regress also have that structure.
 
 # Put date in output.
 date
 
 REGRESS=${1:-"regress"}
 
-# Use -Wno-override-init with gcc for "-DAUGMENT_TYPE -DJUMP_TABLE".
-# Use -Wno-initializer-overrides with clang for "-DAUGMENT_TYPE -DJUMP_TABLE".
-# Unfortunately, with clang, -Wno-initializer-overrides is cancelled out
-# by -Wextra if -Wextra occurs after -Wno_initializer-overrides on the
-# command line.
-# Use WFLAGSA_B="-Wno-override-init -Wno-psabi" OFLAGS=-O0 nohup bi true
-# to make sure all cases build (without optimization). It's quicker than
-# optimizing.
+# Use "OFLAGS=-O0 nohup bi true" to make sure all cases build (without
+# optimization). It's quicker than optimizing.
+# May need "WFLAGSA_B=-Wno-psabi OFLAGS=-O0 nohup bi true" on Linux.
 CCA=clang
-WFLAGSA_A=-Wno-initializer-overrides
 CCB=gcc
-: ${WFLAGSA_B:="-Wno-override-init"}
 CC=$CCA
 WFLAGSA=$WFLAGSA_A
 export CC WFLAGSA
@@ -208,8 +202,7 @@ fi # [ `uname` = Linux ] else
 if [ $? != 0 ]; then echo "non-zero exit"; exit 1; fi
 
 for lvl in "-DNO_LVL_IN_WR_HB -DDEFAULT_SKIP_TO_SW" \
-           "-DNO_LVL_IN_WR_HB -DALL_SKIP_TO_SW_CASES" \
-            -DLVL_IN_PP
+           "-DNO_LVL_IN_WR_HB -DALL_SKIP_TO_SW_CASES"
 do
 for jt in "" -DJUMP_TABLE
 do
@@ -296,10 +289,6 @@ done
 && DEFINES="-DUSE_XX_SW_ONLY_AT_DL2 -DcnListPopCntMax64=64 -DREGRESS -DDEBUG" \
    ${MAKE} clean default \
 && ${REGRESS} \
-&& DEFINES="-DLVL_IN_PP -DREGRESS -DDEBUG" ${MAKE} clean default \
-&& ${REGRESS} \
-&& DEFINES="-DPP_IN_LINK -DREGRESS -DDEBUG" ${MAKE} clean default \
-&& ${REGRESS} \
 && DEFINES="-DcnBitsPerDigit=16 -Dcn2dBmMaxWpkPercent=0 -DREGRESS -DDEBUG" \
    ${MAKE} clean default \
 && ${REGRESS} \
@@ -385,6 +374,15 @@ done
 -DGUARDBAND -DTESTCOUNTACCURACY \
 -DDEBUG_LOCATE_GE -DREGRESS -DDEBUG_ALL -DFULL_DUMP -DDEBUG -DEBUG_LOOKUP" \
     ${MAKE} clean default \
+&& DEFINES="-DNO_SEARCH_FROM_WRAPPER -DREGRESS -DDEBUG" ${MAKE} clean default \
+&& ${REGRESS} \
+&& :
+if [ $? != 0 ]; then echo "non-zero exit"; exit 1; fi
+
+if [ `uname` -ne "Darwin" ]
+then
+
+: \
 && BPW=32 DEFINES="-DDEBUG_LOCATE_GE -DREGRESS -DDEBUG" ${MAKE} clean default \
 && ${REGRESS} \
 && BPW=32 ${MAKE} clean default \
@@ -420,118 +418,12 @@ done
 && BPW=32 CC=$CCB WFLAGSA=$WFLAGSA_B \
     DEFINES="-DALL_SKIP_TO_SW_CASES -DREGRESS -DDEBUG_ALL -DFULL_DUMP" \
     ${MAKE} clean default \
-&& DEFINES="-DAUG_TYPE_64_LOOKUP -DREGRESS -DDEBUG" ${MAKE} clean default \
-&& ${REGRESS} \
-&& DEFINES="-DAUG_TYPE_64_LOOKUP -DBL_SPECIFIC_LIST -DREGRESS -DDEBUG" \
-    ${MAKE} clean default \
-&& ${REGRESS} \
-&& DEFINES="-DAUG_TYPE_32_LOOKUP -DREGRESS -DDEBUG" ${MAKE} clean default \
-&& ${REGRESS} \
-&& DEFINES="-DAUG_TYPE_32_LOOKUP -DBL_SPECIFIC_LIST -DREGRESS -DDEBUG" \
-    ${MAKE} clean default \
-&& ${REGRESS} \
-&& DEFINES="-DAUG_TYPE_16_LOOKUP -DREGRESS -DDEBUG" ${MAKE} clean default \
-&& ${REGRESS} \
-&& DEFINES="-DAUG_TYPE_16_LOOKUP -DBL_SPECIFIC_LIST -DREGRESS -DDEBUG" \
-    ${MAKE} clean default \
-&& ${REGRESS} \
-&& DEFINES="-DAUG_TYPE_8_LOOKUP -DREGRESS -DDEBUG" ${MAKE} clean default \
-&& ${REGRESS} \
-&& DEFINES="-DAUG_TYPE_8_LOOKUP -DBL_SPECIFIC_LIST -DREGRESS -DDEBUG" \
-    ${MAKE} clean default \
-&& ${REGRESS} \
-&& DEFINES="-DAUG_TYPE_64_LOOKUP -DNO_UNPACK_BM_VALUES -DNO_USE_BM_SW \
--DcnBitsTypeMask=3 -DREGRESS -DDEBUG" \
-    ${MAKE} clean default \
-&& ${REGRESS} \
-&& DEFINES="-DAUG_TYPE_32_LOOKUP -DNO_SKIP_TO_BM_SW -DNO_FULL_SW \
--DcnBitsTypeMask=3 -DREGRESS -DDEBUG" \
-    ${MAKE} clean default \
-&& ${REGRESS} \
-&& DEFINES="-DAUG_TYPE_16_LOOKUP -DNO_EK_XV -DNO_USE_BM_SW -DcnBitsTypeMask=3 \
--DREGRESS -DDEBUG" \
-    ${MAKE} clean default \
-&& ${REGRESS} \
-&& DEFINES="-DAUG_TYPE_8_LOOKUP -DNO_UNPACK_BM_VALUES -DNO_FULL_SW \
--DcnBitsTypeMask=3 -DREGRESS -DDEBUG" \
-    ${MAKE} clean default \
-&& ${REGRESS} \
-&& DEFINES="-DAUG_TYPE_32_LOOKUP -DBL_SPECIFIC_LIST -DNO_UNPACK_BM_VALUES \
--DNO_USE_BM_SW -DcnBitsTypeMask=3 -DREGRESS -DDEBUG" \
-    ${MAKE} clean default \
-&& ${REGRESS} \
-&& DEFINES="-DAUG_TYPE_64_LOOKUP -DBL_SPECIFIC_LIST -DNO_SKIP_TO_BM_SW \
--DNO_FULL_SW -DcnBitsTypeMask=3 -DREGRESS -DDEBUG" \
-    ${MAKE} clean default \
-&& ${REGRESS} \
-&& DEFINES="-DAUG_TYPE_8_LOOKUP -DBL_SPECIFIC_LIST -DNO_EK_XV -DNO_FULL_SW \
--DcnBitsTypeMask=3 -DREGRESS -DDEBUG" \
-    ${MAKE} clean default \
-&& ${REGRESS} \
-&& DEFINES="-DAUG_TYPE_16_LOOKUP -DBL_SPECIFIC_LIST -DNO_UNPACK_BM_VALUES \
--DNO_USE_BM_SW -DcnBitsTypeMask=3 -DREGRESS -DDEBUG" \
-    ${MAKE} clean default \
-&& ${REGRESS} \
 && :
 if [ $? != 0 ]; then echo "non-zero exit"; exit 1; fi
 
-for sfw in "" -DNO_SEARCH_FROM_WRAPPER
-do
-for qpln in "" -DQP_PLN
-do
-for augtype in "" "-DAUGMENT_TYPE_8" \
-                  "-DAUGMENT_TYPE_8 -DMASK_TYPE" \
-                  "-DAUGMENT_TYPE -DMASK_TYPE" \
-                  "-DAUGMENT_TYPE_8_PLUS_4 -DcnBitsInD1=4 -DNO_EK_XV" \
-                  "-DAUGMENT_TYPE_8_PLUS_4 -DcnBitsInD1=11" \
-                  "-DAUGMENT_TYPE_8_PLUS_4 -DcnBitsInD2=6" \
-                  "-DAUGMENT_TYPE_8_PLUS_4 -DcnBitsInD2=10" \
-                  "-DAUGMENT_TYPE_8_PLUS_4 -DcnBitsInD3=7" \
-                  "-DAUGMENT_TYPE_8_PLUS_4 -DcnBitsInD3=9" \
-                  "-DMASK_TYPE"
-do
-for allcases in "" -DALL_SKIP_TO_SW_CASES -DDEFAULT_SKIP_TO_SW
-do
-for jt in "" -DJUMP_TABLE
-do
-    # Pare down the number of tests.
-    if [ "$sfw" != "" -o "$qpln" != "" ]; then
-        if [ "$augtype" != "" ]; then
-        if [ "$augtype" != "-DAUGMENT_TYPE" ]; then
-        if [ "$augtype" != "-DAUGMENT_TYPE_8" ]; then
-        if [ "$augtype" != "-DAUGMENT_TYPE_8_PLUS_4 -DcnBitsInD1=4" ]; then
-            continue
-        fi
-        fi
-        fi
-        fi
-    fi
-    : \
-    && DEFINES="$sfw $qpln $augtype $allcases $jt -DREGRESS -DDEBUG" \
-        ${MAKE} clean default \
-    && ${REGRESS} \
-    && :
-    if [ $? != 0 ]; then echo "non-zero exit"; exit 1; fi
-done
-done
-done
-done
-done
+fi # Darwin
 
 echo
 echo "=== SUCCESS! ==="
 echo
-
-#BPW=32 ${MAKE} clean default
-#CC=clang ${MAKE} clean default
-#DEFINES=-URAMMETRICS ${MAKE} clean default
-#DEFINES=-DSEARCHMETRICS ${MAKE} clean default
-#DEFINES=-DREGRESS -DDEBUG_ALL ${MAKE} clean default
-#DEFINES=-DLVL_IN_PP ${MAKE} clean default
-#DEFINES=-DPP_IN_LINK ${MAKE} clean default
-#DEFINES=-DNO_SKIP_LINKS ${MAKE} clean default
-#BPW=32 CC=clang DEFINES="-DDEBUG -DNO_SKIP_LINKS" ${MAKE} clean default
-#BPW=32 DEFINES="-DSEARCHMETRICS -DDEBUG -UNO_BITMAP" ${MAKE} clean default
-#trap 'if [ $? -eq 0 ]; then exit 0; else exit 1; fi' EXIT
-#${REGRESS}32-6fd7cd
 

@@ -67,11 +67,7 @@ Judy1Count(Pcvoid_t PArray, Word_t wKey0, Word_t wKey1, JError_t *pJError)
     }
 
     int nBL = cnBitsPerWord;
-  #ifdef QP_PLN
-    Link_t *pLn = STRUCT_OF((Word_t*)&PArray, Link_t, ln_wRoot);
-  #else // QP_PLN
     Word_t* pwRoot = (Word_t*)&PArray;
-  #endif // QP_PLN else
   #ifdef REMOTE_LNX
     Word_t* pwLnX = NULL;
   #endif // REMOTE_LNX

@@ -55,11 +55,7 @@ Judy1First(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
     DBGN(printf("\n# JxF: *pwKey " OWx"\n", *pwKey));
   #if defined(_NEXT_QPA) || defined(_NEXT_QP)
     int nBL = cnBitsPerWord;
-      #ifdef QP_PLN
-    Link_t* pLn = STRUCT_OF((Word_t*)&PArray, Link_t, ln_wRoot);
-      #else // QP_PLN
     Word_t* pwRoot = (Word_t*)&PArray; (void)pwRoot;
-      #endif // QP_PLN else
       #ifdef _NEXT_QPA
       #ifdef REMOTE_LNX
     Word_t* pwLnX = NULL; (void)pwLnX;
@@ -205,11 +201,7 @@ Judy1Next(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
   #endif // NEXT_FROM_WRAPPER || !NEW_NEXT_IS_EXCLUSIVE
   #if defined(_NEXT_QPA) || defined(_NEXT_QP)
     int nBL = cnBitsPerWord;
-      #ifdef QP_PLN
-    Link_t* pLn = STRUCT_OF((Word_t*)&PArray, Link_t, ln_wRoot);
-      #else // QP_PLN
     Word_t* pwRoot = (Word_t*)&PArray; (void)pwRoot;
-      #endif // QP_PLN else
       #ifdef _NEXT_QPA
       #ifdef REMOTE_LNX
     Word_t* pwLnX = NULL; (void)pwLnX;

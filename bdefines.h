@@ -28,6 +28,8 @@
   #error cnSwCnts must be a power of 2
 #endif
 
+#undef LVL_IN_PP // getting rid of this
+
 // BM_SW_BM_IN_WR_OR_LNX, as is, requires us to give up the following:
 // - SW_POP_IN_LNX for JudyL
 //   - consider separating BM_SW_POP_IN_LNX from SWITCH_POP_IN_LNX
@@ -206,11 +208,10 @@
 // Default is LVL_IN_WR_HB for 64-bit and level in nType for 32-bit.
 // The absence of LVL_IN_WR_HB and LVL_IN_PP is level in nType.
 #if (cnBitsPerWord > 32)
-  #if       !defined(NO_LVL_IN_WR_HB) && !defined(LVL_IN_PP)
-    #undef              LVL_IN_WR_HB
-    #define             LVL_IN_WR_HB
-  //                 NO_LVL_IN_PP is not necessary.
-  #endif // !defined(NO_LVL_IN_WR_HB) && !defined(LVL_IN_PP)
+#ifndef    NO_LVL_IN_WR_HB
+  #undef      LVL_IN_WR_HB
+  #define     LVL_IN_WR_HB
+#endif // !NO_LVL_IN_WR_HB
 #endif // (cnBitsPerWord > 32)
 
 #ifdef BM_SW_BM_IN_WR_HB
@@ -229,8 +230,8 @@
 #endif // NO_SKIP_LINKS
 
 #ifdef SKIP_LINKS
-#if !defined(LVL_IN_WR_HB) && !defined(LVL_IN_PP)
-  // For level in type, i.e. (!LVL_IN_WR_HB && !LVL_IN_PP),
+#ifndef LVL_IN_WR_HB
+  // For level in type, i.e. !LVL_IN_WR_HB,
   // multiple type values all represent T_SKIP_TO_SWITCH, i.e.
   // level = nType - T_SKIP_TO_SWITCH + 2.
   // Macro names that begin with '_' are derived from other macros
@@ -243,7 +244,7 @@
   #if !defined(DEFAULT_SKIP_TO_SW) && !defined(ALL_SKIP_TO_SW_CASES)
       #error Level in type requires DEFAULT_SKIP_TO_SW or ALL_SKIP_TO_SW_CASES.
   #endif // !DEFAULT_SKIP_TO_SW && !ALL_SKIP_TO_SW_CASES
-#endif // !defined(LVL_IN_WR_HB) && !defined(LVL_IN_PP)
+#endif // !LVL_IN_WR_HB
 #endif // SKIP_LINKS
 
 #ifdef _LVL_IN_TYPE
@@ -671,7 +672,7 @@
 // Choose conditional features and tuning parameters by #if, #define
 // and #undef.
 // E.g. DEBUG, RAMMETRICS, GUARDBAND.
-// E.g. SKIP_LINKS, SKIP_PREFIX_CHECK.
+// E.g. SKIP_LINKS.
 // E.g. cnListPopCntMax.
 // Does it make sense for this file to be the only place where we use #define
 // and #undef for conditional features and tuning parameters?
@@ -831,9 +832,9 @@
 
 // XX_SW doesn't work without LVL_IN_WR_HB yet.
 #ifdef SKIP_TO_XX_SW
-  #if !defined(LVL_IN_WR_HB) && !defined(LVL_IN_PP)
-    #error SKIP_TO_XX_SW requires LVL_IN_WR_HB or LVL_IN_PP
-  #endif // !defined(LVL_IN_WR_HB) && !defined(LVL_IN_PP)
+  #ifndef LVL_IN_WR_HB
+    #error SKIP_TO_XX_SW requires LVL_IN_WR_HB
+  #endif // !LVL_IN_WR_HB
 #endif // SKIP_TO_XX_SW
 
 // Default is -DGOTO_AT_FIRST_IN_LOOKUP.
@@ -841,41 +842,6 @@
   #undef     GOTO_AT_FIRST_IN_LOOKUP
   #define    GOTO_AT_FIRST_IN_LOOKUP
 #endif // NO_GOTO_AT_FIRST_IN_LOOKUP
-
-// At most one of DEFAULT_SKIP_TO_SW, DEFAULT_SWITCH,
-// DEFAULT_LIST and DEFAULT_BITMAP may be defined.
-#ifdef DEFAULT_SKIP_TO_SW
-  #ifdef DEFAULT_SWITCH
-    #error DEFAULT_SWITCH with DEFAULT_SKIP_TO_SW
-  #endif // DEFAULT_SWITCH
-  #ifdef DEFAULT_BITMAP
-    #error DEFAULT_BITMAP with DEFAULT_SKIP_TO_SW
-  #endif // DEFAULT_BITMAP
-  #ifdef DEFAULT_LIST
-    #error DEFAULT_LIST with DEFAULT_SKIP_TO_SW
-  #endif // DEFAULT_LIST
-#elif defined(DEFAULT_SWITCH)
-  #ifdef DEFAULT_BITMAP
-    #error DEFAULT_BITMAP with DEFAULT_SWITCH
-  #endif // DEFAULT_BITMAP
-  #ifdef DEFAULT_LIST
-    #error DEFAULT_LIST with DEFAULT_SWITCH
-  #endif // DEFAULT_LIST
-#elif defined(DEFAULT_BITMAP)
-  #ifdef DEFAULT_LIST
-    #error DEFAULT_LIST with DEFAULT_BITMAP
-  #endif // DEFAULT_LIST
-#endif // defined(DEFAULT_BITMAP)
-
-// DEFAULT_AND_CASE means include the explicit case statement even for the
-// default case defined by DEFAULT_<BLAH>.
-// Default is -DDEFAULT_AND_CASE.
-#ifndef   NO_DEFAULT_AND_CASE
-  #undef     DEFAULT_AND_CASE
-  #define    DEFAULT_AND_CASE
-#endif // NO_DEFAULT_AND_CASE
-
-// Default is no -DALL_SKIP_TO_SW_CASES.
 
 // Default is -DNDEBUG -UDEBUG_ALL -UDEBUG
 // -UDEBUG_INSERT -UDEBUG_REMOVE -UDEBUG_LOOKUP -UDEBUG_MALLOC
@@ -909,16 +875,6 @@
     #define NDEBUG // turn off assertions for performance
   #endif // COUNT||NEXT||ASSERT||INSERT||REMOVE||LOOKUP||MALLOC else
 #endif // DEBUG_ALL elif !DEBUG else
-
-#ifndef PP_IN_LINK
-  // Default is POP_WORD ifndef PP_IN_LINK unless NO_POP_WORD.
-  // POP_WORD makes gwPopCnt faster.
-  // gwPopCnt showed up as a heavy hitter in the profile.
-  #ifndef   NO_POP_WORD
-    #undef     POP_WORD
-    #define    POP_WORD
-  #endif // NO_POP_WORD
-#endif // #ifndef PP_IN_LINK
 
 #ifdef FAST_MALLOC_2
   #undef  FAST_MALLOC_1
