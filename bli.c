@@ -40,19 +40,21 @@ CountSw(qpa,
         assert((Word_t)nLinks == EXP(nBW));
         assert(wIndex < (Word_t)nLinks);
         int nBLLoop = nBLR - nBW;
-        Link_t *pLnLoop = &pLinks[wIndex]; // not to be counted
-        Word_t* pwRootLoop = &pLnLoop->ln_wRoot;
-        Word_t wRootLoop = *pwRootLoop;
-        int nTypeLoop = wr_nType(wRootLoop);
-        if (nTypeLoop == T_XX_LIST) {
-            // What are we doing here?
-            int nBLRLoop = gnListBLR(qyx(Loop)); // not to be counted
-            assert(nBLRLoop > nBLLoop);
-            assert(nBLRLoop <= cnBitsPerWord);
-            // Why are we changing wIndex?
-            // Back up to the beginning of this shared list.
-            wIndex &= ~MSK(nBLRLoop - nBLLoop);
-            DBGC(printf("# CountSw wIndex " OWx"\n", wIndex));
+        if (!cbEmbeddedBitmap || (nBLLoop > cnLogBitsPerLink)) {
+            Link_t *pLnLoop = &pLinks[wIndex]; // not to be counted
+            Word_t* pwRootLoop = &pLnLoop->ln_wRoot;
+            Word_t wRootLoop = *pwRootLoop;
+            int nTypeLoop = wr_nType(wRootLoop);
+            if (nTypeLoop == T_XX_LIST) {
+                // What are we doing here?
+                int nBLRLoop = gnListBLR(qyx(Loop)); // not to be counted
+                assert(nBLRLoop > nBLLoop);
+                assert(nBLRLoop <= cnBitsPerWord);
+                // Why are we changing wIndex?
+                // Back up to the beginning of this shared list.
+                wIndex &= ~MSK(nBLRLoop - nBLLoop);
+                DBGC(printf("# CountSw wIndex " OWx"\n", wIndex));
+            }
         }
     }
   #endif // XX_LISTS
@@ -1231,6 +1233,9 @@ fastAgain:;
     case T_SWITCH: // no-skip (aka close) switch (vs. distant switch) w/o bm
               #ifdef NEXT_EMPTY
               #ifdef FULL_SW
+        if (gwPopCnt(qya, nBLR) == BPW_EXP(nBLR)) {
+printf("\n# T_SWITCH full pop nBL %d nBLR %d\n", nBL, nBLR);
+        }
         assert(gwPopCnt(qya, nBLR) != BPW_EXP(nBLR));
               #endif // FULL_SW
               #endif // NEXT_EMPTY
@@ -5395,6 +5400,7 @@ tryNextDigit:;
       #ifndef _RETURN_NULL_TO_INSERT_AGAIN
     BJL(assert(pwValue != NULL));
     BJL(assert(((Word_t)pwValue & (sizeof(Word_t) - 1)) == 0));
+    BJ1(if (status != Success) { printf("\nFailure\n"); exit(1); });
     BJ1(assert(status == Success));
       #endif // _RETURN_NULL_TO_INSERT_AGAIN
       #ifdef _RETURN_NULL_TO_INSERT_AGAIN

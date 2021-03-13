@@ -280,6 +280,10 @@ done
 -DREGRESS -DDEBUG" \
    ${MAKE} clean default \
 && ${REGRESS} \
+&& DEFINES="-DDOUBLE_DOWN -DUSE_LOWER_XX_SW -DUSE_XX_SW_ONLY_AT_DL2 \
+-DNO_USE_BM_SW -DcnListPopCntMax64=48 -DcnListPopCntMaxDl1=256 -DDEBUG" \
+    ${MAKE} clean default \
+&& ${REGRESS} \
 && DEFINES="-DBM_IN_LINK -DREGRESS -DDEBUG" ${MAKE} clean default \
 && ${REGRESS} \
 && DEFINES=-DSEARCHMETRICS ${MAKE} clean default \
@@ -379,7 +383,7 @@ done
 && :
 if [ $? != 0 ]; then echo "non-zero exit"; exit 1; fi
 
-if [ `uname` -ne "Darwin" ]
+if [ `uname` != "Darwin" ]
 then
 
 : \

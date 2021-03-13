@@ -5891,10 +5891,13 @@ TestJudyPrev(void *J1, void *JL, PNewSeed_t PSeed, Word_t Elements)
 #ifndef TEST_NEXT_USING_JUDY_NEXT
                         printf("J1FirstKey %" PRIuPTR"\n", J1FirstKey);
 #endif // #ifndef TEST_NEXT_USING_JUDY_NEXT
-                        printf("J1KeyBefore %" PRIuPTR"\n", J1KeyBefore);
+                        printf("Rc %d\n", Rc);
+                        printf("J1Key 0x%zx\n", J1Key);
+                        printf("J1KeyBefore 0x%zx\n", J1KeyBefore);
                         printf("\nElements = %" PRIuPTR
                                ", elm = %" PRIuPTR"\n",
                                Elements, elm);
+                        Judy1Dump((Word_t)J1, sizeof(Word_t) * 8, 0);
                         FAILURE("J1P failed J1Key", J1Key);
                     }
 #ifdef TEST_NEXT_USING_JUDY_NEXT

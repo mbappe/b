@@ -2681,6 +2681,7 @@ typedef struct {
 
 static int GetBLR(Word_t *pwRoot, int nBL);
 
+#ifdef SKIP_LINKS
 static inline void
 snBLR(Word_t *pwRoot, int nBLR)
 {
@@ -2695,6 +2696,7 @@ snBLR(Word_t *pwRoot, int nBLR)
     set_wr_nBLR(*pwRoot, nBLR);
   #endif // #else LVL_IN_WR_HB
 }
+#endif // SKIP_LINKS
 
 // Set the level of the object in number of bits left to decode.
 // Use this only when *pwRoot is a skip link.
@@ -3320,7 +3322,9 @@ BitmapWordsMin(int nBLR, Word_t wPopCnt)
   #ifndef _BMLF_BM_IN_LNX
       #ifndef B_JUDYL
     if (cbEmbeddedBitmap) {
+          #ifndef USE_XX_SW_ONLY_AT_DL2
         assert(nBLR == cnBitsLeftAtDl2);
+          #endif // !USE_XX_SW_ONLY_AT_DL2
         wWords += EXP(MAX(1, cnBitsLeftAtDl2 - cnLogBitsPerWord));
     } else if (cn2dBmMaxWpkPercent == 0) {
       #endif // ifndef B_JUDYL
@@ -8256,7 +8260,6 @@ GetPopCnt(qpa)
 // consecutive links in a switch.
 // nBLLoop is the number of bits left to decode after identifying each link
 // before any skip specified by the link is applied.
-// nBL applies to pLinks[x].
 // If (pLinks, nLinkCnt) contains links to any shared lists, then it must
 // contain all of the links to any shared lists it contains.
 // How do we ensure this constraint is respected?
@@ -8287,17 +8290,18 @@ CountSwLoop(qpa, int nLinkStart, int nLinkCnt)
         (void)pwLnXLoop;
   #endif // REMOTE_LNX
   #ifdef XX_LISTS
-        Word_t wRootLoop = *pwRootLoop;
-        int nTypeLoop = wr_nType(wRootLoop);
-        if (nTypeLoop == T_XX_LIST) {
-            Word_t *pwrLoop = wr_pwr(wRootLoop); (void)pwrLoop;
-            int nBLRLoop = gnListBLR(qyx(Loop));
-            int nXxCnt = EXP(nBLRLoop - nBLLoop);
-            if ((i + nXxCnt <= nLinkCnt)) {
-                wPopCnt
-                    += PWR_xListPopCnt(&pLnLoop->ln_wRoot, pwrLoop, nBLRLoop);
-                i += nXxCnt - 1;
-                continue;
+        if (!cbEmbeddedBitmap || (nBLLoop > cnLogBitsPerLink)) {
+            Word_t wRootLoop = *pwRootLoop;
+            int nTypeLoop = wr_nType(wRootLoop);
+            if (nTypeLoop == T_XX_LIST) {
+                Word_t *pwrLoop = wr_pwr(wRootLoop); (void)pwrLoop;
+                int nBLRLoop = gnListBLR(qyx(Loop));
+                int nXxCnt = EXP(nBLRLoop - nBLLoop);
+                if ((i + nXxCnt <= nLinkCnt)) {
+                    wPopCnt += PWR_xListPopCnt(pwRootLoop, pwrLoop, nBLRLoop);
+                    i += nXxCnt - 1;
+                    continue;
+                }
             }
         }
   #endif // XX_LISTS

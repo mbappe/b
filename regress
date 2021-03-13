@@ -48,15 +48,11 @@ fi
 # ${TIME} -Lm -E
 # ${TIME} -Lm -DS1
 
+#
 # First quick checks.
-cmd="${CHECK} -B17"
-echo $cmd
-$cmd > /dev/null
-if [ $? != 0 ]
-then
-    exit 1
-fi
-cmd="${CHECK}"
+#
+
+cmd="${TIME} -B17 -W0 -l -1LgCv"
 echo $cmd
 $cmd > /dev/null
 if [ $? != 0 ]
@@ -64,7 +60,23 @@ then
     exit 1
 fi
 
-cmd="${TIME} -B17 -W0 -l -1LgCv"
+cmd="${TIME} -B17 -W0 -l -S1 -1LgCv"
+echo $cmd
+$cmd > /dev/null
+if [ $? != 0 ]
+then
+    exit 1
+fi
+
+cmd="${CHECK} -B17"
+echo $cmd
+$cmd > /dev/null
+if [ $? != 0 ]
+then
+    exit 1
+fi
+
+cmd="${CHECK}"
 echo $cmd
 $cmd > /dev/null
 if [ $? != 0 ]

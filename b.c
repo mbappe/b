@@ -235,6 +235,47 @@ AllocWords(Word_t *pw, int nWords)
 static Word_t* apwFreeBufs[130];
   #endif // FAST_MALLOC
 
+#define cnExtraUnitsBits 2 // number of bits used for saving alloc size
+
+static int
+CheckMalloc(Word_t* pw, Word_t wWords, int nLogAlignment)
+{
+    (void)wWords; (void)nLogAlignment;
+  #ifdef FAST_MALLOC
+    if ((pw[-1] & ~0x1fffff) != 0) { return -1; }
+  #else // FAST_MALLOC
+    if (!(pw[-1] & 2)) { return -1; }
+      #ifndef LIBCMALLOC
+      #if !defined(LIST_POP_IN_PREAMBLE) || defined(B_JUDYL)
+          #ifdef MY_MALLOC_ALIGN
+    if (nLogAlignment > cnBitsMallocMask) {
+        Word_t wOff = pw[-1]; // number of bytes
+        wWords += 1 << (nLogAlignment - cnLogBytesPerWord);
+        pw = (Word_t*)((Word_t)pw - wOff);
+    }
+          #endif // MY_MALLOC_ALIGN
+    size_t zUnitsRequired
+        = ALIGN_UP(wWords + cnMallocExtraWords + cnGuardWords + 1,
+                   EXP(cnBitsMallocMask - cnLogBytesPerWord))
+            >> (cnBitsMallocMask - cnLogBytesPerWord);
+    // Restore the value expected by dlmalloc.
+    size_t zExtraUnits = (pw[-1] >> cnBitsUsed) & MSK(cnExtraUnitsBits);
+    size_t zUnitsAllocated = zUnitsRequired + zExtraUnits;
+    // Validate our assumption that twiddled bits haven't changed.
+    // If the assertion blows then it's a bad assumption or we have
+    // a corruption.
+    if ((pw[-1] & ~MSK(cnExtraUnitsBits + cnBitsUsed))
+        != ((zUnitsAllocated << cnBitsMallocMask)
+            ^ ((Word_t)-1 << (cnExtraUnitsBits + cnBitsUsed))))
+    {
+        return -1;
+    }
+      #endif // !LIST_POP_IN_PREAMBLE || B_JUDYL
+      #endif // !LIBCMALLOC
+  #endif // FAST_MALLOC else
+    return 0; // success
+}
+
 // Can we use some of the bits in the word at the address immediately
 // preceeding the address returned by malloc?
 //
@@ -330,7 +371,6 @@ MyMallocGutsRM(Word_t wWords, int nLogAlignment, Word_t *pwAllocWords)
     // A unit is EXP(cnBitsMallocMask) bytes.
     size_t zUnitsAllocated = ((size_t *)ww)[-1] >> cnBitsMallocMask;
 
-#define cnExtraUnitsBits 2 // number of bits used for saving alloc size
     assert(cnExtraUnitsMax <= (int)MSK(cnExtraUnitsBits));
     // zExtraUnits is the number of extra EXP(cnBitsMallocMask)-byte units over
     // and above the minimum amount that could be allocated by malloc.
@@ -395,6 +435,12 @@ MyFreeGutsRM(Word_t *pw, Word_t wWords, int nLogAlignment,
     DBGM(printf("\nF(pw %p, wWords %zd): pw[-1] 0x%zx ...\n",
                 (void *)pw, wWords, pw[-1]));
 
+    if (CheckMalloc(pw, wWords, nLogAlignment) != 0) {
+        DBGI(printf("\n# MyFreeGutsRM CheckMalloc failure.\n"));
+        DBGI(Dump(pwRootLast, 0, cnBitsPerWord));
+        exit(1);
+    }
+    assert(CheckMalloc(pw, wWords, nLogAlignment) == 0);
 // I wonder about malloc overhead.
   #ifdef FAST_MALLOC
       #ifdef LIST_POP_IN_PREAMBLE
@@ -793,6 +839,10 @@ CalcListWordCnt(int nPopCnt, int nBLR)
     // Trim to avoid wasted space.
     // aulistPopCntMax[nBLR] incorporates EmbeddedListPopCntMax if
     // !POP_CNT_MAX_IS_KING.
+    if (nPopCnt > auListPopCntMax[nBLR]) {
+printf("\nnBLR %d nPopCnt %d auListPopCntMax[nBLR] %d\n", nBLR, nPopCnt, auListPopCntMax[nBLR]);
+exit(1);
+    }
     assert(nPopCnt <= auListPopCntMax[nBLR]);
     int nFullListWordsMin = ListWordsMin(auListPopCntMax[nBLR], nBLR);
     if (nFullListWordsMin < nWords) {
@@ -1418,7 +1468,7 @@ NewSwitchX(qpa, Word_t wKey, int nBLR,
             snBLRSw(pwRoot, nBLR);
   #if defined(USE_XX_SW) && defined(SKIP_TO_XX_SW)
       #ifdef USE_XX_SW_ONLY_AT_DL2
-            if (nBLR <= nDL_to_nBL(2))
+            if ((nBLR <= nDL_to_nBL(2)) || (nBW != nBLR_to_nBW(nBLR)))
       #else // USE_XX_SW_ONLY_AT_DL2
           #ifndef USE_XX_SW_ALWAYS
             if (nBW != nBLR_to_nBW(nBLR))
@@ -1441,7 +1491,7 @@ NewSwitchX(qpa, Word_t wKey, int nBLR,
         {
   #if defined(USE_XX_SW)
       #ifdef USE_XX_SW_ONLY_AT_DL2
-            if (nBLR <= nDL_to_nBL(2))
+            if ((nBLR <= nDL_to_nBL(2)) || (nBW != nBLR_to_nBW(nBLR)))
       #else // USE_XX_SW_ONLY_AT_DL2
           #ifdef USE_XX_SW_ALWAYS
             if (1)
@@ -1548,6 +1598,19 @@ NewSwitchX(qpa, Word_t wKey, int nBLR,
         assert(nBL < cnBitsPerWord);
 #endif // defined(PP_IN_LINK)
         swPopCnt(qya, nBLR, wPopCnt);
+  #ifdef FULL_SW
+        if ((nBLR < cnBitsPerWord) && (wPopCnt >= BPW_EXP(nBLR))) {
+            int nType = wr_nType(*pwRoot);
+      #ifdef _SKIP_TO_FULL_SW
+            if (nType == T_SKIP_TO_SWITCH) {
+                set_wr_nType(*pwRoot, T_SKIP_TO_FULL_SW);
+            } else
+      #endif // _SKIP_TO_FULL_SW
+            if (nType == T_SWITCH) {
+                set_wr_nType(*pwRoot, T_FULL_SW);
+            }
+        }
+  #endif // FULL_SW
     }
   #if cnSwCnts != 0
     memset(((Switch_t*)pwr)->sw_awCnts, 0,
@@ -2696,7 +2759,7 @@ embeddedKeys:;
                     || (nDL_to_nBL(nBL_to_nDL(nBLR)) == nBLR));
   #endif // XX_LISTS
   #ifndef FULL_DUMP
-                if (!bDump || ((wKeyOrig >> nBLLoop) & MSK(nBW)) == nn)
+                if (!bDump || (((wKeyOrig >> nBLLoop) & MSK(nBW)) == nn))
   #endif // #ifndef FULL_DUMP
                 {
                     if (((wKeyOrig >> nBLLoop) & MSK(nBW)) == nn) {
@@ -3299,20 +3362,23 @@ SignificantBitCnt(qp, Word_t wKey, int nPopCnt)
     if (nPopCnt < 1) { // only if ListPopCntMax == 0 and no embedded keys
         return 1;
     }
+    int nBLR = gnListBLR(qy); (void)nBLR;
+//printf("\nSignificantBitCnt nPopCnt %d nBLR %d\n", nPopCnt, nBLR);
     Word_t wMin, wMax, wSuffix;
   #if defined(COMPRESSED_LISTS)
-    if (nBL <= 8) {
+    if (nBLR <= 8) {
         unsigned char *pcKeys = ls_pcKeysNATX(pwr, nPopCnt);
         wMin = pcKeys[0];
         wMax = pcKeys[nPopCnt - 1];
         wSuffix = wKey & MSK(8);
-    } else if (nBL <= 16) {
+    } else if (nBLR <= 16) {
         unsigned short *psKeys = ls_psKeysNATX(pwr, nPopCnt);
         wMin = psKeys[0];
         wMax = psKeys[nPopCnt - 1];
         wSuffix = wKey & MSK(16);
+//printf("\nSignificantBitCnt wMin 0x%zx wMax 0x%zx wSuffix 0x%zx\n", wMin, wMax, wSuffix);
       #if (cnBitsPerWord > 32)
-    } else if (nBL <= 32) {
+    } else if (nBLR <= 32) {
         unsigned int *piKeys = ls_piKeysNATX(pwr, nPopCnt);
         wMin = piKeys[0];
         wMax = piKeys[nPopCnt - 1];
@@ -4101,9 +4167,9 @@ UpdateDist(qpa, int nPopCnt)
 // Insert each key from pwRootOld into qpa. Then free pwRootOld.
 // pwRootOld is a link to an external list (possibly empty).
 // qpa is a link to a switch.
-// Is qpa always a newly-created, empty switch?
+// Is qpa always a newly-created, empty switch? No.
 // Do we know that all the links in the switch into which *pwRootOld will be
-// inserted are empty?
+// inserted are empty? Yes.
 // wKey contains the prefix for pwRootOld and qpa.
 static void
 Splay(qpa, Word_t *pwRootOld, int nBLOld, Word_t wKey)
@@ -4142,6 +4208,7 @@ Splay(qpa, Word_t *pwRootOld, int nBLOld, Word_t wKey)
     assert(auListPopCntMax[nBLOld] != 0);
 
     int nBLROld = gnListBLR(qyx(Old));
+//printf("\n# Splay gnListBLR(Old) %d\n", nBLROld);
     // Even the following commented-out assertion blows with DOUBLE_DOWN.
     // Too bad or we could simplify some code below.
     // assert(LOG(nBL - 1) <= LOG(nBLROld));
@@ -6563,6 +6630,9 @@ static void
 InsertAll(qpa, Word_t *pwRootOld, int nBLOld, Word_t wKey)
 {
     qva;
+    if (wKey == 0x290053) {
+//printf("\n# InsertAll wKey 0x%zx\n", wKey);
+    }
     Word_t wRootOld = *pwRootOld;
   #ifdef NO_TYPE_IN_XX_SW
     if (nBLOld < nDL_to_nBL(2)) {
@@ -6655,6 +6725,10 @@ embeddedKeys:;
 #endif // defined(CODE_XX_SW)
 #endif // DEBUG
 #endif
+    if (!tp_bIsList(nTypeOld)) {
+printf("\n# InsertAll nBLOld %d *pwRootOld 0x%zx wKey 0x%zx\n", nBLOld, *pwRootOld, wKey);
+exit(1);
+    }
     assert(tp_bIsList(nTypeOld));
   #ifdef DEBUG_INSERT
     {
@@ -6678,6 +6752,9 @@ embeddedKeys:;
             // Splay updates the pop count for (nBL, pwRoot) but not
             // for the switch that contains it.
             Splay(qya, pwRootOld, nBLOld, wKey);
+    if (wKey == 0x290053) {
+//printf("\n# InsertAll wKey 0x%zx return\n", wKey);
+    }
             return;
         }
     }
@@ -6718,7 +6795,13 @@ embeddedKeys:;
     // OldList uses nType even if (nBL < nDL_to_nBL(2)) implies an
     // embedded list.
 #endif // defined(NO_TYPE_IN_XX_SW)
-    if (nPopCnt != 0) { OldList(pwrOld, nPopCnt, nBLOld, nTypeOld); }
+    //if (nTypeOld != T_XX_LIST)
+    if (nPopCnt != 0) {
+        OldList(pwrOld, nPopCnt, gnListBLR(qyx(Old)), nTypeOld);
+    }
+    if (wKey == 0x290053) {
+//printf("\n# InsertAll wKey 0x%zx done\n", wKey);
+    }
 }
 
 #endif // (cwListPopCntMax != 0)
@@ -7183,7 +7266,7 @@ DoubleDown(qpa, // (nBL, pLn) of link to original switch
 // This insert has already been counted in the switch.
 // wPopCnt is not the pop count of the list.
 // Should we call it wPopCntUp?
-    NewSwitch(qya, wKey, nBLR, nBWNew, T_SWITCH, wPopCnt - 1);
+    NewSwitch(qya, wKey, nBLR, nBWNew, T_SWITCH, /*wPopCnt*/ 0);
 
     DBGI(printf("\n# DoubleDown just after NewSwitch new tree "));
     DBGI(Dump(pwRootLast, /* wPrefix */ (Word_t)0, cnBitsPerWord));
@@ -7204,21 +7287,53 @@ DoubleDown(qpa, // (nBL, pLn) of link to original switch
 
     Word_t* pwrNew = wr_pwr(*pwRoot);
     //printf("wPrefix & MSK(nBLRNew) 0x%zx\n", wPrefix & MSK(nBLRNew));
+    int nBLLoop = nBLR - nBW;
+    int nBLNew = nBLR - nBWNew;
+//printf("\n");
     for (int nIndex = 0; nIndex < (int)EXP(nBW); nIndex++) {
         DBGI(printf("# New tree before nIndex 0x%02x ", nIndex));
         DBGI(Dump(pwRootLast, 0, cnBitsPerWord));
         //printf("# nIndex 0x%02x\n", nIndex);
         Link_t *pLnLoop = &pwr_pLinks((Switch_t*)pwr)[nIndex];
+      #ifdef REMOTE_LNX
+        Word_t* pwLnXLoop = NULL; (void)pwLnXLoop;
+      #endif // REMOTE_LNX
+        Word_t* pwRootLoop = &pLnLoop->ln_wRoot;
+        Word_t wPrefix = (wKey & ~NZ_MSK(nBLR)) | ((Word_t)nIndex << nBLLoop);
         Link_t linkNewModel;
         Link_t *pLnNewModel = &linkNewModel;
         *pLnNewModel = *pLnLoop;
+//printf("pLnNewModel->ln_wRoot 0x%zx cbEmbeddedBitmap %d nBLLoop %d\n", pLnNewModel->ln_wRoot, cbEmbeddedBitmap, nBLLoop);
         if (pLnNewModel->ln_wRoot == WROOT_NULL) {
+//printf("WROOT_NULL\n");
             // no need to update nType
         } else
         if (wr_nType(pLnNewModel->ln_wRoot) == T_LIST) {
+            if (cbEmbeddedBitmap && (nBLNew <= cnLogBitsPerLink)) {
+                // At present, it doesn't matter that wRoot, pwr and nType
+                // have not been updated since NewSwitch because qya comprises
+                // only nBL and pwRoot which are both still correct after
+                // NewSwitch.
+                // We have to adjust the pop count for the switch since we
+                // are about to reinsert keys that were already inserted once.
+//printf("T_LIST calling InsertAll\n");
+                InsertAll(qya, pwRootLoop, /*nBLOld*/ nBLLoop, wPrefix);
+                continue;
+            }
             set_wr_nType(pLnNewModel->ln_wRoot, T_XX_LIST);
         } else
         if (wr_nType(pLnNewModel->ln_wRoot) == T_XX_LIST) {
+            if (cbEmbeddedBitmap && (nBLNew <= cnLogBitsPerLink)) {
+                // At present, it doesn't matter that wRoot, pwr and nType
+                // have not been updated since NewSwitch because qya comprises
+                // only nBL and pwRoot which are both still correct after
+                // NewSwitch.
+                // We have to adjust the pop count for the switch since we
+                // are about to reinsert keys that were already inserted once.
+//printf("T_XX_LIST calling InsertAll\n");
+                InsertAll(qya, pwRootLoop, /*nBLOld*/ nBLLoop, wPrefix);
+                continue;
+            }
             // no need to update nType
         } else
   #ifdef BITMAP
@@ -7231,15 +7346,7 @@ DoubleDown(qpa, // (nBL, pLn) of link to original switch
             // We need to splay the embedded keys.
             // Or change them to an external T_XX_LIST.
             // Or add (T_XX_EK, nBLR).
-            Word_t* pwRootLoop = &pLnLoop->ln_wRoot;
-            int nBLLoop = nBLR - nBW;
-      #ifdef REMOTE_LNX
-            Word_t* pwLnXLoop = NULL;
-      #endif // REMOTE_LNX
-            Word_t wPrefix
-                = (wKey & ~NZ_MSK(nBLR)) | ((Word_t)nIndex << nBLLoop);
-            int nPopCntLoop = GetPopCnt(qyax(Loop));
-            swPopCnt(qya, nBLR, gwPopCnt(qya, nBLR) - nPopCntLoop);
+//printf("EK calling InsertAll\n");
             InsertAll(qya, pwRootLoop, nBLLoop, wPrefix);
             continue;
         } else
@@ -7255,6 +7362,7 @@ DoubleDown(qpa, // (nBL, pLn) of link to original switch
             DBGX(printf("pLnNew->ln_wRoot 0x%zx\n", pLnNewModel->ln_wRoot));
             assert(0);
         }
+        // Replicate the new link.
         for (int nIndexNew = nIndex << (nBWNew - nBW);
              nIndexNew
                  < (nIndex << (nBWNew - nBW)) + (int)EXP(nBWNew - nBW);
@@ -7268,6 +7376,7 @@ DoubleDown(qpa, // (nBL, pLn) of link to original switch
             *pLnNewLoop = *pLnNewModel;
         }
     }
+    swPopCnt(qya, nBLR, wPopCnt - 1);
   #if cnSwCnts != 0
     // Update sw_awCnts.
     // Insert has already been counted.
@@ -7692,10 +7801,14 @@ insertAll:;
     DBGI(printf("Calling InsertAll for all links nBW %d wKey 0x%zx\n",
                 nBW, wKey));
     int nBLR = nBL - pwr_nBW(&wRoot);
+      #ifdef XX_LISTS
+    int nBLLoop = nBL - pwr_nBW(&wRoot);
+      #endif // XX_LISTS
     DBGI(printf("# nBL %d nBLOld %d nBLR %d\n", nBL, nBLOld, nBLR));
     // pwRootOld may be uninitialized if embedded bitmap goto insertAll.
     //DBGI(printf("# Old tree:\n"));
     //DBGI(DumpX(qyax(Old), wKey));
+    Link_t* pLinks = pwr_pLinks((Switch_t*)pwr);
     for (int nIndex = 0; nIndex < (int)EXP(pwr_nBW(&wRoot)); nIndex++) {
         // We're calling InsertAll to insert from one of the links of
         // the old switch into the new switch.
@@ -7703,11 +7816,30 @@ insertAll:;
         DBGI(printf("# New tree before IA nIndex %d:\n", nIndex));
         int nBLSave = nBL; nBL = nBLOld;
         DBGI(DumpX(qya, wKey));
-        InsertAll(qya,
-                  &pwr_pLinks((Switch_t *)pwr)[nIndex].ln_wRoot,
-                  /*nBLOld*/ nBLR,
-                  (wKey & ~NZ_MSK(nBLSave)) | ((Word_t)nIndex << nBLR));
+        Word_t* pwRootLoop = &pLinks[nIndex].ln_wRoot;
+      #ifdef XX_LISTS
+        Word_t wRootLoop = *pwRootLoop;
+        if (wr_nType(wRootLoop) == T_XX_LIST) {
+//printf("DoubleIt T_XX_LIST nBLOld %d gnListBLR %d\n", nBLR, gnListBLR(qyx(Loop)));
+            InsertAll(qya, pwRootLoop, /*nBLOld*/ gnListBLR(qyx(Loop)),
+                      (wKey & ~NZ_MSK(nBLSave)) | ((Word_t)nIndex << nBLR));
+        } else
+      #endif // XX_LISTS
+        {
+            InsertAll(qya, pwRootLoop, /*nBLOld*/ nBLR,
+                      (wKey & ~NZ_MSK(nBLSave)) | ((Word_t)nIndex << nBLR));
+        }
         nBL = nBLSave;
+      #ifdef XX_LISTS
+        // Skip over the replicated links.
+        if (wr_nType(wRootLoop) == T_XX_LIST) {
+            while ((nIndex + 1 < (int)EXP(pwr_nBW(&wRoot)))
+                   && (pLinks[nIndex + 1].ln_wRoot == wRootLoop))
+            {
+                ++nIndex;
+            }
+        }
+      #endif // XX_LISTS
     }
 
 #if ! defined(SKIP_TO_XX_SW)
@@ -7881,13 +8013,17 @@ InsertAtFullUnalignedXxList(qpa, Word_t wKey, int nPopCnt, int nPos,
     qva; (void)nPopCnt; (void)nPos;
     Word_t* pwRootUp = &pLnUp->ln_wRoot; (void)pwRootUp;
     Word_t wRootUp = *pwRootUp;
-    DBGI(printf("# IAFUXL nBL %d\n", nBL));
-    DBGI(printf("# IAFUXL pLn %p\n", pLn));
-    DBGI(printf("# IAFUXL pwr %p\n", pwr));
+    DBGI(printf("# IAFUXL nBL %d gnListBLR %d\n", nBL, gnListBLR(qy)));
+    DBGI(printf("\n# IAFUXL nBLUp %d gnBLR(Up) %d gwPopCnt(Up) %zd\n", nBLUp, gnBLR(qyx(Up)), gwPopCnt(qyax(Up), gnBLR(qyx(Up)))));
     int nDLRUp = nBL_to_nDL(nBL+1); (void)nDLRUp;
-    assert(gnBLR(qyx(Up)) == nDL_to_nBL(nDLRUp));
-    int nBLRUp = nDL_to_nBL(nDLRUp);
+    if (gnBLR(qyx(Up)) != nDL_to_nBL(nDLRUp)) {
+printf("\n# IAFUXL gnBLR %d nBL %d\n", gnBLR(qyx(Up)), nBL);
+//exit(1);
+    }
+    //assert(gnBLR(qyx(Up)) == nDL_to_nBL(nDLRUp));
+    int nBLRUp = gnBLR(qyx(Up));
     int nBWRUp = nBLRUp - nBL;
+    assert(nBWRUp == gnBW(qyx(Up), nBLRUp));
     DBGI(printf("# IAFUXL nBWRUp %d\n", nBWRUp));
     Word_t *pwrUp = wr_pwr(wRootUp);
     Link_t* pLinks = ((Switch_t*)pwrUp)->sw_aLinks;
@@ -7909,7 +8045,7 @@ InsertAtFullUnalignedXxList(qpa, Word_t wKey, int nPopCnt, int nPos,
     DBGI(printf("\n# IAFUXL nBLR %d nBLRUp %d\n", nBLR, nBLRUp));
     Word_t* pwCnts = ((Switch_t*)wr_pwr(wRootUp))->sw_awCnts;
     if (nBLRUp <= 16) {
-        assert(nBLR <= nBLRUp - 2); // code doesn't handle this
+        //assert(nBLR <= nBLRUp - 2); // code doesn't handle this
 #if 1
         int nShift = (nBWRUp > cnLogSwCnts + 2)
                        ? (nBWRUp - cnLogSwCnts - 2) : 0;
@@ -8874,31 +9010,35 @@ InsertAtList(qpa,
         // Or ifdef USE_XX_SW_ONLY_AT_DL2 in the above list is full test?
         // I'm not a fan of putting the list is full and needs to double
         // case in with the code for handling the list is not full case.
+      //#ifndef XX_LISTS
       #ifdef USE_XX_SW_ONLY_AT_DL2
         if (nBL < nDL_to_nBL(2)) {
           #ifdef XX_LISTS
-            assert(nType != T_XX_LIST);
+            if (nType != T_XX_LIST)
           #endif // XX_LISTS
-          #if defined(EMBED_KEYS)
-            DBGI(printf("\n"));
-            DBGI(printf("wPopCnt %zd nEmbeddedListPopCntMax %d\n",
-            wPopCnt, nEmbeddedListPopCntMax));
-            if ((int)wPopCnt >= nEmbeddedListPopCntMax)
-          #endif // defined(EMBED_KEYS)
             {
-                if ((wWordsAllocated * 100 / wPopCntTotal)
-                        < cnXxSwWpkPercent)
+          #if defined(EMBED_KEYS)
+                DBGI(printf("\n"));
+                DBGI(printf("wPopCnt %zd nEmbeddedListPopCntMax %d\n",
+                            wPopCnt, nEmbeddedListPopCntMax));
+                if ((int)wPopCnt >= nEmbeddedListPopCntMax)
+          #endif // defined(EMBED_KEYS)
                 {
-                    DBGI(printf("IAL: DoubleIt\n"));
-                    return DoubleIt(qya, wKey, nBLUp, pLnUp,
-  #ifdef REMOTE_LNX
-                                    pwLnXUp,
-  #endif // REMOTE_LNX
-                                    wPopCnt);
+                    if ((wWordsAllocated * 100 / wPopCntTotal)
+                            < cnXxSwWpkPercent)
+                    {
+                        DBGI(printf("IAL: DoubleIt\n"));
+                        return DoubleIt(qya, wKey, nBLUp, pLnUp,
+          #ifdef REMOTE_LNX
+                                        pwLnXUp,
+          #endif // REMOTE_LNX
+                                        wPopCnt);
+                    }
                 }
             }
         } else
       #endif // USE_XX_SW_ONLY_AT_DL2
+      //#endif // !XX_LISTS
         { }
     #endif // defined(CODE_XX_SW)
 
@@ -9171,9 +9311,9 @@ copyWithInsertWord:
         if (nBL != nDL_to_nBL(nBL_to_nDL(nBL))) {
       #ifdef DOUBLE_DOWN
             Word_t* pwRootUp = &pLnUp->ln_wRoot; (void)pwRootUp;
+            int nBLRUp = gnBLR(qyx(Up));
           #if cnSwCnts != 0
             // Make sure shared list expanse is small enough.
-            int nBLRUp = gnBLR(qyx(Up));
             int nBWUp = gnBW(qyx(Up), nBLRUp);
             int nBWMin = LOG(cnSwCnts * sizeof(Word_t) * 8
                                  / (2 << LOG(MAX(nBLRUp, 16) - 1)));
@@ -9184,8 +9324,8 @@ copyWithInsertWord:
             {
                 int nBitCnt = SignificantBitCnt(qy, wKey, wPopCnt);
 // Don't DoubleDown if we can't splay within the digit?
-            DBGI(printf("IAL: ListIsFull DoubleDown nBL %d nBLUp %d\n",
-                        nBL, nBLUp));
+            DBGI(printf("IAL: ListIsFull DD nBL %d nBLUp %d nBitCnt %d\n",
+                        nBL, nBLUp, nBitCnt));
                 int nBWUpNew;
                 if (cnBWIncrDD != 0) {
                     nBWUpNew = nDL_to_nBL(nDL) - nBL + cnBWIncrDD;
@@ -9194,13 +9334,16 @@ copyWithInsertWord:
                         nBWUpNew = nBWUpMax;
                     }
                 } else {
-                    nBWUpNew = nDL_to_nBL(nDL) - nBitCnt + 1;
-                    int nBWUpMax = nDL_to_nBL(nDL) - nDL_to_nBL(nDL - 1);
+                    nBWUpNew = nBLRUp - nBitCnt + 1;
+          #ifndef USE_XX_SW_ONLY_AT_DL2
+                    assert(nBL_to_nDL(nBLRUp) == nDL);
+                    int nBWUpMax = nBLRUp - nDL_to_nBL(nDL - 1);
                     if (nBWUpNew > nBWUpMax) {
 // We need to enhance TransformList so we don't have to do a useless
 // DoubleDown here.
                         nBWUpNew = nBWUpMax;
                     }
+          #endif // !USE_XX_SW_ONLY_AT_DL2
                 }
                 return DoubleDown(qyax(Up), wKey,
                                   GetPopCnt(qyax(Up)),
@@ -13635,8 +13778,7 @@ NextGuts(qpa, Word_t *pwKey, Word_t wSkip, int bPrev, int bEmpty
   #ifdef BITMAP
     if (cbEmbeddedBitmap && (nBL <= cnLogBitsPerLink)) {
         pwBitmap = (Word_t*)pLn;
-        nBitNum = *pwKey & MSK(cnLogBitsPerWord) & MSK(nBL);
-        goto embeddedBitmap;
+        goto t_bitmapA;
     }
   #endif // BITMAP
     DBGN(printf("nBL %d pLn 0x%zx pwRoot 0x%zx nType %d pwr 0x%zx\n",
@@ -13865,14 +14007,14 @@ t_embedded_keys:;
     case T_BITMAP: {
         goto t_bitmap;
 t_bitmap:;
-        nBitNum = *pwKey & MSK(nBLR) & MSK(cnLogBitsPerWord);
       #ifdef _BMLF_BM_IN_LNX
         pwBitmap = pwLnX;
       #else // _BMLF_BM_IN_LNX
         pwBitmap = ((BmLeaf_t*)pwr)->bmlf_awBitmap;
       #endif // else _BMLF_BM_IN_LNX
-        goto embeddedBitmap;
-embeddedBitmap:;
+        goto t_bitmapA;
+t_bitmapA:;
+        nBitNum = *pwKey & MSK(nBLR) & MSK(cnLogBitsPerWord);
         DBGN(printf("T_BITMAP *pwKey " OWx" wSkip %" _fw"u\n", *pwKey, wSkip));
         assert(nBLR != cnBitsPerWord);
         int nWordNum = (*pwKey & MSK(nBLR)) >> cnLogBitsPerWord;
@@ -14512,8 +14654,14 @@ BmSwGetNextIndex:
         goto t_xx_sw;
 t_xx_sw:;
         //A(0);
-        DBGN(printf("T_SW wSkip %" _fw"u\n", wSkip));
         int nBW = pwr_nBW(pwRoot); // bits decoded by switch
+        DBGN(printf("T_XX_SW nBLR %d nBW %d wSkip %" _fw"u\n",
+                    nBLR, nBW, wSkip));
+        if (cbEmbeddedBitmap && ((nBLR - nBW) <= cnLogBitsPerLink)) {
+            assert((nBLR - nBW) == cnLogBitsPerLink);
+            pwBitmap = (Word_t*)((Switch_t*)pwr)->sw_aLinks;
+            goto t_bitmapA;
+        }
         int nBLLoop = nBLR - nBW;
         Word_t wIndex = (*pwKey >> nBLLoop) & MSK(nBW);
   #ifdef XX_LISTS
