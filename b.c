@@ -4797,7 +4797,9 @@ lastDigit32:;
                         if (nBLLoop > 16) {
                             uint32_t* pui = (uint32_t*)&wLnXLoop;
                             COPY(pui, &piKeys[nnStart], nPopCntLoop);
-                            PAD64(pui, nPopCntLoop);
+                            assert(nPopCntLoop == 2);
+                            // Work around bogus gcc array-bounds complaint.
+                            PAD64(pui, /*nPopCntLoop*/ 2);
                         } else
           #endif // (cnBitsPerWord > 32)
                         {
