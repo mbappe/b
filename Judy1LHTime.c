@@ -799,7 +799,7 @@ Word_t    PtsPdec = 50;                 // 4.71% spacing - default
 // command line for -s to get numbers near the maximum of the expanse.
 #define DEFAULT_BVALUE  (sizeof(Word_t) * 8)
 Word_t    BValue = DEFAULT_BVALUE;
-double    Bpercent = 100.0; // Default MaxNumb assumes 100.0.
+long double    Bpercent = 100.0; // Default MaxNumb assumes 100.0.
 // MaxNumb is initialized from DEFAULT_BVALUE and assumes Bpercent = 100.0.
 // Then overridden by -N and/or by -B. The last one on the command line wins.
 // Then trimmed if bSplayKeyBits
@@ -2025,7 +2025,7 @@ eopt:
             if (Bpercent < 50.0 || Bpercent > 100.0)
             {
                 ErrorFlag++;
-                printf("\nError --- Bpercent = %.2f must be at least 50"
+                printf("\nError --- Bpercent = %.2Lf must be at least 50"
                            " and no more than 100 !!!\n",
                        Bpercent);
                 break;
@@ -2751,7 +2751,7 @@ eopt:
     printf("# nElms (number of keys to be inserted) = %" PRIuPTR"[0x%" PRIxPTR"]\n", nElms, nElms);
     printf("# MaxNumb (maximum key in expanse) = %" PRIuPTR"[0x%" PRIxPTR"]\n", MaxNumb, MaxNumb);
     printf("# BValue = %" PRIuPTR"\n", BValue);
-    printf("# Bpercent = %20.18f\n", Bpercent);
+    printf("# Bpercent = %20.18Lf\n", Bpercent);
 
     // Put run date (not build date) in output.
     printf("# Run date "); fflush(stdout);
@@ -3397,12 +3397,12 @@ eopt:
         double DeltaGenBy = 0.0;
         double DeltanSec1Sum = 0.0;
         double DeltanSecLSum = 0.0;
-        double DeltanSecHSSum = 0.0;
+        //double DeltanSecHSSum = 0.0;
         double DeltanSecBtSum = 0.0;
         double DeltanSecBySum = 0.0;
         double DeltaMalFre1Sum = 0.0;
         double DeltaMalFreLSum = 0.0;
-        double DeltaMalFreHSSum = 0.0;
+        //double DeltaMalFreHSSum = 0.0;
 
         if (mFlag) {
             // reset SEARCHMETRICS for this delta
@@ -3611,10 +3611,10 @@ nextPart:
             TestJudyIns(&J1, &JL, &InsertSeed, Delta);
             DeltanSec1Sum += DeltanSec1;
             DeltanSecLSum += DeltanSecL;
-            DeltanSecHSSum += DeltanSecHS;
+            //DeltanSecHSSum += DeltanSecHS;
             DeltaMalFre1Sum += DeltaMalFre1;
             DeltaMalFreLSum += DeltaMalFreL;
-            DeltaMalFreHSSum += DeltaMalFreHS;
+            //DeltaMalFreHSSum += DeltaMalFreHS;
 
             if (Pop1 == wFinalPop1) {
                 // last part of Delta
