@@ -860,10 +860,16 @@ IF_COUNT(static inline Word_t Count(qpa, Word_t wKey))
     nType = wr_nType(wRoot);
     pwr = wr_pwr(wRoot);
     // nBL, pLn, wRoot, nType and pwr of qy are set up
+  #ifdef SKIP_TO_SW_SHORTCUT
+    // I've seen this shortcut wreak havoc on packed bitmap performance
+    // with Alder Lake. Even though it inexplicably
+    // improves performance of the top-level leaf with no switch, i.e.
+    // populations up to the first splay.
     if (nType >= T_SKIP_TO_SWITCH) { // What about T_SKIP_TO_??_SW?
         DBGX(Checkpoint(qya, "goto skip_to_sw"));
         goto t_skip_to_switch;
     }
+  #endif // SKIP_TO_SW_SHORTCUT
     // This shortcut made the code faster in my testing.
     nBLR = nBL;
       #ifdef _AUG_TYPE
