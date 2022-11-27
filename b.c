@@ -12621,6 +12621,12 @@ Initialize(void)
     printf("# No SKIP_TO_SW_SHORTCUT\n");
 #endif //        SKIP_TO_SW_SHORTCUT
 
+#ifdef           SKIP_TO_LIST_SW
+    printf("#    SKIP_TO_LIST_SW\n");
+#else //         SKIP_TO_LIST_SW
+    printf("# No SKIP_TO_LIST_SW\n");
+#endif //        SKIP_TO_LIST_SW
+
 #if defined(BPD_TABLE)
     printf("#    BPD_TABLE\n");
 #else // defined(BPD_TABLE)
