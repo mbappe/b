@@ -491,7 +491,7 @@ JudyMalloc.o: JudyMalloc.c dlmalloc.c Judy.h
 
 # Can't use dependencies on .c.s rule?
 .c.s:
-	$(CC) $(CFLAGS) $(DEFINES) -S $<
+	$(CC) $(CFLAGS) $(DEFINES) -S -fverbose-asm $<
 
 # Does using an explicit recipe inhibit creation of gch files?
 b.s: b.c b.h bdefines.h Judy.h
@@ -503,19 +503,19 @@ bn.s: bn.c bli.c b.h bdefines.h Judy.h
 bne.s: bne.c bli.c b.h bdefines.h Judy.h
 
 b-L.s: b.c b.h bdefines.h Judy.h
-	$(CC) $(CFLAGS) $(DEFINES) -DB_JUDYL -S -o $@ -c $<
+	$(CC) $(CFLAGS) $(DEFINES) -DB_JUDYL -S -fverbose_asm -o $@ -c $<
 biL.s: bi.c bli.c b.h bdefines.h Judy.h
-	$(CC) $(CFLAGS) $(DEFINES) -DB_JUDYL -S -o $@ -c $<
+	$(CC) $(CFLAGS) $(DEFINES) -DB_JUDYL -S -fverbose_asm -o $@ -c $<
 blL.s: bl.c bli.c b.h bdefines.h Judy.h
-	$(CC) $(CFLAGS) $(DEFINES) -DB_JUDYL -S -o $@ -c $<
+	$(CC) $(CFLAGS) $(DEFINES) -DB_JUDYL -S -fverbose-asm -o $@ -c $<
 brL.s: br.c bli.c b.h bdefines.h Judy.h
-	$(CC) $(CFLAGS) $(DEFINES) -DB_JUDYL -S -o $@ -c $<
+	$(CC) $(CFLAGS) $(DEFINES) -DB_JUDYL -S -fverbose_asm -o $@ -c $<
 bcL.s: bc.c bli.c b.h bdefines.h Judy.h
-	$(CC) $(CFLAGS) $(DEFINES) -DB_JUDYL -S -o $@ -c $<
+	$(CC) $(CFLAGS) $(DEFINES) -DB_JUDYL -S -fverbose_asm -o $@ -c $<
 bnL.s: bn.c bli.c b.h bdefines.h Judy.h
-	$(CC) $(CFLAGS) $(DEFINES) -DB_JUDYL -S -o $@ -c $<
+	$(CC) $(CFLAGS) $(DEFINES) -DB_JUDYL -S -fverbose_asm -o $@ -c $<
 bneL.s: bne.c bli.c b.h bdefines.h Judy.h
-	$(CC) $(CFLAGS) $(DEFINES) -DB_JUDYL -S -o $@ -c $<
+	$(CC) $(CFLAGS) $(DEFINES) -DB_JUDYL -S -fverbose_asm -o $@ -c $<
 
 # Suppress warnings. Transitive warnings. t.c just includes other files.
 t.s: t.c
