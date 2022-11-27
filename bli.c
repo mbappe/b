@@ -4296,14 +4296,6 @@ t_bitmap:
                 {
                     SMETRICS_HIT(++j__DirectHits);
                 } else {
-                    // Strangely, I think I've seen numbers that show it is
-                    // faster to:
-                    // if (wDiff < (Word_t)pwValue) {
-                    //     SMETRICS_NHIT(++j__GetCallsP);
-                    // } else {
-                    //     SMETRICS_NHIT(++j__GetCallsM);
-                    // }
-                    // But it is just too hard to believe to leave it in.
                     SMETRICS_NHIT(++j__NotDirectHits);
                 }
                       #endif // PACK_BM_VALUES
