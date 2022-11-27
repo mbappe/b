@@ -12615,6 +12615,12 @@ Initialize(void)
     printf("# No SKIP_TO_LIST\n");
 #endif // defined(SKIP_TO_LIST)
 
+#ifdef           SKIP_TO_SW_SHORTCUT
+    printf("#    SKIP_TO_SW_SHORTCUT\n");
+#else //         SKIP_TO_SW_SHORTCUT
+    printf("# No SKIP_TO_SW_SHORTCUT\n");
+#endif //        SKIP_TO_SW_SHORTCUT
+
 #if defined(BPD_TABLE)
     printf("#    BPD_TABLE\n");
 #else // defined(BPD_TABLE)
@@ -13137,6 +13143,24 @@ Initialize(void)
 #else //         NO_SW_POP_IN_LNX
     printf("# No NO_SW_POP_IN_LNX\n");
 #endif // #else  NO_SW_POP_IN_LNX
+
+#ifdef           NO_BMLF_CNTS
+    printf("#    NO_BMLF_CNTS\n");
+#else //         NO_BMLF_CNTS
+    printf("# No NO_BMLF_CNTS\n");
+#endif // #else  NO_BMLF_CNTS
+
+#ifdef           NO_BMLF_CNTS_CUM
+    printf("#    NO_BMLF_CNTS_CUM\n");
+#else //         NO_BMLF_CNTS_CUM
+    printf("# No NO_BMLF_CNTS_CUM\n");
+#endif // #else  NO_BMLF_CNTS_CUM
+
+#ifdef           NO_BMLF_CNTS_IN_LNX
+    printf("#    NO_BMLF_CNTS_IN_LNX\n");
+#else //         NO_BMLF_CNTS_IN_LNX
+    printf("# No NO_BMLF_CNTS_IN_LNX\n");
+#endif // #else  NO_BMLF_CNTS_IN_LNX
 
 #if defined(NO_EMBED_KEYS)
     printf("#    NO_EMBED_KEYS\n");
