@@ -134,8 +134,6 @@ SM_EXTERN Word_t j__NotDirectHits;
 SM_EXTERN Word_t j__GetCallsP;
 // Num Gets with no direct hit and resulting in backward search.
 SM_EXTERN Word_t j__GetCallsM;
-SM_EXTERN Word_t j__MisComparesP; // Sum of miscompares j__GetCallsP.
-SM_EXTERN Word_t j__MisComparesM; // Sum of miscompares j__GetCallsM.
 
 // The released Judy libraries do not, and some of Doug's work-in-progress
 // libraries may not, have Judy1Dump and/or JudyLDump entry points.
@@ -1164,13 +1162,10 @@ PrintHeaderX(const char *strFirstCol, int nRow)
         if (JLFlag || JRFlag)
             printf(nRow ? "      " : " MFL/K");
 #ifdef SEARCHMETRICS
-        printf(nRow ? "      " : " +MsCm");
-        printf(nRow ? "      " : " -MsCm");
+        printf(nRow ? "   Cnt" : "  Gets");
         printf(nRow ? " Lenth" : " Srch ");
         printf(nRow ? "      " : " %%DiHt");
-        printf(nRow ? "      " : " %%GetP");
-        printf(nRow ? "      " : " %%GetM");
-        printf(nRow ? "   Cnt" : "  Gets");
+        printf(nRow ? "      " : " %%Skew");
 #endif // SEARCHMETRICS
     }
 
@@ -1366,8 +1361,6 @@ static struct option longopts[] = {
     { NULL, 0, NULL, 0 }
 };
 
-Word_t    MisComparesP;            // number times LGet/1Test called
-Word_t    MisComparesM;            // number times LGet/1Test called
 Word_t    DirectHits;               // Number of direct hits -- no search
 Word_t    NotDirectHits; // not counted in GetCallsP or GetCallsM
 Word_t    SearchPopulation;         // Population of Searched object
@@ -3149,13 +3142,10 @@ eopt:
                  Col++);
 
 #ifdef SEARCHMETRICS
-        printf("# COLHEAD %2d +MsCm - Average number forward Compares failed Per Leaf Search\n", Col++);
-        printf("# COLHEAD %2d -MsCm - Average number reverse Compares failed Per Leaf Search\n", Col++);
+        printf("# COLHEAD %2d Gets  - Num get calls\n", Col++);
         printf("# COLHEAD %2d Srch Lenth - Average Search Length (number of keys in list)\n", Col++);
         printf("# COLHEAD %2d %%DiHt - %% get calls the result in a direct hit\n", Col++);
-        printf("# COLHEAD %2d %%GetP - %% get calls that miss and search forward\n", Col++);
-        printf("# COLHEAD %2d %%GetM - %% get calls that miss and search backward\n", Col++);
-        printf("# COLHEAD %2d Gets  - Num get calls\n", Col++);
+        printf("# COLHEAD %2d %%Skew - %% that search forward minus those that search backward\n", Col++);
 #endif // SEARCHMETRICS
     }
 
@@ -3407,7 +3397,6 @@ eopt:
         if (mFlag) {
             // reset SEARCHMETRICS for this delta
             SearchPopulation = GetCallsSansPop = GetCalls = 0;
-            MisComparesP = MisComparesM = 0;
             DirectHits = NotDirectHits = GetCallsP = GetCallsM = 0;
         }
 
@@ -4089,8 +4078,6 @@ nextPart:
       // search population, e.g. GetCallsSansPop, and Time exclude them from
       // the average search pop calculation? Done.
         GetCallsSansPop += j__GetCallsSansPop;
-        MisComparesP += j__MisComparesP;
-        MisComparesM += j__MisComparesM;
   #endif // SEARCHMETRICS
 
         if (Pop1 != wFinalPop1)
@@ -4414,13 +4401,10 @@ nextPart:
                 PRINT5_1f(DeltaMalFreLSum / Pms[grp].ms_delta);
 #ifdef SEARCHMETRICS
 //          print average number of failed compares done in leaf search
-            PrintValx100((double)MisComparesP / MAX(GetCallsP + DirectHits, 1), 5, 1);
-            PrintValx100((double)MisComparesM / MAX(GetCallsM + DirectHits, 1), 5, 1);
+            PrintVal(GetCalls, 5, 0);
             PrintVal((double)SearchPopulation / MAX(GetCalls - GetCallsSansPop, 1), 5, 1);
             PrintValx100((double)DirectHits / GetCalls, 5, 1);
-            PrintValx100((double)GetCallsP / GetCalls, 5, 1);
-            PrintValx100((double)GetCallsM / GetCalls, 5, 1);
-            PrintVal(GetCalls, 5, 0);
+            PrintValx100((double)(GetCallsP - GetCallsM) / GetCalls, 5, 1); // Skew
 #endif // SEARCHMETRICS
         }
 
@@ -5080,7 +5064,6 @@ TestJudyGet(void *J1, void *JL, PNewSeed_t PSeed, Word_t Elements,
   #endif // DSMETRICS_GETS else
                 j__GetCallsSansPop = 0;
                 j__SearchPopulation = 0;
-                j__MisComparesP = j__MisComparesM = 0;
                 j__DirectHits = j__NotDirectHits = j__GetCallsP = j__GetCallsM = 0;
             }
 
@@ -5153,7 +5136,6 @@ TestJudyGet(void *J1, void *JL, PNewSeed_t PSeed, Word_t Elements,
   #endif // DSMETRICS_GETS else
                 j__GetCallsSansPop = 0;
                 j__SearchPopulation = 0;
-                j__MisComparesP = j__MisComparesM = 0;
                 j__DirectHits = j__NotDirectHits = j__GetCallsP = j__GetCallsM = 0;
             }
 
@@ -5249,7 +5231,6 @@ TestJudyLGet(void *JL, PNewSeed_t PSeed, Word_t Elements)
   #endif // DSMETRICS_GETS else
             j__GetCallsSansPop = 0;
             j__SearchPopulation = 0;
-            j__MisComparesP = j__MisComparesM = 0;
             j__DirectHits = j__NotDirectHits = j__GetCallsP = j__GetCallsM = 0;
         }
 
