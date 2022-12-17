@@ -514,6 +514,189 @@ Swizzle(Word_t word)
     return (word);
 }
 
+// Print as many significant digits of dVal as possible using engineering
+// notation without exceeding nCharsFieldWidth characters. If
+// nCharsFieldWidth is not big enough then print dVal with one to three
+// significant digits using engineering notation.
+// If fabs(dVal) is less than one and nCharsFieldWidth is not big enough and
+// bRoundToZero is true then round dVal to -1, 0 or 1.
+// If dVal > 0 and rounded to zero and nCharsFieldWidth > 1, then print "+0".
+// If dVal < 0 and rounded to zero and nCharsFieldWidth > 1, then print "-0".
+void
+PrintValEng(double dVal, int nCharsFieldWidth, int bRoundToZero)
+{
+#ifdef DEBUG_PRINT_VAL_ENG
+    printf("nCharsFieldWidth %d\n", nCharsFieldWidth);
+#endif // DEBUG_PRINT_VAL_ENG
+    if (nCharsFieldWidth < 1) {
+        return;
+    }
+
+again:
+    if (dVal == 0) {
+        for (int i = 0; i < nCharsFieldWidth - 1; ++i) putchar(' ');
+        putchar('0');
+        return;
+    }
+#ifdef DEBUG_PRINT_VAL_ENG
+    printf("dVal %20.12f\n", dVal);
+    printf("dVal %24.12e\n", dVal);
+#endif // DEBUG_PRINT_VAL_ENG
+
+    int nExp = (int)floor(log10(fabs(dVal)));
+    if (nExp < 0) {
+        nExp -= 2;
+    }
+    nExp = nExp / 3 * 3;
+#ifdef DEBUG_PRINT_VAL_ENG
+    printf("nExp %d\n", nExp);
+#endif // DEBUG_PRINT_VAL_ENG
+
+    double dSig = dVal / pow(10, nExp);
+#ifdef DEBUG_PRINT_VAL_ENG
+    printf("dSig %f\n", dSig);
+#endif // DEBUG_PRINT_VAL_ENG
+    assert(fabs(dSig) >= 1);
+    assert(fabs(dSig) < 1000);
+
+    // digits needed for numeric part of exponent
+    int nDigitsExp = 0; // initialize in case nExp is zero
+    if (nExp != 0) {
+        nDigitsExp = (int)floor(log10(abs(nExp))) + 1;
+    }
+#ifdef DEBUG_PRINT_VAL_ENG
+    printf("nDigitsExp %d\n", nDigitsExp);
+#endif // DEBUG_PRINT_VAL_ENG
+
+    // characters needed for exponent field including 'e' plus '-' if needed
+    int nCharsExp = nDigitsExp + (nExp != 0) + (nExp < 0);
+#ifdef DEBUG_PRINT_VAL_ENG
+    printf("nCharsExp %d\n", nCharsExp);
+#endif // DEBUG_PRINT_VAL_ENG
+
+    // characters available for significand
+    int nCharsSig = nCharsFieldWidth - nCharsExp;
+#ifdef DEBUG_PRINT_VAL_ENG
+    printf("nCharsSig %d\n", nCharsSig);
+#endif // DEBUG_PRINT_VAL_ENG
+
+    // digits needed left of the decimal point
+    int nDigitsWhole = (int)floor(log10(fabs(dSig))) + 1;
+#ifdef DEBUG_PRINT_VAL_ENG
+    printf("nDigitsWhole %d\n", nDigitsWhole);
+#endif // DEBUG_PRINT_VAL_ENG
+
+    // characters needed left of the decimal point including '-' if needed
+    int nCharsWhole = nDigitsWhole + (dSig < 0);
+#ifdef DEBUG_PRINT_VAL_ENG
+    printf("nCharsWhole %d\n", nCharsWhole);
+#endif // DEBUG_PRINT_VAL_ENG
+
+    if (nCharsWhole > nCharsSig) {
+        // We don't have enough characters to represent dVal correctly
+        // given our requirement that we use only multiple of three
+        // exponents and 1 <= significand < 1000.
+        // We go ahead and overflow the field for a nonnegative exponent.
+        // What should we do for a negative exponent?
+        // Round to -1 (may overflow the field anyway), 0, or 1?
+        // Or go ahead and overflow the field to get at least one significant
+        // digit?
+        if (nExp < 0) {
+            if (round(dVal) != 0) {
+                assert(fabs(dVal) == 1);
+                dVal = round(dVal);
+#ifdef DEBUG_PRINT_VAL_ENG
+                printf("Again C\n\n");
+#endif // DEBUG_PRINT_VAL_ENG
+                goto again;
+            }
+            if (bRoundToZero) {
+                if (nCharsFieldWidth == 1) {
+                    putchar('0');
+                    return;
+                }
+                for (int i = 0; i < nCharsFieldWidth - 2; ++i) putchar(' ');
+                printf("%c0", dVal < 0 ? '-' : '+');
+                return;
+            }
+        }
+        if (nCharsSig < 1) {
+            // we don't have enough characters
+            nCharsSig = 1;
+        }
+    }
+
+    // number of characters left for fractional digits
+    int nDigitsFraction = nCharsFieldWidth - nCharsExp - nDigitsWhole - 1;
+#ifdef DEBUG_PRINT_VAL_ENG
+    printf("nDigitsFraction %d\n", nDigitsFraction);
+#endif // DEBUG_PRINT_VAL_ENG
+
+    char strFormat[25];
+    // Does adding .5 or .05 or .005 result in rounding up to
+    // 10 or 100 or 1000?
+    if (nDigitsFraction >= 1) {
+        // We have room for a decimal point and at least one digit of fraction.
+        // Rounding may result in an extra digit, e.g. 999.99 to 1000.0.
+        assert(dSig != 0);
+        double dSigNoExp = dSig * pow(10, nDigitsFraction);
+#ifdef DEBUG_PRINT_VAL_ENG
+        printf("dSigNoExp %f\n", dSigNoExp);
+#endif // DEBUG_PRINT_VAL_ENG
+        if (floor(log10(fabs(round(dSigNoExp)))) > log10(fabs(dSigNoExp))) {
+            dVal = round(dSigNoExp) / pow(10, nDigitsFraction - nExp);
+#ifdef DEBUG_PRINT_VAL_ENG
+            printf("Again A\n\n");
+#endif // DEBUG_PRINT_VAL_ENG
+            goto again;
+        }
+        // %<x>.<y>f min field width <x>; fraction digits <y>
+        sprintf(strFormat, "%%%d.%df", nCharsSig, nDigitsFraction);
+#ifdef DEBUG_PRINT_VAL_ENG
+        printf("xxx ");
+        for (int i = 0; i < nCharsFieldWidth; ++i) putchar(' ');
+        printf(" xxx\n");
+        printf("xxx ");
+#endif // DEBUG_PRINT_VAL_ENG
+        printf(strFormat, dSig);
+    } else {
+        assert(fabs(dSig) >= 1);
+        assert(fabs(dSig) < 1000);
+        if ((dSig >= 999.5) || (dSig <= -999.5)) {
+            dVal = round(dSig) * pow(10, nExp);
+#ifdef DEBUG_PRINT_VAL_ENG
+            printf("Again B\n\n");
+#endif // DEBUG_PRINT_VAL_ENG
+            goto again;
+        }
+        // We do not have space for a decimal point and at least one digit.
+        // BUG: nDigitsFraction < 0
+        // FIX: add three to nExp
+        // BUG: adding three increases nCharsExp so
+        // nCharsFieldWidth - nCharsExp does not leave space for decimal point
+        // and one digit; are we forced to overflow the field?
+        // should we resort to non-power of three exponent to avoid overflow?
+        sprintf(strFormat, "%%%dd", nCharsSig);
+#ifdef DEBUG_PRINT_VAL_ENG
+        printf("xxx ");
+        for (int i = 0; i < nCharsFieldWidth; ++i) putchar(' ');
+        printf(" xxx\n");
+        printf("xxx ");
+#endif // DEBUG_PRINT_VAL_ENG
+        printf(strFormat, (int)round(dSig));
+    }
+    if (nExp != 0) {
+        printf("e%d", nExp);
+    }
+#ifdef DEBUG_PRINT_VAL_ENG
+    printf(" xxx\n");
+    printf("xxx ");
+    for (int i = 0; i < nCharsFieldWidth; ++i) putchar(' ');
+    printf(" xxx");
+    putchar('\n');
+#endif // DEBUG_PRINT_VAL_ENG
+}
+
 // PrintValFF - PrintValFreeForm
 // Print dVal with as much precision as possible in nWidth characters.
 // Sort of. We prefer not using an exponent.
@@ -637,6 +820,10 @@ PrintValX(double dVal, // raw value to be scaled, formatted and printed
     }
     if ((dVal == 0) || ((dVal > dValMin) && (dVal < dValMax))) {
         printf(acFormat, dVal);
+    // Using strPrefix[0] == '\0' to trigger calling of PrintValEng
+    // instead of PrintValFF is a hack.
+    } else if (strPrefix[0] == '\0') {
+        PrintValEng(dVal, nWidth, /*bRoundToZero*/ 1);
     } else {
         PrintValFF(dVal, nWidth, bUseSymbol);
     }
