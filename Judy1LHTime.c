@@ -1213,7 +1213,7 @@ GetNextKey(PNewSeed_t PNewSeed)
     return GetNextKeyX(PNewSeed, wFeedBTap /*global*/, bLfsrOnly /*global*/);
 }
 
-Word_t wPopWidth = 6; // Width of pop field in output.
+Word_t wPopWidth = 7; // Width of pop field in output.
 Word_t wCloseCountsMask; // Common prefix for keys in Count calls.
 int bCountTwiddledKeys; // Test keys that are probably not present with -S0.
 int bTestFirstEmpty;
