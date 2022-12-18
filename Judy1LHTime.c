@@ -1352,7 +1352,7 @@ PrintHeaderX(const char *strFirstCol, int nRow)
         printf(nRow ? "   Cnt" : "  Gets");
         printf(nRow ? " Lenth" : " Srch ");
         printf(nRow ? "      " : " %%DiHt");
-        printf(nRow ? "      " : " %%Skew");
+        printf(nRow ? "      " : " %%SFwd");
 #endif // SEARCHMETRICS
     }
 
@@ -3332,7 +3332,7 @@ eopt:
         printf("# COLHEAD %2d Gets  - Num get calls\n", Col++);
         printf("# COLHEAD %2d Srch Lenth - Average Search Length (number of keys in list)\n", Col++);
         printf("# COLHEAD %2d %%DiHt - %% get calls the result in a direct hit\n", Col++);
-        printf("# COLHEAD %2d %%Skew - %% that search forward minus those that search backward\n", Col++);
+        printf("# COLHEAD %2d %%SFwd - %% of misses that have to search forward\n", Col++);
 #endif // SEARCHMETRICS
     }
 
@@ -3608,7 +3608,7 @@ eopt:
                 // overhead from a bigger delta can't really be bigger
                 // than the overhead from a smaller delta and implements
                 // a monotonically decreasing overhead value called "Min".
-                // Unfortunatly, the parts on one delta aren't always
+                // Unfortunately, the parts of one delta aren't always
                 // bigger than the parts of the previous delta.
             }
 nextPart:
@@ -3616,6 +3616,10 @@ nextPart:
                 Delta = wFinalPop1 - Pop1;
             }
         }
+
+        j__GetCalls = j__GetCallsNot = 0;
+        j__SearchPopulation = j__GetCallsSansPop = 0;
+        j__DirectHits = j__NotDirectHits = j__GetCallsP = j__GetCallsM = 0;
 
 //      Accumulate the Total population of arrays
         Pop1 += Delta;
@@ -3822,6 +3826,7 @@ nextPart:
 //      get bigger this value should be changed to a bigger value.
 
 //          Test J1T, JLG, JHSG
+
 
                 if (Meas <= wDoTit0Max) {
                     BeginSeed = StartSeed;      // reset at beginning
@@ -4191,11 +4196,17 @@ nextPart:
       // a subset in the library, and without DSMETRICS_GETS we can use
       // j__GetCalls to indicate how many calls were actually instrumented.
       // Should we add j__GetCallsNot for DSMETRICS_GETS? Done.
+        Word_t NewGetCalls = 0;
       #ifdef DSMETRICS_GETS
-        Word_t NewGetCalls = Meas - j__GetCallsNot;
+        if (Pop1 == wFinalPop1) {
+            NewGetCalls = Meas - j__GetCallsNot;
+        }
       #else // DSMETRICS_GETS
-        Word_t NewGetCalls = j__GetCalls; // count of gets with instrumentation
+        NewGetCalls = j__GetCalls; // count of gets with instrumentation
       #endif // DSMETRICS_GETS else
+        // Why are we adding to GetCalls here?
+        // Is it left over from when we ran TestJudyGet on multiple parts
+        // in the same delta?
         GetCalls += NewGetCalls;
       // We added DSMETRICS_[N]HITS in the same vein, i.e. to
       // reduce the overhead of SEARCHMETRICS in the library.
@@ -4591,7 +4602,20 @@ nextPart:
             PrintVal(GetCalls, 5, 0);
             PrintVal((double)SearchPopulation / MAX(GetCalls - GetCallsSansPop, 1), 5, 1);
             PrintValx100((double)DirectHits / GetCalls, 5, 1);
-            PrintValx100((double)(GetCallsP - GetCallsM) / GetCalls, 5, 1); // Skew
+            printf(" %5.1f ", GetCallsP * 100.0 / MAX(GetCallsP + GetCallsM, 1));
+    #ifdef DEBUG_SMETRICS
+            printf("\n");
+            printf("Meas %zd", Meas);
+            printf(" Gets %zd", j__GetCalls);
+            printf(" Not %zd", j__GetCallsNot);
+            printf(" SansPop %zd", j__GetCallsSansPop);
+            printf(" Pop %zd", j__SearchPopulation);
+            printf(" Hits %zd", j__DirectHits);
+            printf(" NHits %zd", j__NotDirectHits);
+            printf(" P %zd %zd", j__GetCallsP, GetCallsP);
+            printf(" M %zd %zd", j__GetCallsM, GetCallsM);
+            printf(" SearchLen %zd", j__SearchPopulation / Meas);
+    #endif // DEBUG_SMETRICS
 #endif // SEARCHMETRICS
         }
 
