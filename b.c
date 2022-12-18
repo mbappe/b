@@ -12135,6 +12135,12 @@ Initialize(void)
     printf("# No EMBEDDED_KEYS_UNROLLED_FOR_INSERT\n");
 #endif // defined(EMBEDDED_KEYS_UNROLLED_FOR_INSERT)
 
+#ifdef           SEARCH_USING_LOCATE_GE
+    printf("#    SEARCH_USING_LOCATE_GE\n");
+#else //         SEARCH_USING_LOCATE_GE
+    printf("# No SEARCH_USING_LOCATE_GE\n");
+#endif // #else  SEARCH_USING_LOCATE_GE
+
 #if defined(PSPLIT_PARALLEL)
     printf("#    PSPLIT_PARALLEL\n");
 #else // defined(PSPLIT_PARALLEL)
