@@ -11330,6 +11330,12 @@ Initialize(void)
 
     // Log ifdefs.
 
+#ifdef           _USE_LOCATE_KEY
+    printf("#    _USE_LOCATE_KEY\n");
+#else //         _USE_LOCATE_KEY
+    printf("# No _USE_LOCATE_KEY\n");
+#endif //        _USE_LOCATE_KEY else
+
 #ifdef           AUG_TYPE_64_LOOKUP
     printf("#    AUG_TYPE_64_LOOKUP\n");
 #else //         AUG_TYPE_64_LOOKUP
