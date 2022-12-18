@@ -6552,6 +6552,7 @@ SearchListWord(qpa, int nBLR, Word_t wKey)
         return PsplitSearchByKeyWord(qy, pwKeys, nPopCnt, wKey, 0);
     }
 #endif // defined(PSPLIT_SEARCH_WORD)
+    SMETRICS_POP(j__SearchPopulation += nPopCnt);
     // We want binary search for nBL == cnBitsPerWord by default.
     // We want binary search for nBL != cnBitsPerWord if !PSPLIT_SEARCH_WORD
     SMETRICS_MIS(int nCompares = 0);

@@ -3425,7 +3425,7 @@ t_list:
         if ((nPos = SearchList(qya, nBLR, wKey)) >= 0)
       #endif // LOOKUP elif NEXT || COUNT elif NEXT_EMPTY else
         {
-            SMETRICS_POP(j__SearchPopulation += gnListPopCnt(qy, nBLR));
+            //SMETRICS_POP(j__SearchPopulation += gnListPopCnt(qy, nBLR));
             SMETRICS_GET(++j__GetCalls);
             IF_INSERT(if (nIncr > 0) goto undo); // undo counting
             IF_REMOVE(goto removeGutsAndCleanup);
