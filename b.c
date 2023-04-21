@@ -12058,6 +12058,12 @@ Initialize(void)
     printf("# No PF_EK_XV_2\n");
 #endif //        PF_EK_XV_2
 
+#ifdef           PF_EK_XV_2_ALWAYS
+    printf("#    PF_EK_XV_2_ALWAYS\n");
+#else //         PF_EK_XV_2_ALWAYS
+    printf("# No PF_EK_XV_2_ALWAYS\n");
+#endif //        PF_EK_XV_2_ALWAYS
+
 #if defined(EK_CALC_POP)
     printf("#    EK_CALC_POP\n");
 #else // defined(EK_CALC_POP)
@@ -13066,6 +13072,12 @@ Initialize(void)
 #else //         NO_PF_BM_SUBEX_PSPLIT
     printf("# No NO_PF_BM_SUBEX_PSPLIT\n");
 #endif //        NO_PF_BM_SUBEX_PSPLIT else
+
+#ifdef           NO_PF_BM
+    printf("#    NO_PF_BM\n");
+#else //         NO_PF_BM
+    printf("# No NO_PF_BM\n");
+#endif //        NO_PF_BM else
 
 #ifdef           NO_HYPERTUNE_PF_BM
     printf("#    NO_HYPERTUNE_PF_BM\n");
