@@ -11581,7 +11581,7 @@ Initialize(void)
     printf("# No PF_BM_SW_LN\n");
 #endif // #else  PF_BM_SW_LN
 
-#ifdef           PREFETCH_BM_EK_
+#ifdef           PREFETCH_BM_EK
     printf("#    PREFETCH_BM_EK\n");
 #else //         PREFETCH_BM_EK
     printf("# No PREFETCH_BM_EK\n");
