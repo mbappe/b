@@ -139,7 +139,7 @@ endif
 # CC_MFLAGS += -mno-sse4     # implies no -msse4.1
 # CC_MFLAGS += -mavx         # implies -msse4.2
 # CC_MFLAGS += -mno-avx      # implies no -mavx2
-# CC_MFLAGS += -mavx2        # implies -mavx
+  CC_MFLAGS += -mavx2        # implies -mavx
 # CC_MFLAGS += -mno-avx2
 # CC_MFLAGS += -mbmi         # for lzcnt, tzcnt
 # CC_MFLAGS += -mbmi2        # for pdep
