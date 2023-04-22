@@ -196,14 +196,14 @@
   #define COUNT_2
 #endif // COUNT_2_PREFIX
 
-// Default is -DPARALLEL_256.
+// Default is -DPARALLEL_128.
 // Determines type hence size of Bucket_t.
-#ifndef PARALLEL_128
-#if !defined(PARALLEL_64) && !defined(NO_PARALLEL_256)
-  #undef  PARALLEL_256
-  #define PARALLEL_256
-#endif // !PARALLEL_64 && !NO_PARALLEL_256
-#endif // !PARALLEL_128
+#ifndef PARALLEL_256
+#if !defined(PARALLEL_64) && !defined(NO_PARALLEL_128)
+  #undef  PARALLEL_128
+  #define PARALLEL_128
+#endif // !PARALLEL_64 && !NO_PARALLEL_128
+#endif // !PARALLEL_256
 
 // Default is LVL_IN_WR_HB for 64-bit and level in nType for 32-bit.
 // The absence of LVL_IN_WR_HB and LVL_IN_PP is level in nType.
