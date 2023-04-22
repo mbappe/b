@@ -13157,11 +13157,11 @@ Initialize(void)
     printf("# No NO_UA_PARALLEL_128\n");
 #endif // defined(NO_UA_PARALLEL_128)
 
-#if defined(NO_PARALLEL_256)
-    printf("#    NO_PARALLEL_256\n");
-#else // defined(NO_PARALLEL_256)
-    printf("# No NO_PARALLEL_256\n");
-#endif // defined(NO_PARALLEL_256)
+#if defined(NO_PARALLEL_128)
+    printf("#    NO_PARALLEL_128\n");
+#else // defined(NO_PARALLEL_128)
+    printf("# No NO_PARALLEL_128\n");
+#endif // defined(NO_PARALLEL_128)
 
 #if defined(NO_PSPLIT_PARALLEL)
     printf("#    NO_PSPLIT_PARALLEL\n");
