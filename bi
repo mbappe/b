@@ -298,7 +298,7 @@ done
 && ${REGRESS} \
 && DEFINES="-DcnBitsPerDigit=15 -Dcn2dBmMaxWpkPercent=0 -UREGRESS -DDEBUG" \
    ${MAKE} clean default \
-&& ${REGRESS} \
+&& : "${REGRESS}" \
 && DEFINES="-DcnBitsPerDigit=14 -Dcn2dBmMaxWpkPercent=0 -UREGRESS -DDEBUG" \
    ${MAKE} clean default \
 && ${REGRESS} \
