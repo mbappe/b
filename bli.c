@@ -4319,7 +4319,18 @@ t_bitmap:
                 Word_t* pwValue = &pwBitmapValues[nIndex];
                       #ifdef LOOKUP
                       #ifdef PACK_BM_VALUES
-                          #ifndef NO_PF_BM
+                          #ifndef PREFETCH_BM_PREV_VAL
+                          #ifndef PF_BM_PREV_HALF_VAL
+                          #ifndef PREFETCH_BM_PSPLIT_VAL
+                          #ifndef PF_BM_NEXT_HALF_VAL
+                          #ifndef PREFETCH_BM_NEXT_VAL
+                //Word_t wDiff = 0;
+                if (1)
+                          #endif // !PREFETCH_BM_NEXT_VAL
+                          #endif // !PF_BM_NEXT_HALF_VAL
+                          #endif // !PREFETCH_BM_PSPLIT_VAL
+                          #endif // !PF_BM_PREV_HALF_VAL
+                          #endif // !PREFETCH_BM_PREV_VAL
                           #ifndef PREFETCH_BM_PREV_VAL
                           #ifndef PF_BM_PREV_HALF_VAL
                           #ifdef PREFETCH_BM_PSPLIT_VAL
@@ -4364,7 +4375,6 @@ t_bitmap:
                 } else {
                     SMETRICS_NHIT(++j__NotDirectHits);
                 }
-                          #endif // !NO_PF_BM
                       #endif // PACK_BM_VALUES
                       #endif // LOOKUP
                 return pwValue;
@@ -5200,9 +5210,6 @@ t_ek_xv:
               #ifdef PF_EK_XV
             PREFETCH(pwr);
               #endif // PF_EK_XV
-              #ifdef PF_EK_XV_2_ALWAYS
-            PREFETCH(pwr + 8);
-              #endif // PF_EK_XV_2_ALWAYS
           #endif // LOOKUP
             switch (nBL) {
                                     XV_BLX( 2); XV_BLX( 3); XV_BLX( 4);
