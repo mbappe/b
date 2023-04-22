@@ -3914,11 +3914,6 @@ InsertAllAtBitmap(qpa, qpx(Old), int nStart, int nPopCnt)
     }
               #ifdef BMLF_CNTS_CUM
     *(Word_t*)pu8Cnts *= 0x01010100;
-                  #ifdef PF_BM_SUBEX_PSPLIT
-    for (int nn = 0; nn < (1 << (cnBitsInD1 - cnLogBitsPerWord)); ++nn) {
-        pu8Cnts[4+nn] = PopCount64(pwBitmap[nn]);
-    }
-                  #endif // PF_BM_SUBEX_PSPLIT
               #endif // BMLF_CNTS_CUM
           #endif // #else BMLF_POP_COUNT_8
       #endif // #else BMLF_POP_COUNT_32
@@ -10322,9 +10317,6 @@ done:
     {
         ++pu8Cnts[nn];
     }
-                  #ifdef PF_BM_SUBEX_PSPLIT
-    ++pu8Cnts[4+nBmWord];
-                  #endif // PF_BM_SUBEX_PSPLIT
               #else // BMLF_CNTS_CUM
     ++pu8Cnts[nBmWord];
               #endif // BMLF_CNTS_CUM else
@@ -10959,14 +10951,7 @@ RemoveAtBitmap(qpa, Word_t wKey)
         pu8Cnts[nn] = PopCount64(pwBitmap[nn]);
     }
               #ifdef BMLF_CNTS_CUM
-                  #ifdef PF_BM_SUBEX_PSPLIT
-    Word_t wCnts = *(Word_t*)pu8Cnts;
-                  #endif // PF_BM_SUBEX_PSPLIT
     *(Word_t*)pu8Cnts *= 0x01010100;
-                  #ifdef PF_BM_SUBEX_PSPLIT
-    *(Word_t*)pu8Cnts &= (Word_t)0xffffffffUL;
-    *(Word_t*)pu8Cnts |= wCnts << 32;
-                  #endif // PF_BM_SUBEX_PSPLIT
               #endif // BMLF_CNTS_CUM
           #endif // #else BMLF_POP_COUNT_8
       #endif // #else BMLF_POP_COUNT_32
@@ -11067,9 +11052,6 @@ done:
         {
             --pu8Cnts[nn];
         }
-                  #ifdef PF_BM_SUBEX_PSPLIT
-        --pu8Cnts[4+nBmWord];
-                  #endif // PF_BM_SUBEX_PSPLIT
               #else // BMLF_CNTS_CUM
         --pu8Cnts[nBmWord];
               #endif // BMLF_CNTS_CUM else
@@ -11353,19 +11335,6 @@ Initialize(void)
 #else //         _USE_LOCATE_KEY
     printf("# No _USE_LOCATE_KEY\n");
 #endif //        _USE_LOCATE_KEY else
-
-                 // Prefetch bitmap leaf value using subexpanse psplit.
-#ifdef           PF_BM_SUBEX_PSPLIT
-    printf("#    PF_BM_SUBEX_PSPLIT\n");
-#else //         PF_BM_SUBEX_PSPLIT
-    printf("# No PF_BM_SUBEX_PSPLIT\n");
-#endif //        PF_BM_SUBEX_PSPLIT else
-
-#ifdef           HYPERTUNE_PF_BM
-    printf("#    HYPERTUNE_PF_BM\n");
-#else //         HYPERTUNE_PF_BM
-    printf("# No HYPERTUNE_PF_BM\n");
-#endif //        HYPERTUNE_PF_BM else
 
 #ifdef           AUG_TYPE_64_LOOKUP
     printf("#    AUG_TYPE_64_LOOKUP\n");
@@ -13060,18 +13029,6 @@ Initialize(void)
   #else //       GPC_ALL_SKIP_TO_SW_CASES
     printf("# No GPC_ALL_SKIP_TO_SW_CASES\n");
   #endif //      GPC_ALL_SKIP_TO_SW_CASES else
-
-#ifdef           NO_PF_BM_SUBEX_PSPLIT
-    printf("#    NO_PF_BM_SUBEX_PSPLIT\n");
-#else //         NO_PF_BM_SUBEX_PSPLIT
-    printf("# No NO_PF_BM_SUBEX_PSPLIT\n");
-#endif //        NO_PF_BM_SUBEX_PSPLIT else
-
-#ifdef           NO_HYPERTUNE_PF_BM
-    printf("#    NO_HYPERTUNE_PF_BM\n");
-#else //         NO_HYPERTUNE_PF_BM
-    printf("# No NO_HYPERTUNE_PF_BM\n");
-#endif //        NO_HYPERTUNE_PF_BM else
 
 #ifdef           NO_PREFETCH_LOCATEKEY_PSPLIT_VAL
     printf("#    NO_PREFETCH_LOCATEKEY_PSPLIT_VAL\n");

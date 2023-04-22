@@ -316,16 +316,7 @@
   // PREFETCH_LOCATE_KEY_8_[BEG|END]_VAL are not necessary with
   // default cnListPopCntMaxDl1=4 and CACHE_ALIGN_L1.
 
-  #ifndef NO_PF_BM_SUBEX_PSPLIT
-  #ifndef NO_HYPERTUNE_PF_BM
-    #undef  HYPERTUNE_PF_BM
-    #define HYPERTUNE_PF_BM
-  #endif // NO_HYPERTUNE_PF_BM
-  #ifdef HYPERTUNE_PF_BM
-      #undef  PF_BM_SUBEX_PSPLIT
-      #define PF_BM_SUBEX_PSPLIT
-  #endif // HYPERTUNE_PF_BM
-  #endif // !NO_PF_BM_SUBEX_PSPLIT
+  // Default is no PREFETCH_BM_[PSPLIT|NEXT|PREV]_VAL
 
 #else // B_JUDYL
 
