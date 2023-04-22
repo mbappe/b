@@ -293,16 +293,16 @@ done
 && DEFINES="-DUSE_XX_SW_ONLY_AT_DL2 -DcnListPopCntMax64=64 -DREGRESS -DDEBUG" \
    ${MAKE} clean default \
 && ${REGRESS} \
-&& DEFINES="-DcnBitsPerDigit=16 -Dcn2dBmMaxWpkPercent=0 -DREGRESS -DDEBUG" \
+&& DEFINES="-DcnBitsPerDigit=16 -Dcn2dBmMaxWpkPercent=0 -UREGRESS -DDEBUG" \
    ${MAKE} clean default \
 && ${REGRESS} \
-&& DEFINES="-DcnBitsPerDigit=15 -Dcn2dBmMaxWpkPercent=0 -DREGRESS -DDEBUG" \
+&& DEFINES="-DcnBitsPerDigit=15 -Dcn2dBmMaxWpkPercent=0 -UREGRESS -DDEBUG" \
    ${MAKE} clean default \
 && ${REGRESS} \
-&& DEFINES="-DcnBitsPerDigit=14 -Dcn2dBmMaxWpkPercent=0 -DREGRESS -DDEBUG" \
+&& DEFINES="-DcnBitsPerDigit=14 -Dcn2dBmMaxWpkPercent=0 -UREGRESS -DDEBUG" \
    ${MAKE} clean default \
 && ${REGRESS} \
-&& DEFINES="-DcnBitsPerDigit=13 -Dcn2dBmMaxWpkPercent=0 -DREGRESS -DDEBUG" \
+&& DEFINES="-DcnBitsPerDigit=13 -Dcn2dBmMaxWpkPercent=0 -UREGRESS -DDEBUG" \
    ${MAKE} clean default \
 && ${REGRESS} \
 && DEFINES="-DcnBitsPerDigit=12 -Dcn2dBmMaxWpkPercent=0 -DREGRESS -DDEBUG" \
