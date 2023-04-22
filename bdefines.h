@@ -357,17 +357,25 @@
 
   // Default is prefetch 1st cache line of value area for EK_XV.
   #ifndef NO_PF_EK_XV
+
     #undef  PF_EK_XV
     #define PF_EK_XV
-  #endif // #ifndef NO_PF_EK_XV
 
-  // Default is prefetch 2nd cache line of value area for EK_XV.
-  #ifndef NO_PF_EK_XV_2
-    #ifndef PF_EK_XV_2_ALWAYS
-      #undef  PF_EK_XV_2
-      #define PF_EK_XV_2
-    #endif // !PF_EK_XV_2_ALWAYS
-  #endif // #ifndef NO_PF_EK_XV_2
+    // Default is prefetch 2nd cache line of value area for EK_XV
+    // unconditionally if prefetching the 1st cache line.
+    #ifndef NO_PF_EK_XV_2
+      #ifndef NO_PF_EK_XV_2_ALWAYS
+        #undef  PF_EK_XV_2_ALWAYS
+        #define PF_EK_XV_2_ALWAYS
+      #else // !NO_PF_EK_XV_ALWAYS
+        // prefetch 2nd line only if pop > 2
+        #undef  PF_EK_XV_2
+        #define PF_EK_XV_2
+      #endif // !NO_PF_EK_XV_ALWAYS
+    #endif // !NO_PF_EK_XV_2
+
+  #endif // !NO_PF_EK_XV
+
 #endif // EK_XV
 
 #ifdef DOUBLE_DOWN
@@ -763,18 +771,14 @@
     #ifndef NO_PF_BM
 
       #ifndef NO_PF_BM_SUBEX_PSPLIT
-      #ifndef NO_HYPERTUNE_PF_BM
-        #undef  HYPERTUNE_PF_BM
-        #define HYPERTUNE_PF_BM
-      #endif // NO_HYPERTUNE_PF_BM
-      #ifdef HYPERTUNE_PF_BM
-          #undef  PF_BM_SUBEX_PSPLIT
-          #define PF_BM_SUBEX_PSPLIT
-      #endif // HYPERTUNE_PF_BM
+        #undef  PF_BM_SUBEX_PSPLIT
+        #define PF_BM_SUBEX_PSPLIT
+        #ifndef NO_HYPERTUNE_PF_BM
+          #undef  HYPERTUNE_PF_BM
+          #define HYPERTUNE_PF_BM
+        #endif // NO_HYPERTUNE_PF_BM
       #endif // !NO_PF_BM_SUBEX_PSPLIT
-      #endif // !NO_PF_BM
 
-      #ifndef NO_PF_BM
       #ifndef NO_PF_BM_PREV_HALF_VAL
         #undef   PF_BM_PREV_HALF_VAL
         #define  PF_BM_PREV_HALF_VAL
@@ -783,22 +787,21 @@
         #undef   PF_BM_NEXT_HALF_VAL
         #define  PF_BM_NEXT_HALF_VAL
       #endif // #ifndef NO_PF_BM_NEXT_HALF_VAL
-    #endif // PACK_BM_VALUES
 
-    #ifndef PREFETCH_BM_PREV_VAL
-    #ifndef PF_BM_PREV_HALF_VAL
-    #ifndef PREFETCH_BM_PSPLIT_VAL
-    #ifndef PF_BM_NEXT_HALF_VAL
-    #ifndef PREFETCH_BM_NEXT_VAL
-      #undef  NO_PF_BM
-      #define NO_PF_BM
-    #endif // !PREFETCH_BM_NEXT_VAL
-    #endif // !PF_BM_NEXT_HALF_VAL
-    #endif // !PREFETCH_BM_PSPLIT_VAL
-    #endif // !PF_BM_PREV_HALF_VAL
-    #endif // !PREFETCH_BM_PREV_VAL
-
-  #endif // !NO_PF_BM
+      #ifndef PREFETCH_BM_PREV_VAL
+      #ifndef PF_BM_PREV_HALF_VAL
+      #ifndef PREFETCH_BM_PSPLIT_VAL
+      #ifndef PF_BM_NEXT_HALF_VAL
+      #ifndef PREFETCH_BM_NEXT_VAL
+        #undef  NO_PF_BM
+        #define NO_PF_BM
+      #endif // !PREFETCH_BM_NEXT_VAL
+      #endif // !PF_BM_NEXT_HALF_VAL
+      #endif // !PREFETCH_BM_PSPLIT_VAL
+      #endif // !PF_BM_PREV_HALF_VAL
+      #endif // !PREFETCH_BM_PREV_VAL
+    #endif // !NO_PF_BM
+  #endif // PACK_BM_VALUES
 
   // UNPACK_BM_VALUES means use an unpacked value area for a bitmap leaf
   // if/when the value area is max and/or when PACK_BM_VALUES is not defined.
@@ -1050,10 +1053,6 @@
 #endif // REMOTE_LNX
 
 // gcc does a crappy job with 64-bit vectors.
-#ifndef NO_OLD_HK_64
-  #undef   OLD_HK_64
-  #define  OLD_HK_64
-#endif // #ifndef NO_OLD_HK_64
 
 // Fix NUM_TYPES on command line based on other ifdefs if
 // ALL_SKIP_TO_SW_CASES && AUGMENT_TYPE and the default 9 is not correct.

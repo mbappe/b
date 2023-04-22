@@ -137,7 +137,7 @@ endif
 # CC_MFLAGS += -mno-sse4.2   # implies no -mavx
 # CC_MFLAGS += -msse4        # implies -msse4.2
 # CC_MFLAGS += -mno-sse4     # implies no -msse4.1
-# CC_MFLAGS += -mavx         # implies -msse4.2
+  CC_MFLAGS += -mavx         # implies -msse4.2
 # CC_MFLAGS += -mno-avx      # implies no -mavx2
   CC_MFLAGS += -mavx2        # implies -mavx
 # CC_MFLAGS += -mno-avx2
@@ -146,6 +146,7 @@ endif
 # CC_MFLAGS += -mavx512f
 # CC_MFLAGS += -march=native
 # CC_MFLAGS += -mfpmath=sse
+  CC_MFLAGS += $(CC_MFLAGS_SUFFIX)
 
 # -frecord-gcc-switches causes gcc to put a record in the object
 # indicating what options were used to build.

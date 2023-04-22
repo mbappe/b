@@ -67,6 +67,20 @@ fi # [ `uname` = Linux ] else
     ${MAKE} clean default \
 && DEFINES="-DREGRESS -DDEBUG" ${MAKE} clean default \
 && ${REGRESS} \
+&& DEFINES="-DNO_HYPERTUNE_BM -DREGRESS -DDEBUG" ${MAKE} clean default \
+&& ${REGRESS} \
+&& DEFINES="-DNO_PF_BM_SUBEX_PSPLIT -DREGRESS -DDEBUG" ${MAKE} clean default \
+&& ${REGRESS} \
+&& DEFINES="-DNO_PF_BM -DREGRESS -DDEBUG" ${MAKE} clean default \
+&& ${REGRESS} \
+&& DEFINES="-DSKIP_TO_SW_SHORTCUT -DREGRESS -DDEBUG" ${MAKE} clean default \
+&& ${REGRESS} \
+&& DEFINES="-DNO_PF_EK_XV -DREGRESS -DDEBUG" ${MAKE} clean default \
+&& ${REGRESS} \
+&& DEFINES="-DNO_PF_EK_XV_2 -DREGRESS -DDEBUG" ${MAKE} clean default \
+&& ${REGRESS} \
+&& DEFINES="-DNO_PF_EK_XV_2_ALWAYS -DREGRESS -DDEBUG" ${MAKE} clean default \
+&& ${REGRESS} \
 && DEFINES="-DNO_USE_BM_SW -DREGRESS -DDEBUG" ${MAKE} clean default \
 && ${REGRESS} \
 && DEFINES="-DNO_EMBED_KEYS -DREGRESS -DREGRESS -DDEBUG" \
@@ -139,6 +153,10 @@ fi # [ `uname` = Linux ] else
 && ${REGRESS} \
 && DEFINES="-DOLD_HK_128 -DREGRESS -DDEBUG" ${MAKE} clean default \
 && ${REGRESS} \
+&& DEFINES="-DOLD_HK_64 -DREGRESS -DDEBUG" ${MAKE} clean default \
+&& ${REGRESS} \
+&& DEFINES="-DNEW_HK_64 -DREGRESS -DDEBUG" ${MAKE} clean default \
+&& ${REGRESS} \
 && DEFINES="-DNO_PARALLEL_HK_128_64 -DREGRESS -DDEBUG" ${MAKE} clean default \
 && ${REGRESS} \
 && DEFINES="-DNO_LOCATE_GE_AFTER_LOCATE_EQ -DDEBUG_LOCATE_GE \
@@ -148,14 +166,14 @@ fi # [ `uname` = Linux ] else
 && DEFINES="-DNO_LOCATE_GE_KEY_X -DDEBUG_LOCATE_GE -DREGRESS -DDEBUG" \
     ${MAKE} clean default \
 && ${REGRESS} \
-&& CC_MFLAGS=$MAVX2 DEFINES="-DPARALLEL_256 -DREGRESS -DDEBUG" \
-    ${MAKE} clean default \
+&& DEFINES="-DPARALLEL_128 -DREGRESS -DDEBUG" ${MAKE} clean default \
 && ${REGRESS} \
-&& DEFINES="-DPARALLEL_256 -DREGRESS -DDEBUG" ${MAKE} clean default \
+&& MALLOC_ALIGNMENT=32 DEFINES="-DPARALLEL_128 -DREGRESS -DDEBUG" \
+   ${MAKE} clean default \
 && ${REGRESS} \
-&& MALLOC_ALIGNMENT=32 CC_MFLAGS=$MAVX2 \
-    DEFINES="-DPARALLEL_256 -DREGRESS -DDEBUG" \
-    ${MAKE} clean default \
+&& CC_MFLAGS_SUFFIX=-mno-avx DEFINES="-DREGRESS -DDEBUG" ${MAKE} clean default \
+&& ${REGRESS} \
+&& MALLOC_ALIGNMENT=32 DEFINES="-DREGRESS -DDEBUG" ${MAKE} clean default \
 && ${REGRESS} \
 && DEFINES="-DPARALLEL_SEARCH_WORD -DNO_PSPLIT_PARALLEL -DREGRESS -DDEBUG" \
     ${MAKE} clean default \

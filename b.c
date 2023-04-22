@@ -12064,6 +12064,24 @@ Initialize(void)
     printf("# No PF_EK_XV_2_ALWAYS\n");
 #endif //        PF_EK_XV_2_ALWAYS
 
+#ifdef           NO_PF_EK_XV
+    printf("#    NO_PF_EK_XV\n");
+#else //         NO_PF_EK_XV
+    printf("# No NO_PF_EK_XV\n");
+#endif //        NO_PF_EK_XV
+
+#ifdef           NO_PF_EK_XV_2
+    printf("#    NO_PF_EK_XV_2\n");
+#else //         NO_PF_EK_XV_2
+    printf("# No NO_PF_EK_XV_2\n");
+#endif //        NO_PF_EK_XV_2
+
+#ifdef           NO_PF_EK_XV_2_ALWAYS
+    printf("#    NO_PF_EK_XV_2_ALWAYS\n");
+#else //         NO_PF_EK_XV_2_ALWAYS
+    printf("# No NO_PF_EK_XV_2_ALWAYS\n");
+#endif //        NO_PF_EK_XV_2_ALWAYS
+
 #if defined(EK_CALC_POP)
     printf("#    EK_CALC_POP\n");
 #else // defined(EK_CALC_POP)
