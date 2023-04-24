@@ -316,8 +316,6 @@
   // PREFETCH_LOCATE_KEY_8_[BEG|END]_VAL are not necessary with
   // default cnListPopCntMaxDl1=4 and CACHE_ALIGN_L1.
 
-  // Default is no PREFETCH_BM_[PSPLIT|NEXT|PREV]_VAL
-
 #else // B_JUDYL
 
   #undef EK_XV
@@ -759,14 +757,38 @@
       #undef BMLF_CNTS_CUM
       #undef BMLF_CNTS_IN_LNX
     #endif // BMLF_CNTS else
-    #ifndef NO_PF_BM_PREV_HALF_VAL
-      #undef   PF_BM_PREV_HALF_VAL
-      #define  PF_BM_PREV_HALF_VAL
-    #endif // #ifndef NO_PF_BM_PREV_HALF_VAL
-    #ifndef NO_PF_BM_NEXT_HALF_VAL
-      #undef   PF_BM_NEXT_HALF_VAL
-      #define  PF_BM_NEXT_HALF_VAL
-    #endif // #ifndef NO_PF_BM_NEXT_HALF_VAL
+    #ifndef NO_PF_BM
+      #ifdef BMLF_POP_COUNT_32
+        #undef  NO_HYPERTUNE_PF_BM
+        #define NO_HYPERTUNE_PF_BM
+      #endif // BMLF_POP_COUNT_32
+      #if cnBitsInD1 != 8
+        #undef  NO_PF_BM_SUBEX_PSPLIT
+        #define NO_PF_BM_SUBEX_PSPLIT
+      #endif // cnBitsInD1 != 8
+      #if cnBitsPerWord < 64
+        #undef  NO_PF_BM_SUBEX_PSPLIT
+        #define NO_PF_BM_SUBEX_PSPLIT
+      #endif // cnBitsPerWord < 64
+      #ifndef NO_PF_BM_SUBEX_PSPLIT
+        #undef  PF_BM_SUBEX_PSPLIT
+        #define PF_BM_SUBEX_PSPLIT
+        #ifndef NO_HYPERTUNE_PF_BM
+          #undef  HYPERTUNE_PF_BM
+          #define HYPERTUNE_PF_BM
+        #endif // NO_HYPERTUNE_PF_BM
+      #endif // !NO_PF_BM_SUBEX_PSPLIT
+      // Default is PF_BM_[NEXT|PREV]_HALF_VAL.
+      // Default is no PREFETCH_BM_[PSPLIT|NEXT|PREV]_VAL.
+      #ifndef NO_PF_BM_PREV_HALF_VAL
+        #undef   PF_BM_PREV_HALF_VAL
+        #define  PF_BM_PREV_HALF_VAL
+      #endif // #ifndef NO_PF_BM_PREV_HALF_VAL
+      #ifndef NO_PF_BM_NEXT_HALF_VAL
+        #undef   PF_BM_NEXT_HALF_VAL
+        #define  PF_BM_NEXT_HALF_VAL
+      #endif // #ifndef NO_PF_BM_NEXT_HALF_VAL
+    #endif // NO_PF_BM
   #endif // PACK_BM_VALUES
 
   // UNPACK_BM_VALUES means use an unpacked value area for a bitmap leaf

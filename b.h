@@ -6407,24 +6407,24 @@ SearchList32(qpa, int nBLR, Word_t wKey)
     uint32_t *piKeys = ls_piKeysX(pwr, nBLR, nPopCnt);
 #if defined(LIST_END_MARKERS)
     assert(piKeys[-1] == 0);
-#if defined(PSPLIT_PARALLEL)
+  #if defined(PSPLIT_PARALLEL)
     assert(*(uint32_t *)(((Word_t)&piKeys[nPopCnt] + sizeof(Bucket_t) - 1)
             & ~(sizeof(Bucket_t) - 1))
         == (uint32_t)-1);
-#else // defined(PSPLIT_PARALLEL)
+  #else // defined(PSPLIT_PARALLEL)
     assert(piKeys[nPopCnt] == (uint32_t)-1);
-#endif // defined(PSPLIT_PARALLEL)
+  #endif // defined(PSPLIT_PARALLEL)
 #endif // defined(LIST_END_MARKERS)
     uint32_t iKey = (uint32_t)wKey;
     int nPos = 0;
 #if defined(PSPLIT_SEARCH_32)
-#if defined(BL_SPECIFIC_PSPLIT_SEARCH)
+  #if defined(BL_SPECIFIC_PSPLIT_SEARCH)
     if (nBL == 32) {
         PSPLIT_SEARCH_BY_KEY(uint32_t, 32, piKeys, nPopCnt, iKey, nPos);
     } else if (nBL == 24) {
         PSPLIT_SEARCH_BY_KEY(uint32_t, 24, piKeys, nPopCnt, iKey, nPos);
     } else
-#endif // defined(BL_SPECIFIC_PSPLIT_SEARCH)
+  #endif // defined(BL_SPECIFIC_PSPLIT_SEARCH)
     {
         PSPLIT_SEARCH_BY_KEY(uint32_t, nBL, piKeys, nPopCnt, iKey, nPos);
         DBGX(printf("SearchList32 nPos %d\n", nPos));
@@ -6435,7 +6435,7 @@ SearchList32(qpa, int nBLR, Word_t wKey)
 #else // defined(PSPLIT_PARALLEL_32) elif defined(BACKWARD_SEARCH_32) else
     // here for forward linear search with end check
     SEARCHF(uint32_t, piKeys, nPopCnt, iKey, nPos); (void)nBL;
-    SMETRICS_NOT_HIT(++j__GetCallsP);
+    SMETRICS_NHIT(++j__GetCallsP);
 #endif // defined(PSPLIT_PARALLEL_32) elif defined(BACKWARD_SEARCH_32) else
     return nPos;
 }

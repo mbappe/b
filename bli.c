@@ -3833,6 +3833,49 @@ t_unpacked_bm:
   #if defined(PACK_BM_VALUES) || !defined(LOOKUP) || !defined(B_JUDYL)
 t_bitmap:
     {
+    #if defined(HYPERTUNE_PF_BM) && defined(LOOKUP) && defined(B_JUDYL)
+        // What else are we assuming here in our overzealous hand-tuning of
+        // this case necessitated by the untuned code being too slow?
+      #ifndef PF_BM_SUBEX_PSPLIT
+        #error HYPERTUNE_PF_BM without PF_BM_SUBEX_PSPLIT
+      #endif // PF_BM_SUBEX_PSPLIT
+      #ifdef BMLF_POP_COUNT_32
+        #error HYPERTUNE_PF_BM with BMLF_POP_COUNT_32 is TBD
+      #endif // BMLF_POP_COUNT_32
+      #if cnBitsInD1 != 8
+        #error cnBitsInD1 != 8 with PF_BM_SUBEX_PSPLIT is TBD
+      #endif // cnBitsInD1 != 8
+        // wKey already contains the key on entry here; wKey is a Word_t
+        // pwLnX already contains a pointer to the second word of the JP on
+        // entry here; pwLnX is a Word_t*
+        // pwr already contains the pointer from the first word of the JP on
+        // entry here; pwr is a Word_t*
+        Word_t* pwBitmapValues
+                    = gpwBitmapValues(cnBitsInD1, pwRoot, cnBitsInD1);
+        Word_t wDigit = wKey & 0xff;
+        // second word of the JP with cnts in high four bytes
+        // and cumulative cnts in low four bytes
+        Word_t wCnts = *pwLnX;
+        // which word in the four-word bitmap contains the bit for wKey
+        int nBmWordNum = wDigit >> 6;
+        // how many bits set in previous words
+        int nIndex = ((uint8_t*)&wCnts)[nBmWordNum];
+        // how many bits set in the word with the bit for the key
+        int subcnt = ((uint8_t*)&wCnts)[4 + nBmWordNum];
+        int nBitNum = wKey & 0x3f;
+        char* pcPrefetch
+                = (char*)&pwBitmapValues[nIndex + (nBitNum * subcnt >> 6)];
+        __builtin_prefetch(pcPrefetch - 32, 0, 0);
+        __builtin_prefetch(pcPrefetch + 32, 0, 0);
+        Word_t wBit = (Word_t)1 << nBitNum;
+        Word_t *pwBitmap = ((BmLeaf_t*)pwr)->bmlf_awBitmap;
+        if (pwBitmap[nBmWordNum] & wBit) {
+            // count bits for keys < wKey
+            nIndex += __builtin_popcountll(pwBitmap[nBmWordNum] & (wBit - 1));
+            return &pwBitmapValues[nIndex];
+        }
+        goto break_from_main_switch;
+    #else // HYPERTUNE_PF_BM && LOOKUP && B_JUDYL
       #if defined(AUGMENT_TYPE) && !defined(AUGMENT_TYPE_8) && cnBitsInD1 > 8
         #error AUGMENT_TYPE (not _8) with cnBitsInD1 > 8.
       #endif // AUGMENT_TYPE && !AUGMENT_TYPE_8 && cnBitsInD1 > 8
@@ -4140,9 +4183,35 @@ t_bitmap:
 // the exact same cache lines relative to pwr and be able to initiate the
 // prefetch before the switch;
 // pop in wRoot and value area starting at pwr[-1].
+                              #ifdef PF_BM_SUBEX_PSPLIT
+                                  #if cnBitsInD1 != 8
+              #error cnBitsInD1 != 8 with PF_BM_SUBEX_PSPLIT is TBD
+                                  #endif // cnBitsInD1 != 8
+            (void)wPopCnt;
+            Word_t wDigit = wKey & MSK(nBLR);
+            Word_t wCnts = *pwLnX;
+                                  #ifdef BMLF_POP_COUNT_32
+            // BMLF_POP_COUNT_32 keeps a count of each 32-bit sub-bitmap.
+            int nBmNum = wDigit >> 5;
+            Word_t wSums = wCnts * 0x0101010101010100;
+            int nIndex = ((uint8_t*)&wSums)[nBmNum];
+            int subcnt = ((uint8_t*)&wCnts)[nBmNum];
+            char* pcPrefetch
+                = (char*)&pwBitmapValues[
+                    nIndex + Psplit(subcnt, 5, /*nShift*/ 0, wKey & 0x1f)];
+                                  #else // BMLF_POP_COUNT_32
+            int nBmWordNum = wDigit >> cnLogBitsPerWord; (void)nBmWordNum;
+            int nIndex = ((uint8_t*)&wCnts)[nBmWordNum];
+            int subcnt = ((uint8_t*)&wCnts)[4+nBmWordNum];
+            char* pcPrefetch
+                = (char*)&pwBitmapValues[
+                    nIndex + Psplit(subcnt, 6, /*nShift*/ 0, wKey & 0x3f)];
+                                  #endif // BMLF_POP_COUNT_32 else
+                              #else // PF_BM_SUBEX_PSPLIT
             char* pcPrefetch
                 = (char*)&pwBitmapValues[
                     Psplit(wPopCnt, cnBitsInD1, /*nShift*/ 0, wKey)];
+                              #endif // PF_BM_SUBEX_PSPLIT else
             (void)pcPrefetch;
                               #ifdef PF_BM_PREV_HALF_VAL
             PREFETCH(pcPrefetch - 32);
@@ -4234,11 +4303,42 @@ t_bitmap:
                       #endif // !BMLFI_BM_AT_END
                                  ];
                   #else // defined(BMLF_INTERLEAVE) && !defined(LOOKUP)
+  #if defined(LOOKUP) && defined(PACK_BM_VALUES) && defined(PF_BM_SUBEX_PSPLIT)
+                {
+                                  #ifdef BMLF_POP_COUNT_32
+                                      #ifdef BMLF_CNTS_CUM
+    #error BMLF_CNTS_CUM with BMLF_POP_COUNT_32 with PF_BM_SUBEX_PSPLIT is TBD
+                                      #endif // BMLF_CNTS_CUM
+                    uint32_t *pu32Bms
+                                = (uint32_t*)((BmLeaf_t*)pwr)->bmlf_awBitmap;
+                    uint32_t u32Bm = pu32Bms[nBmNum]; // uint32_t we want
+                    uint32_t u32BmBitMask = EXP(wDigit & (32 - 1));
+                    nIndex += PopCount32(u32Bm & (u32BmBitMask - 1));
+                                  #else // BMLF_POP_COUNT_32
+  #ifdef BMLF_POP_COUNT_8
+    #error BMLF_POP_COUNT_8 with PF_BM_SUBEX_PSPLIT
+  #elif defined(BMLF_POP_COUNT_1) // BMLF_POP_COUNT_8
+    #error BMLF_POP_COUNT_1 with PF_BM_SUBEX_PSPLIT
+  #else // BMLF_POP_COUNT_8 elif BMLF_POP_COUNT_1
+    // The name "BMLF_POP_COUNT_64" doesn't exist. But that is where we are.
+    // Subexpanse counts are for 64-bit bitmaps.
+    #ifndef BMLF_CNTS_CUM
+      #error PF_BM_SUBEX_PSPLIT w/o BMLF_CNTS_CUM (and not BMLF_POP_COUNT_32)
+    #endif // !BMLF_CNTS_CUM
+  #endif // BMLF_POP_COUNT_8 elif BMLF_POP_COUNT_1 else
+                    Word_t *pwBmWords = ((BmLeaf_t*)pwr)->bmlf_awBitmap;
+                    Word_t wBmWord = pwBmWords[nBmWordNum]; // word we want
+                    Word_t wBmBitMask = EXP(wDigit & (cnBitsPerWord - 1));
+                    nIndex += PopCount64(wBmWord & (wBmBitMask - 1));
+                                  #endif // BMLF_POP_COUNT_32 else
+                }
+  #else // LOOKUP && PACK_BM_VALUES && PF_BM_SUBEX_PSPLIT
                 int nIndex =
-                      #ifndef LOOKUP
+                          #ifndef LOOKUP
                     BM_UNPACKED(wRoot) ? (int)(wKey & MSK(cnBitsInD1)) :
-                      #endif // !LOOKUP
+                          #endif // !LOOKUP
                         BmIndex(qya, cnBitsInD1, wKey);
+  #endif // LOOKUP && PACK_BM_VALUES && PF_BM_SUBEX_PSPLIT
                 Word_t* pwValue = &pwBitmapValues[nIndex];
                       #ifdef LOOKUP
                       #ifdef PACK_BM_VALUES
@@ -4403,6 +4503,7 @@ t_bitmap:
           #endif
       #endif // defined(INSERT)
         goto break_from_main_switch;
+    #endif // HYPERTUNE_PF_BM && LOOKUP && B_JUDYL else
     } // end of t_bitmap
   #endif // PACK_BM_VALUES || !LOOKUP || !B_JUDYL
   #endif // BITMAP
