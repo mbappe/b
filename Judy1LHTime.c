@@ -94,18 +94,18 @@ RM_EXTERN Word_t j__AllocWordsJLL[8];
 RM_EXTERN Word_t j__AllocWordsJLB1;
 RM_EXTERN Word_t j__AllocWordsJV;
 
-// DSMETRICS_HITS ==> Derive DirectHits from GetCalls, j__NotDirectHits,
-// j__GetCallsP and j__GetCallsM.
+// DSMETRICS_HITS ==> Derive DirectHits from GetCalls,
+// j__GetCallsP, j__GetCallsM and j__NotDirectHits.
 #ifdef DSMETRICS_HITS
   #ifdef DSMETRICS_NHITS
     #error DSMETRICS_HITS and DSMETRICS_NHITS are mutually exclusive.
-  #endif // DSMETRICS_HITS
+  #endif // DSMETRICS_NHITS
   #undef  DSMETRICS_GETS
   #define DSMETRICS_GETS
 #endif // DSMETRICS_HITS
 
-// DSMETRICS_NHITS ==> Derive NotDirectHits from GetCalls, j__DirectHits,
-// j__GetCallsP and j__GetCallsM.
+// DSMETRICS_NHITS ==> Derive NotDirectHits from GetCalls,
+// j__DirectHits, j__GetCallsP, and j__GetCallsM.
 #ifdef DSMETRICS_NHITS
   #undef  DSMETRICS_GETS
   #define DSMETRICS_GETS
@@ -122,18 +122,29 @@ RM_EXTERN Word_t j__AllocWordsJV;
 #else // SEARCHMETRICS
 #define SM_EXTERN
 #endif // SEARCHMETRICS
-SM_EXTERN Word_t j__SearchPopulation; // Sum of pops searched of counted Gets.
-// Num counted Gets that did not modify j__SearchPopulation.
-SM_EXTERN Word_t j__GetCallsSansPop;
-SM_EXTERN Word_t j__GetCallsNot; // Num Gets not counted or instrumented.
+
 SM_EXTERN Word_t j__GetCalls; // Num instrumented Gets.
+#ifdef DSMETRICS_GETS
+SM_EXTERN Word_t j__GetCallsNot; // Num Gets not counted or instrumented.
+#endif // DSMETRICS_GETS
 SM_EXTERN Word_t j__DirectHits; // Num direct hits - found key on first try.
-// Num Gets with no direct hit not counted in j__GetCalls[PM].
-SM_EXTERN Word_t j__NotDirectHits;
 // Num Gets with no direct hit and resulting in forward search.
 SM_EXTERN Word_t j__GetCallsP;
 // Num Gets with no direct hit and resulting in backward search.
 SM_EXTERN Word_t j__GetCallsM;
+#ifdef DSMETRICS_HITS
+// Num Gets with no direct hit not counted in j__GetCalls[PM].
+SM_EXTERN Word_t j__NotDirectHits;
+#endif // DSMETRICS_HITS
+SM_EXTERN Word_t j__SearchPopulation; // Sum of pops searched of counted Gets.
+#ifdef SMETRICS_SEARCH_POP
+// Num counted Gets that did not modify j__SearchPopulation.
+SM_EXTERN Word_t j__GetCallsSansPop;
+#endif // SMETRICS_SEARCH_POP
+// Number of miscompares while searching forward including the first miss.
+SM_EXTERN Word_t j__MisComparesP;
+// Number of miscompares while searching backward including the first miss.
+SM_EXTERN Word_t j__MisComparesM;
 
 // The released Judy libraries do not, and some of Doug's work-in-progress
 // libraries may not, have Judy1Dump and/or JudyLDump entry points.
@@ -165,6 +176,14 @@ SM_EXTERN Word_t j__GetCallsM;
 #define JudyLDump(wRoot, nBitsLeft, wKeyPrefix)
 #endif // !defined(JUDYL_V2) && !defined(JUDYLDUMP)
 
+// Keep it Simple Stupid.
+// KISS replaces the multitude of constant parameter TestJudyGet calls
+// with just a couple of calls with variable parameters.
+#ifndef NO_KISS
+  #undef  KISS
+  #define KISS
+#endif // NO_KISS
+
 // Why did we create CALC_NEXT_KEY? Or, rather, why did we create the
 // alternative, an array of keys, since CALC_NEXT_KEY used to be the only
 // behavior? And why did we create LFSR_ONLY and -k/--lfsr-only.
@@ -175,7 +194,7 @@ SM_EXTERN Word_t j__GetCallsM;
 // For example, we saw the time jump from 28 ns to 52 ns in the bitmap
 // area by adding --splay-key-bits=0xffffffffffffffff to a 64-bit -B32
 // Judy1 run (and --splay-key-bits=0xffffffffffffffff has absolutely no
-// affect on the sequence of keys that are tested).
+// effect on the sequence of keys that are tested).
 //
 // This bump in get time was observed without a __sync_synchronize in
 // the loop.  Adding a __sync_synchronize before the GetNextKey brings
@@ -207,7 +226,7 @@ SM_EXTERN Word_t j__GetCallsM;
 #define NO_OFFSET
 #define NO_SVALUE
 #define NO_GAUSS
-// KFLAG is in by default with LFSR_ONLY
+// KFLAG is on by default with LFSR_ONLY
 #endif // LFSR_ONLY
 
 // Judy 1.0.5 did not have RandomNumb.h. We must copy the RandomNumb.h that
@@ -283,7 +302,7 @@ Word_t    xFlag = 0;    // Turn ON 'waiting for Context Switch'
 
 // Wait for an extraordinary long Delta time (context switch?)
 static void
-WaitForContextSwitch(Word_t Loops)
+WaitForContextSwitch(int xFlag, Word_t Loops)
 {
     double    DeltanSecw;
     int       kk;
@@ -867,13 +886,15 @@ PRINT6_1f(double __X)
 #define KFLAG
 #endif // NO_KFLAG
 
+// _x is a parameter to the macro because we experimented with doing the
+// __sync_synchronize before _x, after _x and both before and after _x.
 #ifdef KFLAG
-#define SYNC_SYNC(_x)  if (KFlag) __sync_synchronize(); _x
+#define SYNC_SYNC_IF_KFLAG(_k, _x)  if (_k) __sync_synchronize(); _x
 #elif SYNC_SYNC
 #undef SYNC_SYNC
-#define SYNC_SYNC(_x)  __sync_synchronize(); _x
+#define SYNC_SYNC_IF_KFLAG(_k, _x)  __sync_synchronize(); _x
 #else // KFLAG, SYNC_SYNC
-#define SYNC_SYNC(_x)  _x
+#define SYNC_SYNC_IF_KFLAG(_k, _x)  _x
 #endif // KFLAG, SYNC_SYNC
 
 
@@ -1314,7 +1335,7 @@ PrintHeaderX(const char *strFirstCol, int nRow)
 
 #ifdef RAMMETRICS
     if (J1Flag | JLFlag | JRFlag) {
-        printf(nRow ? "  %%W/K" : "  Heap");
+        printf(nRow ? "  W/K%%" : "  Heap");
     }
 #endif // RAMMETRICS
 
@@ -1342,7 +1363,7 @@ PrintHeaderX(const char *strFirstCol, int nRow)
 #endif // defined(MIKEY_1)
         printf(nRow ? "      " : "  JV/K");
 
-        printf(nRow ? "      " : " %%MEff");
+        printf(nRow ? "      " : " MEff%%");
 
         if (J1Flag)
             printf(nRow ? "      " : " MF1/K");
@@ -1353,6 +1374,9 @@ PrintHeaderX(const char *strFirstCol, int nRow)
         printf(nRow ? " Lenth" : " AvLst");
         printf(nRow ? "      " : "  Hit%%");
         printf(nRow ? "      " : " SFwd%%");
+        printf(nRow ? "      " : " MsCmP");
+        printf(nRow ? "      " : " MsCmM");
+        printf(nRow ? " NoPop" : " Gets ");
 #endif // SEARCHMETRICS
     }
 
@@ -1374,7 +1398,7 @@ Usage(int argc, char **argv)
     printf("\n<<< Program to do performance measurements (and Diagnostics) on Judy Arrays >>>\n\n");
     printf("%s -n# -P# -S# [-B#[:#]|-N#] -T# -1LRbY -gGIcCvdtDlMK... -F <filename>\n\n", argv[0]);
     printf("   Where: # is a number, default is shown as [#]\n\n");
-    printf("-m #  Output measurements when libJudy is compiled with -DRAMMETRICS &| -DSEARCHMETRICS\n");
+    printf("-m #  Output measurements when libJudy is compiled with -DRAMMETRICS and/or -DSEARCHMETRICS\n");
     printf("-n #  Number of Keys (Population) used in Measurement [10000000]\n");
     printf("-P #  Measurement points per decade (1..1000) [50] (231 = ~1%%, 46 = ~5%% delta Population)\n");
     printf("-S #  Key Generator skip amount, 0 = Random [0]\n");
@@ -1548,14 +1572,14 @@ static struct option longopts[] = {
     { NULL, 0, NULL, 0 }
 };
 
-Word_t    DirectHits;               // Number of direct hits -- no search
-Word_t    NotDirectHits; // not counted in GetCallsP or GetCallsM
-Word_t    SearchPopulation;         // Population of Searched object
-Word_t    GetCallsSansPop;
-Word_t    GetCallsP;                 // number of search calls forward
-Word_t    GetCallsM;                 // number of search calls backward
-Word_t    GetCalls;                  // number of search calls
-// Why is there no GetCallsNot?
+Word_t    GetCalls;         // number of search calls with hit instrumentation
+Word_t    DirectHits;       // number of direct hits -- no search
+Word_t    GetCallsP;        // number of search calls forward
+Word_t    GetCallsM;        // number of search calls backward
+Word_t    SearchPopulation; // population of pearched object
+Word_t    GetCallsSansPop;  // GetCalls without SearchPopulation instrumentation
+Word_t    MisComparesP;     // Miscompares while searching forward.
+Word_t    MisComparesM;     // Miscompares while searching forward.
 
 #define EXP(x) ((Word_t)1<<(x))
 
@@ -1642,6 +1666,12 @@ LogIfdefs(void)
     // __APPLE__
     // __MACH__
 
+  #ifdef         SEARCHMETRICS
+    printf("#    SEARCHMETRICS\n");
+  #else //       SEARCHMETRICS
+    printf("# No SEARCHMETRICS\n");
+  #endif //      SEARCHMETRICS else
+
   #ifdef         DSMETRICS_GETS
     printf("#    DSMETRICS_GETS\n");
   #else //       DSMETRICS_GETS
@@ -1659,6 +1689,24 @@ LogIfdefs(void)
   #else //       DSMETRICS_NHITS
     printf("# No DSMETRICS_NHITS\n");
   #endif //      DSMETRICS_NHITS else
+
+  #ifdef         SMETRICS_SEARCH_POP
+    printf("#    SMETRICS_SEARCH_POP\n");
+  #else //       SMETRICS_SEARCH_POP
+    printf("# No SMETRICS_SEARCH_POP\n");
+  #endif //      SMETRICS_SEARCH_POP else
+
+  #ifdef         KISS
+    printf("#    KISS\n");
+  #else //       KISS
+    printf("# No KISS\n");
+  #endif //      KISS else
+
+  #ifdef         NO_KISS
+    printf("#    NO_KISS\n");
+  #else //       NO_KISS
+    printf("# No NO_KISS\n");
+  #endif //      NO_KISS else
 
     // EXTRA_SLOW_PDEP
     // FANCY_b_flag
@@ -1792,12 +1840,6 @@ LogIfdefs(void)
   #else //       REGRESS
     printf("# No REGRESS\n");
   #endif //      REGRESS else
-
-  #ifdef         SEARCHMETRICS
-    printf("#    SEARCHMETRICS\n");
-  #else //       SEARCHMETRICS
-    printf("# No SEARCHMETRICS\n");
-  #endif //      SEARCHMETRICS else
 
     // SKIPMACRO
     // SLOW_PDEP
@@ -3331,9 +3373,12 @@ eopt:
 
 #ifdef SEARCHMETRICS
         printf("# COLHEAD %2d Gets - Num get calls\n", Col++);
-        printf("# COLHEAD %2d Srch Lenth - Average Search Length (number of keys in list)\n", Col++);
-        printf("# COLHEAD %2d Hit%% - %% get calls which result in a direct hit\n", Col++);
-        printf("# COLHEAD %2d SFwd%% - %% of misses that have to search forward\n", Col++);
+        printf("# COLHEAD %2d Srch Lenth - Average Search Length (number of keys in leaf)\n", Col++);
+        printf("# COLHEAD %2d Hit%% - %% get calls which resulted in a direct hit\n", Col++);
+        printf("# COLHEAD %2d SFwd%% - %% of misses that had to search forward\n", Col++);
+        printf("# COLHEAD %2d MsCmP%% - Miscompares while searching forward\n", Col++);
+        printf("# COLHEAD %2d MsCmM%% - Miscompares while searching backward\n", Col++);
+        printf("# COLHEAD %2d SansPop - Gets that did not include population information\n", Col++);
 #endif // SEARCHMETRICS
     }
 
@@ -3582,12 +3627,6 @@ eopt:
         double DeltaMalFreLSum = 0.0;
         //double DeltaMalFreHSSum = 0.0;
 
-        if (mFlag) {
-            // reset SEARCHMETRICS for this delta
-            SearchPopulation = GetCallsSansPop = GetCalls = 0;
-            DirectHits = NotDirectHits = GetCallsP = GetCallsM = 0;
-        }
-
         Delta = Pms[grp].ms_delta;
         if (Delta == 0)
             break;
@@ -3617,10 +3656,6 @@ nextPart:
                 Delta = wFinalPop1 - Pop1;
             }
         }
-
-        j__GetCalls = j__GetCallsNot = 0;
-        j__SearchPopulation = j__GetCallsSansPop = 0;
-        j__DirectHits = j__NotDirectHits = j__GetCallsP = j__GetCallsM = 0;
 
 //      Accumulate the Total population of arrays
         Pop1 += Delta;
@@ -3766,7 +3801,7 @@ nextPart:
                 if (Delta <= wDoTit0Max) {
                     Tit = 0;                    // exclude Judy
                     DummySeed = InsertSeed;
-                    WaitForContextSwitch(Delta);
+                    WaitForContextSwitch(xFlag, Delta);
                     TestJudyIns(&J1, &JL, &DummySeed, Delta);
                     DeltaGen1 = DeltanSec1 / Delta;     // save measurement overhead
                     DeltaGenL = DeltanSecL / Delta;
@@ -3788,7 +3823,7 @@ nextPart:
             }
 
             Tit = 1;                    // include Judy
-            WaitForContextSwitch(Delta);
+            WaitForContextSwitch(xFlag, Delta);
             TestJudyIns(&J1, &JL, &InsertSeed, Delta);
             DeltanSec1Sum += DeltanSec1;
             DeltanSecLSum += DeltanSecL;
@@ -3827,11 +3862,28 @@ nextPart:
 //      get bigger this value should be changed to a bigger value.
 
 //          Test J1T, JLG, JHSG
-
-
+  #ifdef KISS
+                NewSeed_t BeginSeedArg;
+                int bLfsrOnlyArg;
+      #ifdef LFSR_GET_FOR_DS1
+      #ifndef CALC_NEXT_KEY
+                if (!hFlag && bLfsrForGetOnly && (wFeedBTap != (Word_t)-1)) {
+                    BeginSeedArg = (NewSeed_t)StartSequent;
+                    bLfsrOnlyArg = BValue - wLogPop1 + 1;
+                } else
+      #endif // CALC_NEXT_KEY
+      #endif // LFSR_GET_FOR_DS1
+                {
+                    BeginSeedArg = StartSeed;
+                    bLfsrOnlyArg = bLfsrOnly;
+                }
+  #endif // KISS
                 if (Meas <= wDoTit0Max) {
+  #ifdef KISS
+                    BeginSeed = BeginSeedArg;      // reset at beginning
+                    TestJudyGet(J1, JL, &BeginSeed, Meas, /* Tit */ 0, KFlag, hFlag, bLfsrOnlyArg);
+  #else // KISS
                     BeginSeed = StartSeed;      // reset at beginning
-                    WaitForContextSwitch(Meas);
                     if (bLfsrOnly) {
                         if (KFlag) {
                             if (hFlag) {
@@ -3899,6 +3951,7 @@ nextPart:
                             }
                         }
                     }
+  #endif // KISS else
                     DeltaGen1 = DeltanSec1;     // save measurement overhead
                     DeltaGenL = DeltanSecL;
                     DeltaGenHS = DeltanSecHS;
@@ -3916,8 +3969,11 @@ nextPart:
                     DeltaGenHS = DeltaGenGetHSMin;
                 } // end of Meas <= wDoTit0Max
 
+  #ifdef KISS
+                BeginSeed = BeginSeedArg;      // reset at beginning
+                TestJudyGet(J1, JL, &BeginSeed, Meas, /* Tit */ 1, KFlag, hFlag, bLfsrOnlyArg);
+  #else // KISS
                 BeginSeed = StartSeed;      // reset at beginning
-                WaitForContextSwitch(Meas);
                 if (bLfsrOnly) {
                     if (KFlag) {
                         if (hFlag) {
@@ -3985,6 +4041,7 @@ nextPart:
                         }
                     }
                 }
+  #endif // KISS else
 
                 if (J1Flag)
                 {
@@ -4000,6 +4057,68 @@ nextPart:
                 }
                 if (fFlag)
                     fflush(NULL);
+
+  // SEARCHMETRICS is for TestJudyGet only.
+  #ifdef SEARCHMETRICS
+              // We added DSMETRICS_GETS in an effort to
+              // reduce the overhead of SEARCHMETRICS in the library.
+              // The idea is that the Time program already knows how many GetCalls it's
+              // done so we don't need the library to keep track.
+              // One disadvantage of DSMETRICS_GETS is that the library has
+              // to instrument every get call because the Time program will be assuming
+              // all of them are instrumented, e.g. unpacked bitmaps and immediates and
+              // gets of keys that do not exist, but we might prefer to instrument only
+              // a subset in the library, and without DSMETRICS_GETS we can use
+              // j__GetCalls to indicate how many calls were actually instrumented.
+              // Should we add j__GetCallsNot for DSMETRICS_GETS? Done.
+              #ifdef DSMETRICS_GETS
+                assert(j__GetCalls == 0);
+                GetCalls = Meas - j__GetCallsNot;
+              #else // DSMETRICS_GETS
+                GetCalls = j__GetCalls; // count of gets with instrumentation
+                // GetCallsNot is not needed.
+              #endif // DSMETRICS_GETS else
+              // We added DSMETRICS_[N]HITS in the same vein, i.e. to
+              // reduce the overhead of SEARCHMETRICS in the library.
+              // Since GetCalls = DirectHits + GetCallsP + GetCallsM
+              // we can derive one of DirectHits, GetCallsP, and GetCallsM
+              // if we know two of them so the library only has to keep track of two.
+              // One bummer is that there is no simple j__NotDirectHits counter, i.e.
+              // the library has to decide between j__GetCallsP and j__GetCallsM if not
+              // maintaining j__DirectHits and this may involve an additional test in
+              // the library. One option is for the library to simply record all misses
+              // as j__GetCallsP or j__GetCallsM to avoid the overhead of figuring out
+              // which one. Another is to add j__NotDirectHits for cases when we don't
+              // know the direction? Done.
+              // Now GetCalls = DirectHits + GetCallsP + GetCallsM + NotDirectHits.
+              // But we only support derivation of DirectHits or NotDirectHits using
+              // DSMETRICS_[N]HITS. We do not support the derivation of GetCallsP
+              // or GetCallsM.
+              // Another bummer about DSMETRICS_GETS is that it doesn't help with
+              // j__SearchPopulation which Get/Test don't always need to know except
+              // for SEARCHMETRICS.
+              // Could the library simply bump a count of GetCalls without a valid
+              // search population, e.g. GetCallsSansPop, and Time exclude them from
+              // the average search pop calculation? Done.
+              #if defined(DSMETRICS_HITS)
+                assert(j__DirectHits == 0);
+                DirectHits = GetCalls - j__GetCallsP - j__GetCallsM - j__NotDirectHits;
+              #else // DSMETRICS_HITS
+                DirectHits = j__DirectHits;
+                // NotDirectHits is not needed.
+              #endif // DSMETRICS_HITS else
+                GetCallsP = j__GetCallsP;
+                GetCallsM = j__GetCallsM;
+                // Some leaves don't need to know population to do a Get.
+                // Hence adding it to j__SearchPopulation means figuring out the
+                // otherwise unneeded population and this may be expensive.
+                SearchPopulation = j__SearchPopulation;
+              #ifdef SMETRICS_SEARCH_POP
+                GetCallsSansPop = j__GetCallsSansPop;
+              #endif // SMETRICS_SEARCH_POP
+                MisComparesP = j__MisComparesP;
+                MisComparesM = j__MisComparesM;
+  #endif // SEARCHMETRICS
             }
         }
 
@@ -4015,7 +4134,7 @@ nextPart:
                 if (Delta <= wDoTit0Max) { // Delta < wDoTit0Max
                     Tit = 0;                    // exclude Judy
                     DummySeed = BitmapSeed;
-                    WaitForContextSwitch(Delta);
+                    WaitForContextSwitch(xFlag, Delta);
                     TestJudyLIns(&JL, &DummySeed, Delta);
                     DeltaGenL = DeltanSecL / Delta;
                     if (DeltaGenL < DeltaGenInsLMin) { DeltaGenInsLMin = DeltaGenL; }
@@ -4028,7 +4147,7 @@ nextPart:
             }
 
             Tit = 1;                    // include Judy
-            WaitForContextSwitch(Delta);
+            WaitForContextSwitch(xFlag, Delta);
             TestJudyLIns(&JL, &BitmapSeed, Delta);
             DeltanSecLSum += DeltanSecL;
             DeltaMalFreLSum += DeltaMalFreL;
@@ -4044,7 +4163,7 @@ nextPart:
                 if (Meas <= wDoTit0Max) {
                     Tit = 0;                    // exclude Judy
                     BeginSeed = StartSeed;      // reset at beginning
-                    WaitForContextSwitch(Meas);
+                    WaitForContextSwitch(xFlag, Meas);
                     TestJudyLGet(JL, &BeginSeed, Meas);
                     DeltaGenL = DeltanSecL;
                     if (DeltaGenL < DeltaGenGetLMin) { DeltaGenGetLMin = DeltaGenL; }
@@ -4057,7 +4176,7 @@ nextPart:
 
                 Tit = 1;                    // include Judy
                 BeginSeed = StartSeed;      // reset at beginning
-                WaitForContextSwitch(Meas);
+                WaitForContextSwitch(xFlag, Meas);
                 TestJudyLGet(JL, &BeginSeed, Meas);
 
                 PrintValFFX(DeltanSecL - DeltaGenL, 5, 0);
@@ -4077,7 +4196,7 @@ nextPart:
             if (Delta <= wDoTit0Max) {
                 Tit = 0;
                 DummySeed = BitmapSeed;
-                WaitForContextSwitch(Delta);
+                WaitForContextSwitch(xFlag, Delta);
                 TestBitmapSet(&B1, &DummySeed, Delta);
                 DeltaGenBt = DeltanSecBt / Delta;
                 if (DeltaGenBt < DeltaGenInsBtMin) { DeltaGenInsBtMin = DeltaGenBt; }
@@ -4089,7 +4208,7 @@ nextPart:
             } // end of Delta <= wDoTit0Max
 
             Tit = 1;
-            WaitForContextSwitch(Delta);
+            WaitForContextSwitch(xFlag, Delta);
             TestBitmapSet(&B1, &BitmapSeed, Delta);
             DeltanSecBtSum += DeltanSecBt;
 
@@ -4102,7 +4221,7 @@ nextPart:
                 if (Meas <= wDoTit0Max) {
                     Tit = 0;
                     BeginSeed = StartSeed;      // reset at beginning
-                    WaitForContextSwitch(Meas);
+                    WaitForContextSwitch(xFlag, Meas);
                     TestBitmapTest(B1, &BeginSeed, Meas);
                     DeltaGenBt = DeltanSecBt;
                     if (DeltaGenBt < DeltaGenGetBtMin) { DeltaGenGetBtMin = DeltaGenBt; }
@@ -4115,7 +4234,7 @@ nextPart:
 
                 Tit = 1;
                 BeginSeed = StartSeed;      // reset at beginning
-                WaitForContextSwitch(Meas);
+                WaitForContextSwitch(xFlag, Meas);
                 TestBitmapTest(B1, &BeginSeed, Meas);
 
                 PrintValFFX(DeltanSecBt - DeltaGenBt, 5, 0);
@@ -4135,7 +4254,7 @@ nextPart:
             if (Delta <= wDoTit0Max) {
                 Tit = 0;
                 DummySeed = BitmapSeed;
-                WaitForContextSwitch(Delta);
+                WaitForContextSwitch(xFlag, Delta);
                 TestByteSet(&DummySeed, Delta);
                 DeltaGenBy = DeltanSecBy / Delta;
                 if (DeltaGenBy < DeltaGenInsByMin) { DeltaGenInsByMin = DeltaGenBy; }
@@ -4147,7 +4266,7 @@ nextPart:
             } // end of Delta <= wDoTit0Max
 
             Tit = 1;
-            WaitForContextSwitch(Delta);
+            WaitForContextSwitch(xFlag, Delta);
             TestByteSet(&BitmapSeed, Delta);
             DeltanSecBySum += DeltanSecBy;
 
@@ -4160,7 +4279,7 @@ nextPart:
                 if (Meas <= wDoTit0Max) {
                     Tit = 0;
                     BeginSeed = StartSeed;      // reset at beginning
-                    WaitForContextSwitch(Meas);
+                    WaitForContextSwitch(xFlag, Meas);
                     TestByteTest(&BeginSeed, Meas);
                     DeltaGenBy = DeltanSecBy;
                     if (DeltaGenBy < DeltaGenGetByMin) { DeltaGenGetByMin = DeltaGenBy; }
@@ -4173,7 +4292,7 @@ nextPart:
 
                 Tit = 1;
                 BeginSeed = StartSeed;      // reset at beginning
-                WaitForContextSwitch(Meas);
+                WaitForContextSwitch(xFlag, Meas);
                 TestByteTest(&BeginSeed, Meas);
 
                 PrintValFFX(DeltanSecBy - DeltaGenBy, 5, 0);
@@ -4183,100 +4302,6 @@ nextPart:
                     fflush(NULL);
             }
         }
-
-  // SEARCHMETRICS are just for Get/Test.
-  #ifdef SEARCHMETRICS
-      // We added DSMETRICS_GETS in an effort to
-      // reduce the overhead of SEARCHMETRICS in the library.
-      // The idea is that the Time program already knows how many GetCalls it's
-      // done so we don't need the library to keep track.
-      // One disadvantage of DSMETRICS_GETS is that the library has
-      // to instrument every get call because the Time program will be assuming
-      // all of them are instrumented, e.g. unpacked bitmaps and immediates and
-      // gets of keys that do not exist, but we might prefer to instrument only
-      // a subset in the library, and without DSMETRICS_GETS we can use
-      // j__GetCalls to indicate how many calls were actually instrumented.
-      // Should we add j__GetCallsNot for DSMETRICS_GETS? Done.
-        Word_t NewGetCalls = 0;
-      #ifdef DSMETRICS_GETS
-        if (Pop1 == wFinalPop1) {
-            NewGetCalls = Meas - j__GetCallsNot;
-        }
-      #else // DSMETRICS_GETS
-        NewGetCalls = j__GetCalls; // count of gets with instrumentation
-      #endif // DSMETRICS_GETS else
-        // Why are we adding to GetCalls here?
-        // Is it left over from when we ran TestJudyGet on multiple parts
-        // in the same delta?
-        GetCalls += NewGetCalls;
-      // We added DSMETRICS_[N]HITS in the same vein, i.e. to
-      // reduce the overhead of SEARCHMETRICS in the library.
-      // Since GetCalls = DirectHits + GetCallsP + GetCallsM
-      // we can derive one of DirectHits, GetCallsP, and GetCallsM
-      // if we know two of them so the library only has to keep track of two.
-      // One bummer is that there is no simple j__NotDirectHits counter, i.e.
-      // the library has to decide between j__GetCallsP and j__GetCallsM if not
-      // maintaining j__DirectHits and this may involve an additional test in
-      // the library. One option is for the library to simply record all misses
-      // as j__GetCallsP or j__GetCallsM to avoid the overhead of figuring out
-      // which one. Another is to add j__NotDirectHits for cases when we don't
-      // know the direction? Done.
-      // Now GetCalls = DirectHits + NotDirectHits + GetCallsP + GetCallsM.
-      // But we only support derivation of DirectHits or NotDirectHits using
-      // DSMETRICS_[N]HITS.
-      #ifdef DSMETRICS_HITS
-      #ifdef DSMETRICS_NHITS
-        #error Cannot have both DSMETRICS_HITS and DSMETRICS_NHITS
-      #endif // DSMETRICS_HITS
-      #endif // DSMETRICS_NHITS
-      #if defined(DSMETRICS_HITS)
-        assert(!mFlag || (j__DirectHits == 0));
-        DirectHits
-            += NewGetCalls - j__NotDirectHits - j__GetCallsP - j__GetCallsM;
-      #else // DSMETRICS_HITS
-        DirectHits += j__DirectHits; // direct hits
-      #endif // DSMETRICS_HITS else
-      #ifdef DSMETRICS_NHITS
-        assert(!mFlag || (j__NotDirectHits == 0));
-        NotDirectHits
-            += NewGetCalls - j__DirectHits - j__GetCallsP - j__GetCallsM;
-      #else // DSMETRICS_NHITS
-        NotDirectHits += j__NotDirectHits; // unknown direction of miss
-      #endif // DSMETRICS_NHITS else
-      #ifndef DSMETRICS_HITS
-      #ifndef DSMETRICS_NHITS
-        if (mFlag) {
-          #ifdef DEBUG
-            if (j__DirectHits + j__NotDirectHits + j__GetCallsP + j__GetCallsM
-                   != NewGetCalls)
-            {
-                printf("\n# Meas %zd j__GetCalls %zd j__GetCallsNot %zd"
-                           " NewGetCalls %zd\n",
-                       Meas, j__GetCalls, j__GetCallsNot, NewGetCalls);
-                printf("# j__DirectHits %zd j__NotDirectHits %zd j__GetCallsP %zd"
-                           " j__GetCallsM %zd\n",
-                       j__DirectHits, j__NotDirectHits, j__GetCallsP, j__GetCallsM);
-            }
-          #endif // DEBUG
-            assert(j__DirectHits + j__NotDirectHits + j__GetCallsP + j__GetCallsM
-                   == NewGetCalls);
-        }
-      #endif // !DSMETRICS_NHITS
-      #endif // !DSMETRICS_HITS
-        GetCallsP += j__GetCallsP;
-        GetCallsM += j__GetCallsM;
-        // Some leaves don't need to know population to do a Get.
-        // Hence adding it to j__SearchPopulation means figuring out the
-        // otherwise unneeded population and this may be expensive.
-        SearchPopulation += j__SearchPopulation;
-      // Another bummer about DSMETRICS_GETS is that it doesn't help with
-      // j__SearchPopulation which Get/Test don't always need to know except
-      // for SEARCHMETRICS.
-      // Could the library simply bump a count of GetCalls without a valid
-      // search population, e.g. GetCallsSansPop, and Time exclude them from
-      // the average search pop calculation? Done.
-        GetCallsSansPop += j__GetCallsSansPop;
-  #endif // SEARCHMETRICS
 
         if (Pop1 != wFinalPop1)
         {
@@ -4296,7 +4321,7 @@ nextPart:
             if (Meas <= wDoTit0Max) {
                 Tit = 0;
                 BeginSeed = StartSeed;      // reset at beginning
-                WaitForContextSwitch(Meas);
+                WaitForContextSwitch(xFlag, Meas);
                 TestJudyDup(&J1, &JL, &BeginSeed, Meas);
                 DeltaGen1 = DeltanSec1;     // save measurement overhead
                 DeltaGenL = DeltanSecL;
@@ -4317,7 +4342,7 @@ nextPart:
 
             Tit = 1;
             BeginSeed = StartSeed;      // reset at beginning
-            WaitForContextSwitch(Meas);
+            WaitForContextSwitch(xFlag, Meas);
             TestJudyDup(&J1, &JL, &BeginSeed, Meas);
             if (J1Flag)
                 PrintValFFX(DeltanSec1 - DeltaGen1, 5, 0);
@@ -4329,7 +4354,7 @@ nextPart:
 
         if (cFlag && J1Flag)
         {
-            WaitForContextSwitch(Meas);
+            WaitForContextSwitch(xFlag, Meas);
             TestJudy1Copy(J1, Meas);
             PRINT6_1f(DeltanSec1);
             if (fFlag)
@@ -4344,7 +4369,7 @@ nextPart:
             }
             if (Meas <= wDoTit0Max) {
                 Tit = 0;
-                WaitForContextSwitch(Meas);
+                WaitForContextSwitch(xFlag, Meas);
                 TestJudyCount(J1, JL, &BeginSeed, Meas);
                 DeltaGen1 = DeltanSec1;     // save measurement overhead
                 DeltaGenL = DeltanSecL;
@@ -4360,7 +4385,7 @@ nextPart:
             } // end of Meas <= wDoTit0Max
 
             Tit = 1;
-            WaitForContextSwitch(Meas);
+            WaitForContextSwitch(xFlag, Meas);
             TestJudyCount(J1, JL, &BeginSeed, Meas);
             if (J1Flag)
             {
@@ -4391,7 +4416,7 @@ nextPart:
                 if (Meas <= wDoTit0Max) {
                     Tit = 0;
                     BeginSeed = StartSeed;      // reset at beginning
-                    WaitForContextSwitch(Meas);
+                    WaitForContextSwitch(xFlag, Meas);
                     TestJudyNext(J1, JL, &BeginSeed, Meas);
                     DeltaGen1 = DeltanSec1;     // save measurement overhead
                     DeltaGenL = DeltanSecL;
@@ -4408,7 +4433,7 @@ nextPart:
 
                 Tit = 1;
                 BeginSeed = StartSeed;      // reset at beginning
-                WaitForContextSwitch(Meas);
+                WaitForContextSwitch(xFlag, Meas);
                 TestJudyNext(J1, JL, &BeginSeed, Meas);
                 if (J1Flag)
                     PrintValFFX(DeltanSec1 - DeltaGen1, 5, 0);
@@ -4426,7 +4451,7 @@ nextPart:
                 if (Meas <= wDoTit0Max) {
                     Tit = 0;
                     BeginSeed = StartSeed;      // reset at beginning
-                    WaitForContextSwitch(Meas);
+                    WaitForContextSwitch(xFlag, Meas);
                     TestJudyPrev(J1, JL, &BeginSeed, Meas);
                     DeltaGen1 = DeltanSec1;     // save measurement overhead
                     DeltaGenL = DeltanSecL;
@@ -4443,7 +4468,7 @@ nextPart:
 
                 Tit = 1;
                 BeginSeed = StartSeed;      // reset at beginning
-                WaitForContextSwitch(Meas);
+                WaitForContextSwitch(xFlag, Meas);
                 TestJudyPrev(J1, JL, &BeginSeed, Meas);
                 if (J1Flag)
                     PrintValFFX(DeltanSec1 - DeltaGen1, 5, 0);
@@ -4461,7 +4486,7 @@ nextPart:
                 if (Meas <= wDoTit0Max) {
                     Tit = 0;
                     BeginSeed = StartSeed;      // reset at beginning
-                    WaitForContextSwitch(Meas);
+                    WaitForContextSwitch(xFlag, Meas);
                     TestJudyNextEmpty(J1, JL, &BeginSeed, Meas);
                     DeltaGen1 = DeltanSec1;     // save measurement overhead
                     DeltaGenL = DeltanSecL;
@@ -4478,7 +4503,7 @@ nextPart:
 
                 Tit = 1;
                 BeginSeed = StartSeed;      // reset at beginning
-                WaitForContextSwitch(Meas);
+                WaitForContextSwitch(xFlag, Meas);
                 TestJudyNextEmpty(J1, JL, &BeginSeed, Meas);
                 if (J1Flag)
                     PrintValFFX(DeltanSec1 - DeltaGen1, 5, 0);
@@ -4496,7 +4521,7 @@ nextPart:
                 if (Meas <= wDoTit0Max) {
                     Tit = 0;
                     BeginSeed = StartSeed;      // reset at beginning
-                    WaitForContextSwitch(Meas);
+                    WaitForContextSwitch(xFlag, Meas);
                     TestJudyPrevEmpty(J1, JL, &BeginSeed, Meas);
                     DeltaGen1 = DeltanSec1;     // save measurement overhead
                     DeltaGenL = DeltanSecL;
@@ -4513,7 +4538,7 @@ nextPart:
 
                 Tit = 1;
                 BeginSeed = StartSeed;      // reset at beginning
-                WaitForContextSwitch(Meas);
+                WaitForContextSwitch(xFlag, Meas);
                 TestJudyPrevEmpty(J1, JL, &BeginSeed, Meas);
                 if (J1Flag)
                     PrintValFFX(DeltanSec1 - DeltaGen1, 5, 0);
@@ -4534,7 +4559,7 @@ nextPart:
             if (Meas <= wDoTit0Max) {
                 Tit = 0;
                 BeginSeed = StartSeed;      // reset at beginning
-                WaitForContextSwitch(Meas);
+                WaitForContextSwitch(xFlag, Meas);
                 TestJudyDel(&J1, &JL, &BeginSeed, Meas);
                 DeltaGen1 = DeltanSec1;     // save measurement overhead
                 DeltaGenL = DeltanSecL;
@@ -4555,7 +4580,7 @@ nextPart:
 
             Tit = 1;
             BeginSeed = StartSeed;      // reset at beginning
-            WaitForContextSwitch(Meas);
+            WaitForContextSwitch(xFlag, Meas);
             TestJudyDel(&J1, &JL, &BeginSeed, Meas);
             if (J1Flag)
                 PrintValFFX(DeltanSec1 - DeltaGen1, 5, 0);
@@ -4567,7 +4592,7 @@ nextPart:
 //          Now put back the Just deleted Keys
             Tit = 1;
             BeginSeed = StartSeed;      // reset at beginning
-            WaitForContextSwitch(Meas);
+            WaitForContextSwitch(xFlag, Meas);
             TestJudyIns(&J1, &JL, &BeginSeed, Meas);
         }
 
@@ -4598,23 +4623,21 @@ nextPart:
             if (JLFlag || JRFlag)
                 PRINT5_1f(DeltaMalFreLSum / Pms[grp].ms_delta);
 #ifdef SEARCHMETRICS
-//          print average number of failed compares done in leaf search
-            PrintVal(GetCalls, 5, 0);
+            PrintVal(GetCalls, 5, 0); // get calls for hit ratio
             PrintVal((double)SearchPopulation / MAX(GetCalls - GetCallsSansPop, 1), 5, 1);
-            PrintValx100((double)DirectHits / GetCalls, 5, 1);
-            printf(" %5.1f ", GetCallsP * 100.0 / MAX(GetCallsP + GetCallsM, 1));
+            PrintValx100((double)DirectHits / MAX(GetCalls, 1), 5, 1);
+            PrintVal(GetCallsP * 100.0 / MAX(GetCallsP + GetCallsM, 1), 5, 1);
+            PrintVal(MisComparesP / MAX(GetCallsP, 1), 5, 1);
+            PrintVal(MisComparesM / MAX(GetCallsM, 1), 5, 1);
+            PrintVal(GetCallsSansPop, 5, 0); // get calls for avg leaf population
     #ifdef DEBUG_SMETRICS
-            printf("\n");
-            printf("Meas %zd", Meas);
-            printf(" Gets %zd", j__GetCalls);
-            printf(" Not %zd", j__GetCallsNot);
-            printf(" SansPop %zd", j__GetCallsSansPop);
-            printf(" SearchPop %zd", j__SearchPopulation);
-            printf(" Hits %zd", j__DirectHits);
-            printf(" NHits %zd", j__NotDirectHits);
-            printf(" P %zd", j__GetCallsP);
-            printf(" M %zd", j__GetCallsM);
-            printf(" AvgSearchPop %zd", j__SearchPopulation / (j__GetCalls - j__GetCallsSansPop));
+            printf("\n#");
+            printf(" Hits=%zd", DirectHits);
+            printf(" SearchPop=%zd", SearchPopulation);
+            printf(" GetsP=%zd", GetCallsP);
+            printf(" MisCmpsP=%zd", MisComparesP);
+            printf(" GetsM=%zd", GetCallsM);
+            printf(" MisCmpsM=%zd", MisComparesM);
     #endif // DEBUG_SMETRICS
 #endif // SEARCHMETRICS
         }
@@ -4703,7 +4726,7 @@ TimeNumberGen(void **TestRan, PNewSeed_t PSeed, Word_t Elements)
         STARTTm;
         for (elm = 0; elm < Elements; elm++)
         {
-            SYNC_SYNC(TstKey = GetNextKey(&WorkingSeed));
+            SYNC_SYNC_IF_KFLAG(KFlag, TstKey = GetNextKey(&WorkingSeed));
             DummyAccum += TstKey;     // prevent cc from optimizing out
         }
         ENDTm(DeltanSec);
@@ -4780,7 +4803,7 @@ TestJudyIns(void **J1, void **JL, PNewSeed_t PSeed, Word_t Elements)
             STARTTm;
             for (elm = 0; elm < Elements; elm++)
             {
-                SYNC_SYNC(TstKey = GetNextKey(&WorkingSeed));
+                SYNC_SYNC_IF_KFLAG(KFlag, TstKey = GetNextKey(&WorkingSeed));
 
 //              Skip Judy1Set
                 if (hFlag && ((TstKey & 0x3F) == 13))
@@ -4891,7 +4914,7 @@ TestJudyIns(void **J1, void **JL, PNewSeed_t PSeed, Word_t Elements)
             STARTTm;
             for (elm = 0; elm < Elements; elm++)
             {
-                SYNC_SYNC(TstKey = GetNextKey(&WorkingSeed));
+                SYNC_SYNC_IF_KFLAG(KFlag, TstKey = GetNextKey(&WorkingSeed));
 
 //              Skip JudyLIns
                 if (hFlag && ((TstKey & 0x3F) == 13))
@@ -5087,7 +5110,7 @@ TestJudyLIns(void **JL, PNewSeed_t PSeed, Word_t Elements)
         STARTTm;                        // start timer
         for (elm = 0; elm < Elements; elm++)
         {
-            SYNC_SYNC(TstKey = GetNextKey(&WorkingSeed));
+            SYNC_SYNC_IF_KFLAG(KFlag, TstKey = GetNextKey(&WorkingSeed));
 
             if (Tit)
             {
@@ -5260,29 +5283,33 @@ TestJudyGet(void *J1, void *JL, PNewSeed_t PSeed, Word_t Elements,
 
     if (J1Flag)
     {
+        WaitForContextSwitch(xFlag, Elements);
         for (DminTime = 1e40, icnt = ICNT, lp = 0; lp < Loops; lp++)
         {
             WorkingSeed = *PSeed;
             Word_t wFeedBTapLocal = wFeedBTap; // don't know why this is faster
 
-            if (mFlag) {
-                // reset j__* for this lp loop
-                // caller will examine j__* for final lp loop when we return
+            // reset j__* for this lp loop
+            // caller will examine j__* for final lp loop when we return
+            j__GetCalls = j__DirectHits = 0;
+            j__GetCallsP = j__GetCallsM = 0;
+            j__MisComparesP = j__MisComparesM = 0;
+            j__SearchPopulation = 0;
   #ifdef DSMETRICS_GETS
-                j__GetCallsNot = 0;
-  #else // DSMETRICS_GETS
-                j__GetCalls = 0;
-  #endif // DSMETRICS_GETS else
-                j__GetCallsSansPop = 0;
-                j__SearchPopulation = 0;
-                j__DirectHits = j__NotDirectHits = j__GetCallsP = j__GetCallsM = 0;
-            }
+            j__GetCallsNot = 0;
+  #endif // DSMETRICS_GETS
+  #ifdef DSMETRICS_HITS
+            j__NotDirectHits = 0;
+  #endif // DSMETRICS_HITS
+  #ifdef SMETRICS_SEARCH_POP
+            j__GetCallsSansPop = 0;
+  #endif // SMETRICS_SEARCH_POP
 
             STARTTm;
             for (elm = 0; elm < Elements; elm++)
             {
-                SYNC_SYNC(TstKey = GetNextKeyX(&WorkingSeed, wFeedBTapLocal, bLfsrOnly));
-                //SYNC_SYNC(TstKey = GetNextKeyX(&WorkingSeed, wFeedBTap, bLfsrOnly));
+                SYNC_SYNC_IF_KFLAG(KFlag, TstKey = GetNextKeyX(&WorkingSeed, wFeedBTapLocal, bLfsrOnly));
+                //SYNC_SYNC_IF_KFLAG(KFlag, TstKey = GetNextKeyX(&WorkingSeed, wFeedBTap, bLfsrOnly));
 
 //              Holes in the Set Code ?
                 if (hFlag && ((TstKey & 0x3F) == 13))
@@ -5332,29 +5359,33 @@ TestJudyGet(void *J1, void *JL, PNewSeed_t PSeed, Word_t Elements,
 
     if (JLFlag)
     {
+        WaitForContextSwitch(xFlag, Elements);
         for (DminTime = 1e40, lp = 0; lp < Loops; lp++)
         {
             WorkingSeed = *PSeed;
             Word_t wFeedBTapLocal = wFeedBTap; // don't know why this is faster
 
-            if (mFlag) {
-                // reset j__* for this lp loop
-                // caller will examine j__* for final lp loop when we return
+            // reset j__* for this lp loop
+            // caller will examine j__* for final lp loop when we return
+            j__GetCalls = j__DirectHits = 0;
+            j__GetCallsP = j__GetCallsM = 0;
+            j__MisComparesP = j__MisComparesM = 0;
+            j__SearchPopulation = 0;
   #ifdef DSMETRICS_GETS
-                j__GetCallsNot = 0;
-  #else // DSMETRICS_GETS
-                j__GetCalls = 0;
-  #endif // DSMETRICS_GETS else
-                j__GetCallsSansPop = 0;
-                j__SearchPopulation = 0;
-                j__DirectHits = j__NotDirectHits = j__GetCallsP = j__GetCallsM = 0;
-            }
+            j__GetCallsNot = 0;
+  #endif // DSMETRICS_GETS
+  #ifdef DSMETRICS_HITS
+            j__NotDirectHits = 0;
+  #endif // DSMETRICS_HITS
+  #ifdef SMETRICS_SEARCH_POP
+            j__GetCallsSansPop = 0;
+  #endif // SMETRICS_SEARCH_POP
 
             STARTTm;
             for (elm = 0; elm < Elements; elm++)
             {
-                SYNC_SYNC(TstKey = GetNextKeyX(&WorkingSeed, wFeedBTapLocal, bLfsrOnly));
-                //SYNC_SYNC(TstKey = GetNextKeyX(&WorkingSeed, wFeedBTap, bLfsrOnly));
+                SYNC_SYNC_IF_KFLAG(KFlag, TstKey = GetNextKeyX(&WorkingSeed, wFeedBTapLocal, bLfsrOnly));
+                //SYNC_SYNC_IF_KFLAG(KFlag, TstKey = GetNextKeyX(&WorkingSeed, wFeedBTap, bLfsrOnly));
 
 //              Holes in the Insert Code ?
                 if (hFlag && ((TstKey & 0x3F) == 13))
@@ -5431,19 +5462,6 @@ TestJudyLGet(void *JL, PNewSeed_t PSeed, Word_t Elements)
     for (DminTime = 1e40, lp = 0; lp < Loops; lp++)
     {
         WorkingSeed = *PSeed;
-
-        if (mFlag) {
-            // reset j__* for this lp loop
-            // caller will examine j__* for final lp loop when we return
-  #ifdef DSMETRICS_GETS
-            j__GetCallsNot = 0;
-  #else // DSMETRICS_GETS
-            j__GetCalls = 0;
-  #endif // DSMETRICS_GETS else
-            j__GetCallsSansPop = 0;
-            j__SearchPopulation = 0;
-            j__DirectHits = j__NotDirectHits = j__GetCallsP = j__GetCallsM = 0;
-        }
 
         TstKey = GetNextKey(&WorkingSeed);    // Get 1st Key
 
@@ -5573,7 +5591,7 @@ TestJudyCount(void *J1, void *JL, PNewSeed_t PSeed, Word_t Elements)
             for (Word_t elm = 0; elm < Elements; ++elm)
             {
   #ifndef TEST_COUNT_USING_JUDY_NEXT
-                SYNC_SYNC(TstKey = GetNextKey(&WorkingSeed));
+                SYNC_SYNC_IF_KFLAG(KFlag, TstKey = GetNextKey(&WorkingSeed));
                 TstKey ^= bCountTwiddledKeys;
                 TstKey0 = wCloseCountsMask
                     ? (TstKey ^ wCloseCountsMask)
@@ -5662,7 +5680,7 @@ TestJudyCount(void *J1, void *JL, PNewSeed_t PSeed, Word_t Elements)
             for (Word_t elm = 0; elm < Elements; ++elm)
             {
   #ifndef TEST_COUNT_USING_JUDY_NEXT
-                SYNC_SYNC(TstKey = GetNextKey(&WorkingSeed));
+                SYNC_SYNC_IF_KFLAG(KFlag, TstKey = GetNextKey(&WorkingSeed));
                 TstKey ^= bCountTwiddledKeys;
                 TstKey0 = wCloseCountsMask
                     ? (TstKey ^ wCloseCountsMask)
@@ -5786,7 +5804,7 @@ TestJudyNext(void *J1, void *JL, PNewSeed_t PSeed, Word_t Elements)
             for (elm = 0; elm < Elements; elm++)
             {
   #ifndef TEST_NEXT_USING_JUDY_NEXT
-                SYNC_SYNC(J1Key = GetNextKey(&WorkingSeed));
+                SYNC_SYNC_IF_KFLAG(KFlag, J1Key = GetNextKey(&WorkingSeed));
   #endif // #ifndef TEST_NEXT_USING_JUDY_NEXT
                 if (Tit)
                 {
@@ -5892,7 +5910,7 @@ TestJudyNext(void *J1, void *JL, PNewSeed_t PSeed, Word_t Elements)
             for (elm = 0; elm < Elements; elm++)
             {
   #ifndef TEST_NEXT_USING_JUDY_NEXT
-                SYNC_SYNC(JLKey = GetNextKey(&WorkingSeed));
+                SYNC_SYNC_IF_KFLAG(KFlag, JLKey = GetNextKey(&WorkingSeed));
   #endif // #ifndef TEST_NEXT_USING_JUDY_NEXT
                 if (Tit)
                 {
@@ -6036,7 +6054,7 @@ TestJudyPrev(void *J1, void *JL, PNewSeed_t PSeed, Word_t Elements)
             for (elm = 0; elm < Elements; elm++)
             {
 #ifndef TEST_NEXT_USING_JUDY_NEXT
-                SYNC_SYNC(J1Key = GetNextKey(&WorkingSeed));
+                SYNC_SYNC_IF_KFLAG(KFlag, J1Key = GetNextKey(&WorkingSeed));
 #endif // #ifndef TEST_NEXT_USING_JUDY_NEXT
                 if (Tit)
                 {
@@ -6134,7 +6152,7 @@ TestJudyPrev(void *J1, void *JL, PNewSeed_t PSeed, Word_t Elements)
             for (elm = 0; elm < Elements; elm++)
             {
 #ifndef TEST_NEXT_USING_JUDY_NEXT
-                SYNC_SYNC(JLKey = GetNextKey(&WorkingSeed));
+                SYNC_SYNC_IF_KFLAG(KFlag, JLKey = GetNextKey(&WorkingSeed));
 #endif // #ifndef TEST_NEXT_USING_JUDY_NEXT
                 if (Tit)
                 {
@@ -6488,7 +6506,7 @@ TestJudyDel(void **J1, void **JL, PNewSeed_t PSeed, Word_t Elements)
         STARTTm;
         for (elm = 0; elm < Elements; elm++)
         {
-            SYNC_SYNC(TstKey = GetNextKey(&WorkingSeed));
+            SYNC_SYNC_IF_KFLAG(KFlag, TstKey = GetNextKey(&WorkingSeed));
 
 //          Holes in the tree ?
             if (hFlag && ((TstKey & 0x3F) == 13))
@@ -6543,7 +6561,7 @@ TestJudyDel(void **J1, void **JL, PNewSeed_t PSeed, Word_t Elements)
         STARTTm;
         for (elm = 0; elm < Elements; elm++)
         {
-            SYNC_SYNC(TstKey = GetNextKey(&WorkingSeed));
+            SYNC_SYNC_IF_KFLAG(KFlag, TstKey = GetNextKey(&WorkingSeed));
 
 //          Holes in the tree ?
             if (hFlag && ((TstKey & 0x3F) == 13))
@@ -6642,7 +6660,7 @@ TestByteTest(PNewSeed_t PSeed, Word_t Elements)
 
         for (elm = 0; elm < Elements; elm++)
         {
-            SYNC_SYNC(TstKey = GetNextKey(&WorkingSeed));
+            SYNC_SYNC_IF_KFLAG(KFlag, TstKey = GetNextKey(&WorkingSeed));
 
             if (Tit)
             {
@@ -6682,7 +6700,7 @@ TestByteSet(PNewSeed_t PSeed, Word_t Elements)
     STARTTm;
     for (elm = 0; elm < Elements; elm++)
     {
-        SYNC_SYNC(TstKey = GetNextKey(PSeed));
+        SYNC_SYNC_IF_KFLAG(KFlag, TstKey = GetNextKey(PSeed));
 
         if (Tit)
         {
@@ -6724,7 +6742,7 @@ TestBitmapSet(PWord_t *pB1, PNewSeed_t PSeed, Word_t Elements)
     STARTTm;
     for (elm = 0; elm < Elements; elm++)
     {
-        SYNC_SYNC(TstKey = GetNextKey(PSeed));
+        SYNC_SYNC_IF_KFLAG(KFlag, TstKey = GetNextKey(PSeed));
 
         if (Tit)
         {
@@ -6770,7 +6788,7 @@ TestBitmapTest(PWord_t B1, PNewSeed_t PSeed, Word_t Elements)
         STARTTm;
         for (elm = 0; elm < Elements; elm++)
         {
-            SYNC_SYNC(TstKey = GetNextKey(&WorkingSeed));
+            SYNC_SYNC_IF_KFLAG(KFlag, TstKey = GetNextKey(&WorkingSeed));
 
             if (Tit)
             {
