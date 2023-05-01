@@ -758,10 +758,6 @@
       #undef BMLF_CNTS_IN_LNX
     #endif // BMLF_CNTS else
     #ifndef NO_PF_BM
-      #ifdef BMLF_POP_COUNT_32
-        #undef  NO_HYPERTUNE_PF_BM
-        #define NO_HYPERTUNE_PF_BM
-      #endif // BMLF_POP_COUNT_32
       #if cnBitsInD1 != 8
         #undef  NO_PF_BM_SUBEX_PSPLIT
         #define NO_PF_BM_SUBEX_PSPLIT
@@ -773,10 +769,6 @@
       #ifndef NO_PF_BM_SUBEX_PSPLIT
         #undef  PF_BM_SUBEX_PSPLIT
         #define PF_BM_SUBEX_PSPLIT
-        #ifndef NO_HYPERTUNE_PF_BM
-          #undef  HYPERTUNE_PF_BM
-          #define HYPERTUNE_PF_BM
-        #endif // NO_HYPERTUNE_PF_BM
       #endif // !NO_PF_BM_SUBEX_PSPLIT
       // Default is PF_BM_[NEXT|PREV]_HALF_VAL.
       // Default is no PREFETCH_BM_[PSPLIT|NEXT|PREV]_VAL.

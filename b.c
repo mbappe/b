@@ -13073,12 +13073,6 @@ Initialize(void)
     printf("# No NO_PF_BM\n");
 #endif //        NO_PF_BM else
 
-#ifdef           NO_HYPERTUNE_PF_BM
-    printf("#    NO_HYPERTUNE_PF_BM\n");
-#else //         NO_HYPERTUNE_PF_BM
-    printf("# No NO_HYPERTUNE_PF_BM\n");
-#endif //        NO_HYPERTUNE_PF_BM else
-
 #ifdef           NO_PREFETCH_LOCATEKEY_PSPLIT_VAL
     printf("#    NO_PREFETCH_LOCATEKEY_PSPLIT_VAL\n");
 #else //         NO_PREFETCH_LOCATEKEY_PSPLIT_VAL
