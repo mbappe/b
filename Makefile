@@ -77,6 +77,9 @@ endif
 
 
 # Potentially interesting gcc options:
+# -E
+# -fdirectives-only
+# -fpreprocesed
 # -ftree-vectorize (enabled by default with -O3)
 # -ftree-vectorizer-verbose
 # -fkeep-inline-functions
@@ -285,8 +288,8 @@ ASMS  = b.s bl.s bi.s br.s bc.s bn.s bne.s
 ASMS += b-L.s blL.s biL.s brL.s bcL.s bnL.s bneL.s
 ASMS += JudyMalloc.s # t.s
 ASMS += Judy1LHTime.s Judy1LHCheck.s
-CPPS  = b.i bl.i bi.i br.i bc.i bn.i bne.i
-CPPS += b-L.i blL.i biL.i brL.i bcL.i bnL.i bneL.i
+CPPS  = bl-unifdef.c bi-unifdef.c b.i bl.i bi.i br.i bc.i bn.i bne.i
+CPPS += blL-unifdef.c biL-unifdef.c b-L.i blL.i biL.i brL.i bcL.i bnL.i bneL.i
 CPPS += JudyMalloc.i # t.i
 
 T_OBJS = JudyMalloc.o
@@ -503,19 +506,19 @@ bn.s: bn.c bli.c b.h bdefines.h Judy.h
 bne.s: bne.c bli.c b.h bdefines.h Judy.h
 
 b-L.s: b.c b.h bdefines.h Judy.h
-	$(CC) $(CFLAGS) $(DEFINES) -DB_JUDYL -S -fverbose_asm -o $@ -c $<
+	$(CC) $(CFLAGS) $(DEFINES) -DB_JUDYL -S -fverbose-asm -o $@ -c $<
 biL.s: bi.c bli.c b.h bdefines.h Judy.h
-	$(CC) $(CFLAGS) $(DEFINES) -DB_JUDYL -S -fverbose_asm -o $@ -c $<
+	$(CC) $(CFLAGS) $(DEFINES) -DB_JUDYL -S -fverbose-asm -o $@ -c $<
 blL.s: bl.c bli.c b.h bdefines.h Judy.h
 	$(CC) $(CFLAGS) $(DEFINES) -DB_JUDYL -S -fverbose-asm -o $@ -c $<
 brL.s: br.c bli.c b.h bdefines.h Judy.h
-	$(CC) $(CFLAGS) $(DEFINES) -DB_JUDYL -S -fverbose_asm -o $@ -c $<
+	$(CC) $(CFLAGS) $(DEFINES) -DB_JUDYL -S -fverbose-asm -o $@ -c $<
 bcL.s: bc.c bli.c b.h bdefines.h Judy.h
-	$(CC) $(CFLAGS) $(DEFINES) -DB_JUDYL -S -fverbose_asm -o $@ -c $<
+	$(CC) $(CFLAGS) $(DEFINES) -DB_JUDYL -S -fverbose-asm -o $@ -c $<
 bnL.s: bn.c bli.c b.h bdefines.h Judy.h
-	$(CC) $(CFLAGS) $(DEFINES) -DB_JUDYL -S -fverbose_asm -o $@ -c $<
+	$(CC) $(CFLAGS) $(DEFINES) -DB_JUDYL -S -fverbose-asm -o $@ -c $<
 bneL.s: bne.c bli.c b.h bdefines.h Judy.h
-	$(CC) $(CFLAGS) $(DEFINES) -DB_JUDYL -S -fverbose_asm -o $@ -c $<
+	$(CC) $(CFLAGS) $(DEFINES) -DB_JUDYL -S -fverbose-asm -o $@ -c $<
 
 # Suppress warnings. Transitive warnings. t.c just includes other files.
 t.s: t.c
@@ -528,6 +531,28 @@ Judy1LHTime.s: Judy1LHTime.c
 # Suppress warnings.  sbrk is deprecated.
 JudyMalloc.s: JudyMalloc.c
 	$(CC) $(CFLAGS) $(MALLOC_FLAGS) $(DEFINES) -S $<
+
+############################
+#
+# Rules for building unifdefed files.
+#
+############################
+
+bl-unifdef.c: bl.c bli.c b.h bdefines.h Judy.h
+	gcc $(CFLAGS) $(DEFINES) -E -fdirectives-only $< \
+ | egrep -v "^#[0-9]*|^ *$$" > $@
+
+bi-unifdef.c: bi.c bli.c b.h bdefines.h Judy.h
+	gcc $(CFLAGS) $(DEFINES) -E -fdirectives-only $< \
+ | egrep -v "^#[0-9]*|^ *$$" > $@
+
+blL-unifdef.c: blL.c bli.c b.h bdefines.h Judy.h
+	gcc $(CFLAGS) $(DEFINES) -DB_JUDYL -E -fdirectives-only $< \
+ | egrep -v "^#[0-9]*|^ *$$" > $@
+
+biL-unifdef.c: biL.c bli.c b.h bdefines.h Judy.h
+	gcc $(CFLAGS) $(DEFINES) -DB_JUDYL -E -fdirectives-only $< \
+ | egrep -v "^#[0-9]*|^ *$$" > $@
 
 ############################
 #
