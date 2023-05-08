@@ -11806,6 +11806,12 @@ Initialize(void)
     printf("# No SKIP_LINKS\n");
 #endif // defined(SKIP_LINKS)
 
+#ifdef NO_SKIP_LINKS
+    printf("#    NO_SKIP_LINKS\n");
+#else // NO_SKIP_LINKS
+    printf("# No NO_SKIP_LINKS\n");
+#endif // NO_SKIP_LINKS else
+
 #if defined(BITMAP)
     printf("#    BITMAP\n");
 #else // defined(BITMAP)
@@ -11865,6 +11871,12 @@ Initialize(void)
 #else //         NO_PF_BM_SW_LN
     printf("# No NO_PF_BM_SW_LN\n");
 #endif // #else  NO_PF_BM_SW_LN
+
+#ifdef           NO_PF_LK
+    printf("#    NO_PF_LK\n");
+#else //         NO_PF_LK
+    printf("# No NO_PF_LK\n");
+#endif // #else  NO_PF_LK
 
 #ifdef           PREFETCH_LOCATEKEY_PSPLIT_VAL
     printf("#    PREFETCH_LOCATEKEY_PSPLIT_VAL\n");
@@ -11950,11 +11962,23 @@ Initialize(void)
     printf("# No PF_BM_PREV_HALF_VAL\n");
 #endif // #else  PF_BM_PREV_HALF_VAL
 
+#ifdef           NO_PF_BM_PREV_HALF_VAL
+    printf("#    NO_PF_BM_PREV_HALF_VAL\n");
+#else //         NO_PF_BM_PREV_HALF_VAL
+    printf("# No NO_PF_BM_PREV_HALF_VAL\n");
+#endif // #else  NO_PF_BM_PREV_HALF_VAL
+
 #ifdef           PF_BM_NEXT_HALF_VAL
     printf("#    PF_BM_NEXT_HALF_VAL\n");
 #else //         PF_BM_NEXT_HALF_VAL
     printf("# No PF_BM_NEXT_HALF_VAL\n");
 #endif // #else  PF_BM_NEXT_HALF_VAL
+
+#ifdef           NO_PF_BM_NEXT_HALF_VAL
+    printf("#    NO_PF_BM_NEXT_HALF_VAL\n");
+#else //         NO_PF_BM_NEXT_HALF_VAL
+    printf("# No NO_PF_BM_NEXT_HALF_VAL\n");
+#endif // #else  NO_PF_BM_NEXT_HALF_VAL
 
 #ifdef           PREREAD_BM_PSPLIT_VAL
     printf("#    PREREAD_BM_PSPLIT_VAL\n");
@@ -12081,6 +12105,12 @@ Initialize(void)
 #else //         REMOTE_LNX
     printf("# No REMOTE_LNX\n");
 #endif //        REMOTE_LNX
+
+#ifdef           NO_REMOTE_LNX
+    printf("#    NO_REMOTE_LNX\n");
+#else //         NO_REMOTE_LNX
+    printf("# No NO_REMOTE_LNX\n");
+#endif //        NO_REMOTE_LNX
 
 #ifdef           DUMMY_REMOTE_LNX
     printf("#    DUMMY_REMOTE_LNX\n");
@@ -12633,6 +12663,12 @@ Initialize(void)
 #else //         SMETRICS_EK
     printf("# No SMETRICS_EK\n");
 #endif //        SMETRICS_EK else
+
+#ifdef           SMETRICS_EK_XV
+    printf("#    SMETRICS_EK_XV\n");
+#else //         SMETRICS_EK_XV
+    printf("# No SMETRICS_EK_XV\n");
+#endif //        SMETRICS_EK_XV else
 
 #ifdef           SMETRICS_UNPACKED_BM
     printf("#    SMETRICS_UNPACKED_BM\n");

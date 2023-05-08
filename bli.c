@@ -5134,12 +5134,11 @@ t_ek_xv_plus_0: assert(nBL == 8);
 t_ek_xv:
     {
         DBGX(printf("T_EK_XV\n"));
-      #ifdef SMETRICS_EK
+      #ifdef SMETRICS_EK_XV
         SMETRICS_GET(++j__GetCalls);
-        SMETRICS_HIT(++j__DirectHits);
-      #else // SMETRICS_EK
+      #else // SMETRICS_EK_XV
         SMETRICS_GETN(++j__GetCallsNot);
-      #endif // SMETRICS_EK else
+      #endif // SMETRICS_EK_XV else
       #if defined(INSERT) || defined(REMOVE)
         if (bCleanup) {
           #if defined(B_JUDYL) && defined(INSERT)
@@ -5194,17 +5193,17 @@ t_ek_xv:
 #define PF_2(pwr)
   #endif // #else PF_EK_XV_2
 
-  #ifdef SMETRICS_EK
-#define SMETRICS_EK_POP(x)  SMETRICS_POP(x)
-  #else // SMETRICS_EK
-#define SMETRICS_EK_POP(x)
-  #endif // SMETRICS_EK else
+  #ifdef SMETRICS_EK_XV
+#define SMETRICS_EK_XV_POP(x)  SMETRICS_POP(x)
+  #else // SMETRICS_EK_XV
+#define SMETRICS_EK_XV_POP(x)
+  #endif // SMETRICS_EK_XV else
 
   #if (cnBitsInD1 < cnLogBitsPerByte)
 #define XV_BLX(_nBL) \
         case (_nBL): \
             PF_2(_nBL); \
-    SMETRICS_EK_POP(j__SearchPopulation \
+    SMETRICS_EK_XV_POP(j__SearchPopulation \
                         += GetBits(wRoot, cnBitsCnt, cnLsbCnt)); \
             if ((nPos = LocateKey64((uint64_t*)pwLnX, wKey, \
                     MAX(8, (Word_t)2 << LOG((_nBL) - 1)))) >= 0) { \
@@ -5216,7 +5215,7 @@ t_ek_xv:
 #define XV_BLX(_nBL) \
         case (_nBL): \
             PF_2(_nBL); \
-    SMETRICS_EK_POP(j__SearchPopulation \
+    SMETRICS_EK_XV_POP(j__SearchPopulation \
                         += GetBits(wRoot, cnBitsCnt, cnLsbCnt)); \
             if ((nPos = LocateKey64((uint64_t*)pwLnX, wKey, \
                     (Word_t)2 << LOG((_nBL) - 1))) >= 0) { \
@@ -5292,6 +5291,22 @@ xv_foundIt:;
         if (nIncr > 0) { goto undo; } // undo counting
       #endif // defined(INSERT)
       #if defined(INSERT) || defined(LOOKUP)
+          #ifdef SMETRICS_EK_XV
+        // Was the prefetch of the value a hit?
+        Word_t wEnd;
+              #ifdef PF_EK_XV_2
+        // We're doing a lot of work here even though we've set ourselves
+        // up for a 100% hit ratio by default.
+        // This test must be the same as in PF_2.
+        if (EmbeddedListPopCntMax(nBL) > 2) {
+            wEnd = (Word_t)(pwr + 16) & ~(Word_t)0x3f;
+        } else
+              #endif // PF_EK_XV_2
+        { wEnd = (Word_t)(pwr + 8) & ~(Word_t)0x3f; }
+        if ((Word_t)&pwr[nPos] < wEnd) {
+            SMETRICS_HIT(++j__DirectHits);
+        }
+          #endif // SMETRICS_EK_XV
         return &pwr[nPos];
       #elif defined(NEXT)
         *pwKey = wKey;

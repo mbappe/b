@@ -293,6 +293,7 @@
     #define    PACK_L1_VALUES
   #endif // NO_PACK_L1_VALUES
 
+  #ifndef NO_PF_LK
   #ifndef   NO_PREFETCH_LOCATEKEY_PSPLIT_VAL
     #undef     PREFETCH_LOCATEKEY_PSPLIT_VAL
     #define    PREFETCH_LOCATEKEY_PSPLIT_VAL
@@ -307,6 +308,7 @@
     #undef     PREFETCH_LOCATEKEY_PREV_VAL
     #define    PREFETCH_LOCATEKEY_PREV_VAL
   #endif // NO_PREFETCH_LOCATEKEY_PREV_VAL
+  #endif // NO_PF_LK
 
   #ifndef NO_CACHE_ALIGN_L1
     #undef   CACHE_ALIGN_L1
@@ -1180,11 +1182,13 @@
 #ifdef SEARCHMETRICS
   #ifndef NO_SMETRICS_HITS
     #undef  SMETRICS_HITS
-    #define SMETRICS_HITS
+    #define SMETRICS_HITS // count HITS and NHITS
+    // SMETRICS_HITS is ignored if DSMETRICS_HITS or DSMETRICS_NHITS
   #endif // !NO_SMETRICS_HITS
   // Default is no SMETRICS_SEARCH_POP
   // Default is no SMETRICS_MISCOMPARES
   // Default is no SMETRICS_EK
+  // Default is no SMETRICS_EK_XV
   // Default is no SMETRICS_UNPACKED_BM
 #endif // SEARCHMETRICS
 
