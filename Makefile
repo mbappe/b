@@ -281,16 +281,25 @@ LIBS = libb1.a libb1.so libbL.a libbL.so libb.a libb.so
 LIBB1_OBJS = b.o bl.o bi.o br.o bc.o bn.o bne.o JudyMalloc.o
 LIBB1_SRCS = b.c bl.c bi.c br.c bc.c bn.c bne.c
 LIBBL_OBJS = b-L.o blL.o biL.o brL.o bcL.o bnL.o bneL.o JudyMalloc.o
-LIBBL_SRCS = b-L.c blL.c biL.c brL.c bcL.c bnL.c bneL.o
+LIBBL_SRCS = b-L.c blL.c biL.c brL.c bcL.c bnL.c bneL.c
 LIBB_OBJS = $(LIBB1_OBJS) $(LIBBL_OBJS)
 LIBB_SRCS = $(LIBB1_SRCS) $(LIBBL_SRCS)
 ASMS  = b.s bl.s bi.s br.s bc.s bn.s bne.s
 ASMS += b-L.s blL.s biL.s brL.s bcL.s bnL.s bneL.s
 ASMS += JudyMalloc.s # t.s
 ASMS += Judy1LHTime.s Judy1LHCheck.s
-CPPS  = bl-unifdef.c bi-unifdef.c b.i bl.i bi.i br.i bc.i bn.i bne.i
-CPPS += blL-unifdef.c biL-unifdef.c b-L.i blL.i biL.i brL.i bcL.i bnL.i bneL.i
-CPPS += JudyMalloc.i # t.i
+CPPS  = b.i bl.i bi.i br.i bc.i bn.i bne.i
+CPPS += b-L.i blL.i biL.i brL.i bcL.i bnL.i bneL.i
+CPPS += JudyMalloc.i Judy1LHTime.i Judy1LHCheck.i # t.i
+# bitcode temporary files saved by cc -save-temps
+BCFILES = b.bc bl.bc bi.bc br.bc bc.bc bn.bc bne.bc
+BCFILES += b-L.bc blL.bc biL.bc brL.bc bcL.bc bnL.bc bneL.bc
+BCFILES += JudyMalloc.bc Judy1LHTime.bc Judy1LHCheck.bc
+# output of cc -fdirectives-only
+DO1SRCS = b-do.c bl-do.c bi-do.c br-do.c bc-do.c bn-do.c bne-do.c
+DOLSRCS += b-L-do.c blL-do.c biL-do.c brL-do.c bcL-do.c bnL-do.c bneL-do.c
+DOFILES = $(DO1SRCS) $(DOLSRCS)
+TEMPFILES = Judy1LHTime.o Judy1LHCheck.o
 
 T_OBJS = JudyMalloc.o
 
@@ -307,11 +316,11 @@ T_OBJS = JudyMalloc.o
 
 default: btime bcheck
 
-all: $(EXES) $(LIBS) $(ASMS) $(CPPS)
+all: $(EXES) $(LIBS) $(ASMS) $(CPPS) $(DOFILES)
 
 clean:
 	rm -f $(EXES) $(LIBS) $(LIBB_OBJS) $(ASMS) $(CPPS) JudyMalloc.so
-	rm -f $(LIBBL_SRCS) *.gch
+	rm -f $(BCFILES) $(DOFILES) $(LIBBL_SRCS) $(TEMPFILES) *.gch
 
 # I haven't figured out how to take advantage of precompiled headers yet.
 # We were getting gch files when making $(ASMS) before I added explicit
@@ -344,12 +353,12 @@ b: btime bcheck
 # compilers where -pie is default.
 btime: Judy1LHTime.c libb.a
 	$(CC) $(CFLAGS) -DJUDY1_DUMP -DJUDYL_DUMP -DMIKEY_1 -DMIKEY_L \
- $(DEFINES) -o $@ $^ -lm
+ $(DEFINES) -fverbose-asm -save-temps -o $@ $^ -lm
 
 # Need -lm on Ubuntu. Appears to be unnecessary on macOS.
 bcheck: Judy1LHCheck.c libb.a
 	$(CC) $(CFLAGS) -DJUDY1_DUMP -DJUDYL_DUMP -DMIKEY_1 -DMIKEY_L \
- $(DEFINES) -o $@ $^ -lm
+ $(DEFINES) -fverbose-asm -save-temps -o $@ $^ -lm
 
 c++: c++time c++check
 
@@ -455,36 +464,35 @@ CFLAGSI = $(CFLAGS)
 #endif
 
 .c.o:
-	$(CC) $(CFLAGSI) $(DEFINES) -c $<
+	$(CC) $(CFLAGSI) $(DEFINES) -fverbose-asm -save-temps -c $<
 
-#b.o: b.c b.h bdefines.h Judy.h
-#	$(CC) $(CFLAGS) $(DEFINES) -c $<
 b.o: b.h bdefines.h Judy.h
-bi.o: bi.c bli.c b.h bdefines.h Judy.h
+bi.o: bli.c b.h bdefines.h Judy.h
 bl.o: bli.c b.h bdefines.h Judy.h
 br.o: bli.c b.h bdefines.h Judy.h
 bc.o: bli.c b.h bdefines.h Judy.h
 bn.o: bli.c b.h bdefines.h Judy.h
 bne.o: bli.c b.h bdefines.h Judy.h
 
-b-L.o: b.c b.h bdefines.h Judy.h
-	$(CC) $(CFLAGSI) $(DEFINES) -DB_JUDYL -o $@ -c $<
-biL.o: bi.c bli.c b.h bdefines.h Judy.h
-	$(CC) $(CFLAGSI) $(DEFINES) -DB_JUDYL -o $@ -c $<
-blL.o: bl.c bli.c b.h bdefines.h Judy.h
-	$(CC) $(CFLAGSI) $(DEFINES) -DB_JUDYL -o $@ -c $<
-brL.o: br.c bli.c b.h bdefines.h Judy.h
-	$(CC) $(CFLAGSI) $(DEFINES) -DB_JUDYL -o $@ -c $<
-bcL.o: bc.c bli.c b.h bdefines.h Judy.h
-	$(CC) $(CFLAGSI) $(DEFINES) -DB_JUDYL -o $@ -c $<
-bnL.o: bn.c bli.c b.h bdefines.h Judy.h
-	$(CC) $(CFLAGSI) $(DEFINES) -DB_JUDYL -o $@ -c $<
-bneL.o: bne.c bli.c b.h bdefines.h Judy.h
-	$(CC) $(CFLAGSI) $(DEFINES) -DB_JUDYL -o $@ -c $<
+b-L.o: b-L.c b.h bdefines.h Judy.h
+	$(CC) $(CFLAGSI) $(DEFINES) -DB_JUDYL -fverbose-asm -save-temps -c $<
+biL.o: biL.c bli.c b.h bdefines.h Judy.h
+	$(CC) $(CFLAGSI) $(DEFINES) -DB_JUDYL -fverbose-asm -save-temps -c $<
+blL.o: blL.c bli.c b.h bdefines.h Judy.h
+	$(CC) $(CFLAGSI) $(DEFINES) -DB_JUDYL -fverbose-asm -save-temps -c $<
+brL.o: brL.c bli.c b.h bdefines.h Judy.h
+	$(CC) $(CFLAGSI) $(DEFINES) -DB_JUDYL -fverbose-asm -save-temps -c $<
+bcL.o: bcL.c bli.c b.h bdefines.h Judy.h
+	$(CC) $(CFLAGSI) $(DEFINES) -DB_JUDYL -fverbose-asm -save-temps -c $<
+bnL.o: bnL.c bli.c b.h bdefines.h Judy.h
+	$(CC) $(CFLAGSI) $(DEFINES) -DB_JUDYL -fverbose-asm -save-temps -c $<
+bneL.o: bneL.c bli.c b.h bdefines.h Judy.h
+	$(CC) $(CFLAGSI) $(DEFINES) -DB_JUDYL -fverbose-asm -save-temps -c $<
 
 # Default MALLOC_ALIGNMENT is 2 * sizeof(void *), except possibly on OSX.
 JudyMalloc.o: JudyMalloc.c dlmalloc.c Judy.h
-	$(CC) $(CFLAGS) $(MALLOC_FLAGS) $(DEFINES) -c $<
+	$(CC) $(CFLAGS) $(MALLOC_FLAGS) $(DEFINES) \
+    -fverbose-asm -save-temps -c $<
 
 ############################
 #
@@ -492,10 +500,12 @@ JudyMalloc.o: JudyMalloc.c dlmalloc.c Judy.h
 #
 ############################
 
-# Can't use dependencies on .c.s rule?
+# Why does this rule create something slightly different than
+# cc -save-temps -fverbose-asm?
 .c.s:
 	$(CC) $(CFLAGS) $(DEFINES) -S -fverbose-asm $<
 
+# Dependencies for .c.s rule.
 # Does using an explicit recipe inhibit creation of gch files?
 b.s: b.c b.h bdefines.h Judy.h
 bi.s: bi.c bli.c b.h bdefines.h Judy.h
@@ -505,19 +515,21 @@ bc.s: bc.c bli.c b.h bdefines.h Judy.h
 bn.s: bn.c bli.c b.h bdefines.h Judy.h
 bne.s: bne.c bli.c b.h bdefines.h Judy.h
 
-b-L.s: b.c b.h bdefines.h Judy.h
+# Why do these explicit targets create something slightly different than
+# cc -save-temps -fverbose-asm?
+b-L.s: b-L.c b.h bdefines.h Judy.h
 	$(CC) $(CFLAGS) $(DEFINES) -DB_JUDYL -S -fverbose-asm -o $@ -c $<
-biL.s: bi.c bli.c b.h bdefines.h Judy.h
+biL.s: biL.c bli.c b.h bdefines.h Judy.h
 	$(CC) $(CFLAGS) $(DEFINES) -DB_JUDYL -S -fverbose-asm -o $@ -c $<
-blL.s: bl.c bli.c b.h bdefines.h Judy.h
+blL.s: blL.c bli.c b.h bdefines.h Judy.h
 	$(CC) $(CFLAGS) $(DEFINES) -DB_JUDYL -S -fverbose-asm -o $@ -c $<
-brL.s: br.c bli.c b.h bdefines.h Judy.h
+brL.s: brL.c bli.c b.h bdefines.h Judy.h
 	$(CC) $(CFLAGS) $(DEFINES) -DB_JUDYL -S -fverbose-asm -o $@ -c $<
-bcL.s: bc.c bli.c b.h bdefines.h Judy.h
+bcL.s: bcL.c bli.c b.h bdefines.h Judy.h
 	$(CC) $(CFLAGS) $(DEFINES) -DB_JUDYL -S -fverbose-asm -o $@ -c $<
-bnL.s: bn.c bli.c b.h bdefines.h Judy.h
+bnL.s: bnL.c bli.c b.h bdefines.h Judy.h
 	$(CC) $(CFLAGS) $(DEFINES) -DB_JUDYL -S -fverbose-asm -o $@ -c $<
-bneL.s: bne.c bli.c b.h bdefines.h Judy.h
+bneL.s: bneL.c bli.c b.h bdefines.h Judy.h
 	$(CC) $(CFLAGS) $(DEFINES) -DB_JUDYL -S -fverbose-asm -o $@ -c $<
 
 # Suppress warnings. Transitive warnings. t.c just includes other files.
@@ -534,106 +546,86 @@ JudyMalloc.s: JudyMalloc.c
 
 ############################
 #
-# Rules for building unifdefed files.
+# Rules for building -fdirectives-only -do.c files for reading.
 #
 ############################
-
-bl-unifdef.c: bl.c bli.c b.h bdefines.h Judy.h
-	gcc $(CFLAGS) $(DEFINES) -E -fdirectives-only $< \
- | egrep -v "^#[0-9]*|^ *$$" > $@
-
-bi-unifdef.c: bi.c bli.c b.h bdefines.h Judy.h
-	gcc $(CFLAGS) $(DEFINES) -E -fdirectives-only $< \
- | egrep -v "^#[0-9]*|^ *$$" > $@
-
-blL-unifdef.c: blL.c bli.c b.h bdefines.h Judy.h
-	gcc $(CFLAGS) $(DEFINES) -DB_JUDYL -E -fdirectives-only $< \
- | egrep -v "^#[0-9]*|^ *$$" > $@
-
-biL-unifdef.c: biL.c bli.c b.h bdefines.h Judy.h
-	gcc $(CFLAGS) $(DEFINES) -DB_JUDYL -E -fdirectives-only $< \
- | egrep -v "^#[0-9]*|^ *$$" > $@
-
-############################
-#
-# Rules for building .i files.
-#
-############################
-
-# This .c.i rule doesn't work for some reason. Like it doesn't exist.
-.c.i:
-	$(CC) $(CFLAGS) $(DEFINES) -E $< | egrep -v "^#[0-9]*|^ *$$" > $@
-
-# The .i rules don't work with DEBUG. A problem with assert macro and indent?
 
 # Maybe use indent for crazy macros and disable it with
 # /* *INDENT-(OFF|ON)* */ and/or // *INDENT-(OFF|ON)* for most of the code.
 # indent -npcs -nprs -ntac -nss -i4 -bap -bfda -br -nut -bbo -bli0
 # Old .c.i rule: $(CC) $(CFLAGS) $(DEFINES) -E $< | indent -i4 | expand > $@
 
-b.i: b.c b.h bdefines.h Judy.h
-	$(CC) $(CFLAGS) $(DEFINES) -E $< | egrep -v "^#[0-9]*|^ *$$" > $@
+b-do.c: b-do.c b.h bdefines.h Judy.h
+	gcc $(CFLAGS) $(DEFINES) -E -fdirectives-only $< \
+    | egrep -v "^# [0-9]+|^ *$$" | expand > $@
 
-bl.i: bl.c bli.c b.h bdefines.h Judy.h
-	$(CC) $(CFLAGS) $(DEFINES) -E $< | egrep -v "^#[0-9]*|^ *$$" > $@
+bl-do.c: bl.c bli.c b.h bdefines.h Judy.h
+	gcc $(CFLAGS) $(DEFINES) -E -fdirectives-only $< \
+    | egrep -v "^# [0-9]+|^ *$$" | expand > $@
 
-bi.i: bi.c bli.c b.h bdefines.h Judy.h
-	$(CC) $(CFLAGS) $(DEFINES) -E $< | egrep -v "^#[0-9]*|^ *$$" > $@
+bi-do.c: bi.c bli.c b.h bdefines.h Judy.h
+	gcc $(CFLAGS) $(DEFINES) -E -fdirectives-only $< \
+    | egrep -v "^# [0-9]+|^ *$$" | expand > $@
 
-br.i: br.c bli.c b.h bdefines.h Judy.h
-	$(CC) $(CFLAGS) $(DEFINES) -E $< | egrep -v "^#[0-9]*|^ *$$" > $@
+br-do.c: br.c bli.c b.h bdefines.h Judy.h
+	gcc $(CFLAGS) $(DEFINES) -E -fdirectives-only $< \
+    | egrep -v "^# [0-9]+|^ *$$" | expand > $@
 
-bc.i: bc.c bli.c b.h bdefines.h Judy.h
-	$(CC) $(CFLAGS) $(DEFINES) -E $< | egrep -v "^#[0-9]*|^ *$$" > $@
+bc-do.c: bc.c bli.c b.h bdefines.h Judy.h
+	gcc $(CFLAGS) $(DEFINES) -E -fdirectives-only $< \
+    | egrep -v "^# [0-9]+|^ *$$" | expand > $@
 
-bn.i: bn.c
-	$(CC) $(CFLAGS) $(DEFINES) -E $< | egrep -v "^#[0-9]*|^ *$$" > $@
+bn-do.c: bn.c
+	gcc $(CFLAGS) $(DEFINES) -E -fdirectives-only $< \
+    | egrep -v "^# [0-9]+|^ *$$" | expand > $@
 
-bne.i: bne.c
-	$(CC) $(CFLAGS) $(DEFINES) -E $< | egrep -v "^#[0-9]*|^ *$$" > $@
+bne-do.c: bne.c
+	gcc $(CFLAGS) $(DEFINES) -E -fdirectives-only $< \
+    | egrep -v "^# [0-9]+|^ *$$" | expand > $@
 
-b-L.i: b.c b.h bdefines.h Judy.h
-	$(CC) $(CFLAGS) $(DEFINES) -DB_JUDYL -E $< \
- | egrep -v "^#[0-9]*|^ *$$" > $@
+b-L-do.c: b.c b.h bdefines.h Judy.h
+	gcc $(CFLAGS) $(DEFINES) -E -fdirectives-only $< \
+    | egrep -v "^# [0-9]+|^ *$$" | expand > $@
 
-blL.i: blL.c bli.c b.h bdefines.h Judy.h
-	$(CC) $(CFLAGS) $(DEFINES) -DB_JUDYL -E $< \
- | egrep -v "^#[0-9]*|^ *$$" > $@
+blL-do.c: blL.c bli.c b.h bdefines.h Judy.h
+	gcc $(CFLAGS) $(DEFINES) -DB_JUDYL -E -fdirectives-only $< \
+    | egrep -v "^# [0-9]+|^ *$$" | expand > $@
 
-biL.i: biL.c bli.c b.h bdefines.h Judy.h
-	$(CC) $(CFLAGS) $(DEFINES) -DB_JUDYL -E $< \
- | egrep -v "^#[0-9]*|^ *$$" > $@
+biL-do.c: biL.c bli.c b.h bdefines.h Judy.h
+	gcc $(CFLAGS) $(DEFINES) -DB_JUDYL -E -fdirectives-only $< \
+    | egrep -v "^# [0-9]+|^ *$$" | expand > $@
 
-brL.i: brL.c bli.c b.h bdefines.h Judy.h
-	$(CC) $(CFLAGS) $(DEFINES) -DB_JUDYL -E $< \
- | egrep -v "^#[0-9]*|^ *$$" > $@
+brL-do.c: brL.c bli.c b.h bdefines.h Judy.h
+	gcc $(CFLAGS) $(DEFINES) -E -fdirectives-only $< \
+    | egrep -v "^# [0-9]+|^ *$$" | expand > $@
 
-bcL.i: bcL.c bli.c b.h bdefines.h Judy.h
-	$(CC) $(CFLAGS) $(DEFINES) -DB_JUDYL -E $< \
- | egrep -v "^#[0-9]*|^ *$$" > $@
+bcL-do.c: bcL.c bli.c b.h bdefines.h Judy.h
+	gcc $(CFLAGS) $(DEFINES) -E -fdirectives-only $< \
+    | egrep -v "^# [0-9]+|^ *$$" | expand > $@
 
-bnL.i: bn.c bli.c b.h bdefines.h Judy.h
-	$(CC) $(CFLAGS) $(DEFINES) -DB_JUDYL -E $< \
- | egrep -v "^#[0-9]*|^ *$$" > $@
+bnL-do.c: bn.c bli.c b.h bdefines.h Judy.h
+	gcc $(CFLAGS) $(DEFINES) -E -fdirectives-only $< \
+    | egrep -v "^# [0-9]+|^ *$$" | expand > $@
 
-bneL.i: bne.c bli.c b.h bdefines.h Judy.h
-	$(CC) $(CFLAGS) $(DEFINES) -DB_JUDYL -E $< \
- | egrep -v "^#[0-9]*|^ *$$" > $@
+bneL-do.c: bne.c bli.c b.h bdefines.h Judy.h
+	gcc $(CFLAGS) $(DEFINES) -E -fdirectives-only $< \
+    | egrep -v "^# [0-9]+|^ *$$" | expand > $@
 
-Judy1LHTime.i: Judy1LHTime.c
-	$(CC) $(CFLAGS) -DMIKEY_1 -DMIKEY_L $(DEFINES) -E $< \
-  | egrep -v "^#[0-9]*|^ *$$" > $@
+Judy1LHTime-do.c: Judy1LHTime.c
+	gcc $(CFLAGS) $(DEFINES) -E -fdirectives-only $< \
+    | egrep -v "^# [0-9]+|^ *$$" | expand > $@
 
-Judy1LHCheck.i: Judy1LHCheck.c
-	$(CC) $(CFLAGS) -DMIKEY_1 -DMIKEY_L $(DEFINES) -E $< \
-  | egrep -v "^#[0-9]*|^ *$$" > $@
+Judy1LHCheck-do.c: Judy1LHCheck.c
+	gcc $(CFLAGS) $(DEFINES) -E -fdirectives-only $< \
+    | egrep -v "^# [0-9]+|^ *$$" | expand > $@
 
-t.i: t.c
-	$(CC) $(CFLAGS) $(DEFINES) -E $< | egrep -v "^#[0-9]*|^ *$$" > $@
+t-do.c: t.c
+	gcc $(CFLAGS) $(DEFINES) -E -fdirectives-only $< \
+    | egrep -v "^# [0-9]+|^ *$$" | expand > $@
 
-JudyMalloc.i: JudyMalloc.c
-	$(CC) $(CFLAGS) $(MALLOC_FLAGS) $(DEFINES) -E $< \
-  | egrep -v "^#[0-9]*|^ *$$" > $@
+JudyMalloc-do.c: JudyMalloc.c
+	gcc $(CFLAGS) $(DEFINES) -E -fdirectives-only $< \
+    | egrep -v "^# [0-9]+|^ *$$" | expand > $@
 
 #
 # -mmmx -msse -msse2 -mno-sse4 is the default for -m64 as of this writing
