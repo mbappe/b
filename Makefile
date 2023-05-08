@@ -447,17 +447,15 @@ JudyMalloc.so: JudyMalloc.c dlmalloc.c Judy.h
 ############################
 
 CFLAGSI = $(CFLAGS)
-#ifeq "$(CC)" "clang"
-#  CFLAGSI += -mllvm -inline-threshold=20000
-#endif
+ifeq "$(CC)" "clang"
+  CFLAGSI += -mllvm -inline-threshold=20000
+endif
 
 .c.o:
 	$(CC) $(CFLAGSI) $(DEFINES) -c $<
 
-#b.o: b.c b.h bdefines.h Judy.h
-#	$(CC) $(CFLAGS) $(DEFINES) -c $<
 b.o: b.h bdefines.h Judy.h
-bi.o: bi.c bli.c b.h bdefines.h Judy.h
+bi.o: bli.c b.h bdefines.h Judy.h
 bl.o: bli.c b.h bdefines.h Judy.h
 br.o: bli.c b.h bdefines.h Judy.h
 bc.o: bli.c b.h bdefines.h Judy.h

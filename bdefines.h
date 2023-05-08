@@ -1013,6 +1013,7 @@
 // for the pLn for which it is called.
 // Instead of calling back into Insert we simply return NULL to cause
 // Insert to loop back to the top with the pwLnX that it already knows.
+// Are there cases where InsertGuts will know better than Insert?
 #ifdef REMOTE_LNX
   #undef  _RETURN_NULL_TO_INSERT_AGAIN
   #define _RETURN_NULL_TO_INSERT_AGAIN
