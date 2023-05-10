@@ -142,7 +142,7 @@ endif
 # CC_MFLAGS += -mno-sse4     # implies no -msse4.1
 # CC_MFLAGS += -mavx         # implies -msse4.2
 # CC_MFLAGS += -mno-avx      # implies no -mavx2
-# CC_MFLAGS += -mavx2        # implies -mavx
+  CC_MFLAGS += -mavx2        # implies -mavx
 # CC_MFLAGS += -mno-avx2
 # CC_MFLAGS += -mbmi         # for lzcnt, tzcnt
 # CC_MFLAGS += -mbmi2        # for pdep
@@ -353,12 +353,12 @@ b: btime bcheck
 # compilers where -pie is default.
 btime: Judy1LHTime.c libb.a
 	$(CC) $(CFLAGS) -DJUDY1_DUMP -DJUDYL_DUMP -DMIKEY_1 -DMIKEY_L \
- $(DEFINES) -fverbose-asm -save-temps -o $@ $^ -lm
+ $(DEFINES) -o $@ $^ -lm
 
 # Need -lm on Ubuntu. Appears to be unnecessary on macOS.
 bcheck: Judy1LHCheck.c libb.a
 	$(CC) $(CFLAGS) -DJUDY1_DUMP -DJUDYL_DUMP -DMIKEY_1 -DMIKEY_L \
- $(DEFINES) -fverbose-asm -save-temps -o $@ $^ -lm
+ $(DEFINES) -o $@ $^ -lm
 
 c++: c++time c++check
 
@@ -459,12 +459,12 @@ JudyMalloc.so: JudyMalloc.c dlmalloc.c Judy.h
 ############################
 
 CFLAGSI = $(CFLAGS)
-#ifeq "$(CC)" "clang"
-#  CFLAGSI += -mllvm -inline-threshold=20000
-#endif
+ifeq "$(CC)" "clang"
+  CFLAGSI += -mllvm -inline-threshold=20000
+endif
 
 .c.o:
-	$(CC) $(CFLAGSI) $(DEFINES) -fverbose-asm -save-temps -c $<
+	$(CC) $(CFLAGSI) $(DEFINES) -c $<
 
 b.o: b.h bdefines.h Judy.h
 bi.o: bli.c b.h bdefines.h Judy.h
@@ -475,24 +475,24 @@ bn.o: bli.c b.h bdefines.h Judy.h
 bne.o: bli.c b.h bdefines.h Judy.h
 
 b-L.o: b-L.c b.h bdefines.h Judy.h
-	$(CC) $(CFLAGSI) $(DEFINES) -DB_JUDYL -fverbose-asm -save-temps -c $<
+	$(CC) $(CFLAGSI) $(DEFINES) -DB_JUDYL -c $<
 biL.o: biL.c bli.c b.h bdefines.h Judy.h
-	$(CC) $(CFLAGSI) $(DEFINES) -DB_JUDYL -fverbose-asm -save-temps -c $<
+	$(CC) $(CFLAGSI) $(DEFINES) -DB_JUDYL -c $<
 blL.o: blL.c bli.c b.h bdefines.h Judy.h
-	$(CC) $(CFLAGSI) $(DEFINES) -DB_JUDYL -fverbose-asm -save-temps -c $<
+	$(CC) $(CFLAGSI) $(DEFINES) -DB_JUDYL -c $<
 brL.o: brL.c bli.c b.h bdefines.h Judy.h
-	$(CC) $(CFLAGSI) $(DEFINES) -DB_JUDYL -fverbose-asm -save-temps -c $<
+	$(CC) $(CFLAGSI) $(DEFINES) -DB_JUDYL -c $<
 bcL.o: bcL.c bli.c b.h bdefines.h Judy.h
-	$(CC) $(CFLAGSI) $(DEFINES) -DB_JUDYL -fverbose-asm -save-temps -c $<
+	$(CC) $(CFLAGSI) $(DEFINES) -DB_JUDYL -c $<
 bnL.o: bnL.c bli.c b.h bdefines.h Judy.h
-	$(CC) $(CFLAGSI) $(DEFINES) -DB_JUDYL -fverbose-asm -save-temps -c $<
+	$(CC) $(CFLAGSI) $(DEFINES) -DB_JUDYL -c $<
 bneL.o: bneL.c bli.c b.h bdefines.h Judy.h
-	$(CC) $(CFLAGSI) $(DEFINES) -DB_JUDYL -fverbose-asm -save-temps -c $<
+	$(CC) $(CFLAGSI) $(DEFINES) -DB_JUDYL -c $<
 
 # Default MALLOC_ALIGNMENT is 2 * sizeof(void *), except possibly on OSX.
 JudyMalloc.o: JudyMalloc.c dlmalloc.c Judy.h
 	$(CC) $(CFLAGS) $(MALLOC_FLAGS) $(DEFINES) \
-    -fverbose-asm -save-temps -c $<
+    -c $<
 
 ############################
 #

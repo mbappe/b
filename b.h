@@ -6119,7 +6119,7 @@ SearchList8(qpa, int nBLR, Word_t wKey)
 {
     qva; (void)nBLR;
 
-    assert(nBL <= 8);
+    assert(nBLR <= 8);
     // sizeof(__m128i) == 16 bytes
     int nPopCnt = PWR_xListPopCnt(&wRoot, pwr, nBLR);
     uint8_t *pcKeys = ls_pcKeysNATX(pwr, nPopCnt);
@@ -6138,12 +6138,12 @@ SearchList8(qpa, int nBLR, Word_t wKey)
     int nPos = 0;
 #if defined(PSPLIT_SEARCH_8)
 #if defined(BL_SPECIFIC_PSPLIT_SEARCH)
-    if (nBL == 8) {
+    if (nBLR == 8) {
         PSPLIT_SEARCH_BY_KEY(uint8_t, 8, pcKeys, nPopCnt, cKey, nPos);
     } else
 #endif // defined(BL_SPECIFIC_PSPLIT_SEARCH)
     {
-        PSPLIT_SEARCH_BY_KEY(uint8_t, nBL, pcKeys, nPopCnt, cKey, nPos);
+        PSPLIT_SEARCH_BY_KEY(uint8_t, nBLR, pcKeys, nPopCnt, cKey, nPos);
     }
 #elif defined(BACKWARD_SEARCH_8)
     SEARCHB(uint8_t, pcKeys, nPopCnt, cKey, nPos); (void)nBL;
@@ -6288,8 +6288,8 @@ ListHasKey1696(qpa, int nBLR, Word_t wKey)
 {
     qva; (void)nBLR;
 
-    assert(nBL >   8);
-    assert(nBL <= 16);
+    assert(nBLR >   8);
+    assert(nBLR <= 16);
     int nPopCnt = PWR_xListPopCnt(pwRoot, pwr, 16);
     assert(nPopCnt <= 6);
     uint16_t *psKeys = ls_psKeysNATX(pwr, nPopCnt);
@@ -6311,7 +6311,7 @@ ListHasKey1696(qpa, int nBLR, Word_t wKey)
     int nPos = 0;
   #if defined(PSPLIT_SEARCH_16)
       #if defined(BL_SPECIFIC_PSPLIT_SEARCH)
-    if (nBL == 16) {
+    if (nBLR == 16) {
   #if defined(UA_PARALLEL_128)
         PSPLIT_HASKEY_128_96(uint16_t, 16, psKeys, nPopCnt, sKey, nPos);
   #else // defined(UA_PARALLEL_128)
@@ -6320,7 +6320,7 @@ ListHasKey1696(qpa, int nBLR, Word_t wKey)
     } else
       #endif // defined(BL_SPECIFIC_PSPLIT_SEARCH)
     {
-        PSPLIT_HASKEY(Bucket_t, uint16_t, nBL, psKeys, nPopCnt, sKey, nPos);
+        PSPLIT_HASKEY(Bucket_t, uint16_t, nBLR, psKeys, nPopCnt, sKey, nPos);
     }
   #elif defined(BACKWARD_SEARCH_16) // defined(PSPLIT_SEARCH_16)
     SEARCHB(uint16_t, psKeys, nPopCnt, sKey, nPos); (void)nBL;
@@ -6419,14 +6419,14 @@ SearchList32(qpa, int nBLR, Word_t wKey)
     int nPos = 0;
 #if defined(PSPLIT_SEARCH_32)
   #if defined(BL_SPECIFIC_PSPLIT_SEARCH)
-    if (nBL == 32) {
+    if (nBLR == 32) {
         PSPLIT_SEARCH_BY_KEY(uint32_t, 32, piKeys, nPopCnt, iKey, nPos);
-    } else if (nBL == 24) {
+    } else if (nBLR == 24) {
         PSPLIT_SEARCH_BY_KEY(uint32_t, 24, piKeys, nPopCnt, iKey, nPos);
     } else
   #endif // defined(BL_SPECIFIC_PSPLIT_SEARCH)
     {
-        PSPLIT_SEARCH_BY_KEY(uint32_t, nBL, piKeys, nPopCnt, iKey, nPos);
+        PSPLIT_SEARCH_BY_KEY(uint32_t, nBLR, piKeys, nPopCnt, iKey, nPos);
         DBGX(printf("SearchList32 nPos %d\n", nPos));
     }
 #elif defined(BACKWARD_SEARCH_32) // defined(PSPLIT_PARALLEL_32)
@@ -6474,7 +6474,7 @@ ListHasKey32(qpa, int nBLR, Word_t wKey)
         PSPLIT_HASKEY(Bucket_t, uint32_t, nBLR, piKeys, nPopCnt, iKey, nPos);
     }
       #else // PSPLIT_PARALLEL
-    PSPLIT_SEARCH_BY_KEY(uint32_t, nBL, piKeys, nPopCnt, iKey, nPos);
+    PSPLIT_SEARCH_BY_KEY(uint32_t, nBLR, piKeys, nPopCnt, iKey, nPos);
       #endif // #else PSPLIT_PARALLEL
   #elif defined(BACKWARD_SEARCH_32)
     SEARCHB(uint32_t, piKeys, nPopCnt, iKey, nPos);
@@ -8457,6 +8457,118 @@ extern Word_t j__AllocWordsJV;   // value area
 #endif // POP_IN_WR_HB elif LIST_POP_IN_PREAMBLE
 
 void Checkpoint(qpa, const char *str);
+
+// Adjust pop count in a switch.
+// Increment for insert on the way down.
+// Decrement for remove on the way down.
+// Also used to undo itself after we discover insert or remove is redundant.
+static inline Word_t
+SwIncr(qpa, int nBLR, int nDigit, int nBW, int nIncr)
+{
+    qva; (void)nBLR; (void)nDigit; (void)nBW; (void)nIncr;
+  //#if defined(INSERT) || defined(REMOVE)
+      #if cnSwCnts != 0
+          #ifdef FULL_SW
+    if (nType == T_FULL_SW) {
+        //assert(0); // TBD: We need to check all subcounts.
+        //set_wr_nType(*pwRoot, T_SWITCH);
+             #ifdef _SKIP_TO_FULL_SW
+    } else if (nType == T_SKIP_TO_FULL_SW) {
+        //assert(0); // TBD: We need to check all subcounts.
+        //set_wr_nType(*pwRoot, T_SKIP_TO_SWITCH);
+             #endif // _SKIP_TO_FULL_SW
+    }
+          #endif // FULL_SW
+    Word_t* pwCnts = ((Switch_t*)pwr)->sw_awCnts;
+    if (nBLR <= 16) {
+        int nShift = (nBW > nLogSwSubCnts(1)) ? (nBW - nLogSwSubCnts(1)) : 0;
+        ((uint16_t*)pwCnts)[nDigit >> nShift] += nIncr;
+          #ifdef FULL_SW
+        if (((uint16_t*)pwCnts)[nDigit >> nShift] == EXP(nBLR - nBW + nShift))
+        {
+            if (nType == T_SWITCH) {
+                set_wr_nType(*pwRoot, T_FULL_SW);
+             #ifdef _SKIP_TO_FULL_SW
+            } else if (nType == T_SKIP_TO_SWITCH) {
+                set_wr_nType(*pwRoot, T_SKIP_TO_FULL_SW);
+             #endif // _SKIP_TO_FULL_SW
+            }
+        }
+          #endif // FULL_SW
+          #if cnBitsPerWord > 32
+    } else if (nBLR <= 32) {
+        int nShift = (nBW > nLogSwSubCnts(2)) ? (nBW - nLogSwSubCnts(2)) : 0;
+        ((uint32_t*)pwCnts)[nDigit >> nShift] += nIncr;
+          #ifdef FULL_SW
+        if (((uint32_t*)pwCnts)[nDigit >> nShift] == EXP(nBLR - nBW + nShift))
+        {
+            if (nType == T_SWITCH) {
+                set_wr_nType(*pwRoot, T_FULL_SW);
+             #ifdef _SKIP_TO_FULL_SW
+            } else if (nType == T_SKIP_TO_SWITCH) {
+                set_wr_nType(*pwRoot, T_SKIP_TO_FULL_SW);
+             #endif // _SKIP_TO_FULL_SW
+            }
+        }
+              #endif // FULL_SW
+          #endif // cnBitsPerWord > 32
+    } else {
+          #if cnSwCnts == 1
+        if (!(nDigit >> (nBW - 1)))
+          #endif // cnSwCnts == 1
+        {
+            int nShift = (nBW > cnLogSwCnts) ? (nBW - cnLogSwCnts) : 0;
+            pwCnts[nDigit >> nShift] += nIncr;
+          #ifdef FULL_SW
+            if (pwCnts[nDigit >> nShift] == BPW_EXP(nBLR - nBW + nShift)) {
+                if (nType == T_SWITCH) {
+                    set_wr_nType(*pwRoot, T_FULL_SW);
+             #ifdef _SKIP_TO_FULL_SW
+                } else if (nType == T_SKIP_TO_SWITCH) {
+                    set_wr_nType(*pwRoot, T_SKIP_TO_FULL_SW);
+             #endif // _SKIP_TO_FULL_SW
+                }
+            }
+          #endif // FULL_SW
+        }
+    }
+      #endif // cnSwCnts != 0
+    {
+        // We may temporarily increment above EXP(nBLR) when trying to insert
+        // a key into a full-pop subtree.
+        // If we could figure out how to abort the insert early that would
+        // probably be better.
+      #if cnSwCnts == 0
+      #ifdef FULL_SW
+        if (nType == T_FULL_SW) {
+            set_wr_nType(*pwRoot, T_SWITCH);
+             #ifdef _SKIP_TO_FULL_SW
+        } else if (nType == T_SKIP_TO_FULL_SW) {
+            set_wr_nType(*pwRoot, T_SKIP_TO_SWITCH);
+             #endif // _SKIP_TO_FULL_SW
+        }
+      #endif // FULL_SW
+      #endif // cnSwCnts == 0
+        Word_t wPopCnt = gwPopCnt(qya, nBLR) + nIncr;
+      #if cnSwCnts == 0
+      #ifdef FULL_SW
+        if (wPopCnt == BPW_EXP(nBLR)) {
+            if (nType == T_SWITCH) {
+                set_wr_nType(*pwRoot, T_FULL_SW);
+             #ifdef _SKIP_TO_FULL_SW
+            } else if (nType == T_SKIP_TO_SWITCH) {
+                set_wr_nType(*pwRoot, T_SKIP_TO_FULL_SW);
+             #endif // _SKIP_TO_FULL_SW
+            }
+        }
+      #endif // FULL_SW
+      #endif // cnSwCnts == 0
+        swPopCnt(qya, nBLR, wPopCnt);
+        return wPopCnt;
+    }
+  //#endif // defined(INSERT) || defined(REMOVE)
+    return 0;
+}
 
 #undef set_wr_nBLR
 #undef set_wr_nDLR

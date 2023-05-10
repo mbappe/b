@@ -340,118 +340,6 @@ SwCleanup(qpa, Word_t wKey, int nBLR
 }
 #endif // defined(INSERT) || defined(REMOVE)
 
-// Adjust pop count in a switch.
-// Increment for insert on the way down.
-// Decrement for remove on the way down.
-// Also used to undo itself after we discover insert or remove is redundant.
-static inline Word_t
-SwIncr(qpa, int nBLR, int nDigit, int nBW, int nIncr)
-{
-    qva; (void)nBLR; (void)nDigit; (void)nBW; (void)nIncr;
-  #if defined(INSERT) || defined(REMOVE)
-      #if cnSwCnts != 0
-          #ifdef FULL_SW
-    if (nType == T_FULL_SW) {
-        //assert(0); // TBD: We need to check all subcounts.
-        //set_wr_nType(*pwRoot, T_SWITCH);
-             #ifdef _SKIP_TO_FULL_SW
-    } else if (nType == T_SKIP_TO_FULL_SW) {
-        //assert(0); // TBD: We need to check all subcounts.
-        //set_wr_nType(*pwRoot, T_SKIP_TO_SWITCH);
-             #endif // _SKIP_TO_FULL_SW
-    }
-          #endif // FULL_SW
-    Word_t* pwCnts = ((Switch_t*)pwr)->sw_awCnts;
-    if (nBLR <= 16) {
-        int nShift = (nBW > nLogSwSubCnts(1)) ? (nBW - nLogSwSubCnts(1)) : 0;
-        ((uint16_t*)pwCnts)[nDigit >> nShift] += nIncr;
-          #ifdef FULL_SW
-        if (((uint16_t*)pwCnts)[nDigit >> nShift] == EXP(nBLR - nBW + nShift))
-        {
-            if (nType == T_SWITCH) {
-                set_wr_nType(*pwRoot, T_FULL_SW);
-             #ifdef _SKIP_TO_FULL_SW
-            } else if (nType == T_SKIP_TO_SWITCH) {
-                set_wr_nType(*pwRoot, T_SKIP_TO_FULL_SW);
-             #endif // _SKIP_TO_FULL_SW
-            }
-        }
-          #endif // FULL_SW
-          #if cnBitsPerWord > 32
-    } else if (nBLR <= 32) {
-        int nShift = (nBW > nLogSwSubCnts(2)) ? (nBW - nLogSwSubCnts(2)) : 0;
-        ((uint32_t*)pwCnts)[nDigit >> nShift] += nIncr;
-          #ifdef FULL_SW
-        if (((uint32_t*)pwCnts)[nDigit >> nShift] == EXP(nBLR - nBW + nShift))
-        {
-            if (nType == T_SWITCH) {
-                set_wr_nType(*pwRoot, T_FULL_SW);
-             #ifdef _SKIP_TO_FULL_SW
-            } else if (nType == T_SKIP_TO_SWITCH) {
-                set_wr_nType(*pwRoot, T_SKIP_TO_FULL_SW);
-             #endif // _SKIP_TO_FULL_SW
-            }
-        }
-              #endif // FULL_SW
-          #endif // cnBitsPerWord > 32
-    } else {
-          #if cnSwCnts == 1
-        if (!(nDigit >> (nBW - 1)))
-          #endif // cnSwCnts == 1
-        {
-            int nShift = (nBW > cnLogSwCnts) ? (nBW - cnLogSwCnts) : 0;
-            pwCnts[nDigit >> nShift] += nIncr;
-          #ifdef FULL_SW
-            if (pwCnts[nDigit >> nShift] == BPW_EXP(nBLR - nBW + nShift)) {
-                if (nType == T_SWITCH) {
-                    set_wr_nType(*pwRoot, T_FULL_SW);
-             #ifdef _SKIP_TO_FULL_SW
-                } else if (nType == T_SKIP_TO_SWITCH) {
-                    set_wr_nType(*pwRoot, T_SKIP_TO_FULL_SW);
-             #endif // _SKIP_TO_FULL_SW
-                }
-            }
-          #endif // FULL_SW
-        }
-    }
-      #endif // cnSwCnts != 0
-    {
-        // We may temporarily increment above EXP(nBLR) when trying to insert
-        // a key into a full-pop subtree.
-        // If we could figure out how to abort the insert early that would
-        // probably be better.
-      #if cnSwCnts == 0
-      #ifdef FULL_SW
-        if (nType == T_FULL_SW) {
-            set_wr_nType(*pwRoot, T_SWITCH);
-             #ifdef _SKIP_TO_FULL_SW
-        } else if (nType == T_SKIP_TO_FULL_SW) {
-            set_wr_nType(*pwRoot, T_SKIP_TO_SWITCH);
-             #endif // _SKIP_TO_FULL_SW
-        }
-      #endif // FULL_SW
-      #endif // cnSwCnts == 0
-        Word_t wPopCnt = gwPopCnt(qya, nBLR) + nIncr;
-      #if cnSwCnts == 0
-      #ifdef FULL_SW
-        if (wPopCnt == BPW_EXP(nBLR)) {
-            if (nType == T_SWITCH) {
-                set_wr_nType(*pwRoot, T_FULL_SW);
-             #ifdef _SKIP_TO_FULL_SW
-            } else if (nType == T_SKIP_TO_SWITCH) {
-                set_wr_nType(*pwRoot, T_SKIP_TO_FULL_SW);
-             #endif // _SKIP_TO_FULL_SW
-            }
-        }
-      #endif // FULL_SW
-      #endif // cnSwCnts == 0
-        swPopCnt(qya, nBLR, wPopCnt);
-        return wPopCnt;
-    }
-  #endif // defined(INSERT) || defined(REMOVE)
-    return 0;
-}
-
 #ifdef _LNX
     #define swapynew  &pLn, pLnNew, pwLnXNew
 #else // _LNX
@@ -1239,9 +1127,6 @@ fastAgain:;
     case T_SWITCH: // no-skip (aka close) switch (vs. distant switch) w/o bm
               #ifdef NEXT_EMPTY
               #ifdef FULL_SW
-        if (gwPopCnt(qya, nBLR) == BPW_EXP(nBLR)) {
-printf("\n# T_SWITCH full pop nBL %d nBLR %d\n", nBL, nBLR);
-        }
         assert(gwPopCnt(qya, nBLR) != BPW_EXP(nBLR));
               #endif // FULL_SW
               #endif // NEXT_EMPTY
@@ -5514,7 +5399,6 @@ tryNextDigit:;
       #ifndef _RETURN_NULL_TO_INSERT_AGAIN
     BJL(assert(pwValue != NULL));
     BJL(assert(((Word_t)pwValue & (sizeof(Word_t) - 1)) == 0));
-    BJ1(if (status != Success) { printf("\nFailure\n"); exit(1); });
     BJ1(assert(status == Success));
       #endif // _RETURN_NULL_TO_INSERT_AGAIN
       #ifdef _RETURN_NULL_TO_INSERT_AGAIN
