@@ -293,29 +293,57 @@
     #define    PACK_L1_VALUES
   #endif // NO_PACK_L1_VALUES
 
-  #ifndef NO_PF_LK
-  #ifndef   NO_PREFETCH_LOCATEKEY_PSPLIT_VAL
-    #undef     PREFETCH_LOCATEKEY_PSPLIT_VAL
-    #define    PREFETCH_LOCATEKEY_PSPLIT_VAL
-  #endif // NO_PREFETCH_LOCATEKEY_PSPLIT_VAL
+  // Use NO_PF_VAL to disable all prefetch of any values.
+  // It does not disable prefetch of bitmap switch links aka PF_BM_SW_LN[X].
+  #ifdef NO_PF_VAL
+    #undef  NO_PF_LK
+    #define NO_PF_LK
+    #undef  NO_PF_EK_XV
+    #define NO_PF_EK_XV // also turns off PF_EK_XV_2
+    #undef  NO_PF_BM
+    #define NO_PF_BM
+  #endif // NO_PF_VAL
 
-  #ifndef   NO_PREFETCH_LOCATEKEY_NEXT_VAL
-    #undef     PREFETCH_LOCATEKEY_NEXT_VAL
-    #define    PREFETCH_LOCATEKEY_NEXT_VAL
-  #endif // NO_PREFETCH_LOCATEKEY_NEXT_VAL
-
-  #ifndef   NO_PREFETCH_LOCATEKEY_PREV_VAL
-    #undef     PREFETCH_LOCATEKEY_PREV_VAL
-    #define    PREFETCH_LOCATEKEY_PREV_VAL
-  #endif // NO_PREFETCH_LOCATEKEY_PREV_VAL
+  // Use NO_PF_LK to disable prefetch of values for LocateKey searches.
+  #ifdef    NO_PF_LK
+    #undef  NO_PF_LK_PSPLIT_VAL
+    #define NO_PF_LK_PSPLIT_VAL
+    #undef  NO_PF_LK_NEXT_VAL
+    #define NO_PF_LK_NEXT_VAL
+    #undef  NO_PF_LK_PREV_VAL
+    #define NO_PF_LK_PREV_VAL
   #endif // NO_PF_LK
+
+  #ifndef          PF_LK_PSPLIT_VAL
+    #ifndef     NO_PF_LK_PSPLIT_VAL
+      #define      PF_LK_PSPLIT_VAL
+    #endif  // !NO_PF_LK_PSPLIT_VAL
+  #elif defined(NO_PF_LK_PSPLIT_VAL) // !PF_LK_PSPLIT_VAL
+    #error PF_LK_PSPLIT_VAL with NO_PF_LK_PSPLIT_VAL.
+  #endif       // !PF_LK_PSPLIT_VAL elif NO_PF_LK_PSPLIT_VAL
+
+  #ifndef          PF_LK_NEXT_VAL
+    #ifndef     NO_PF_LK_NEXT_VAL
+      #define      PF_LK_NEXT_VAL
+    #endif  // !NO_PF_LK_NEXT_VAL
+  #elif defined(NO_PF_LK_NEXT_VAL) // !PF_LK_NEXT_VAL
+    #error PF_LK_NEXT_VAL with NO_PF_LK_NEXT_VAL.
+  #endif       // !PF_LK_NEXT_VAL elif NO_PF_LK_NEXT_VAL
+
+  #ifndef          PF_LK_PREV_VAL
+    #ifndef     NO_PF_LK_PREV_VAL
+      #define      PF_LK_PREV_VAL
+    #endif  // !NO_PF_LK_PREV_VAL
+  #elif defined(NO_PF_LK_PREV_VAL) // !PF_LK_PREV_VAL
+    #error PF_LK_PREV_VAL with NO_PF_LK_PREV_VAL.
+  #endif       // !PF_LK_PREV_VAL elif NO_PF_LK_PREV_VAL
 
   #ifndef NO_CACHE_ALIGN_L1
     #undef   CACHE_ALIGN_L1
     #define  CACHE_ALIGN_L1
   #endif // #ifndef NO_CACHE_ALIGN_L1
 
-  // PREFETCH_LOCATE_KEY_8_[BEG|END]_VAL are not necessary with
+  // PF_LK_8_[BEG|END]_VAL are not necessary with
   // default cnListPopCntMaxDl1=4 and CACHE_ALIGN_L1.
 
 #else // B_JUDYL
@@ -357,17 +385,30 @@
   #undef  NO_EK_CALC_POP
   #define NO_EK_CALC_POP
 
-  // Default is prefetch 1st cache line of value area for EK_XV.
-  #ifndef NO_PF_EK_XV
-    #undef  PF_EK_XV
-    #define PF_EK_XV
-  #endif // #ifndef NO_PF_EK_XV
+  // NO_PF_EK_XV implies NO_PF_EK_XV_2.
+  #ifdef    NO_PF_EK_XV
+    #undef  NO_PF_EK_XV_2
+    #define NO_PF_EK_XV_2
+  #endif // NO_PF_EK_XV
 
-  // Default is prefetch 2nd cache line of value area for EK_XV.
-  #ifndef NO_PF_EK_XV_2
-    #undef  PF_EK_XV_2
-    #define PF_EK_XV_2
-  #endif // #ifndef NO_PF_EK_XV_2
+  // Default is prefetch 1st cache line of value area for EK_XV.
+  #ifndef          PF_EK_XV
+    #ifndef     NO_PF_EK_XV
+      #define      PF_EK_XV
+    #endif  // !NO_PF_EK_XV
+  #elif defined(NO_PF_EK_XV) // !PF_EK_XV
+    #error PF_EK_XV disallowed.
+  #endif       // !PF_EK_XV elif NO_PF_EK
+
+  // Default is prefetch 2nd cache line of value area for EK_XV if
+  // population is greater than two.
+  #ifndef          PF_EK_XV_2
+    #ifndef     NO_PF_EK_XV_2
+      #define      PF_EK_XV_2
+    #endif  // !NO_PF_EK_XV_2
+  #elif defined(NO_PF_EK_XV_2) // !PF_EK_XV_2
+    #error PF_EK_XV_2 disallowed.
+  #endif       // !PF_EK_XV_2 elif NO_PF_EK_XV_2
 #endif // EK_XV
 
 #ifdef DOUBLE_DOWN
@@ -759,30 +800,53 @@
       #undef BMLF_CNTS_CUM
       #undef BMLF_CNTS_IN_LNX
     #endif // BMLF_CNTS else
-    #ifndef NO_PF_BM
-      #if cnBitsInD1 != 8
-        #undef  NO_PF_BM_SUBEX_PSPLIT
-        #define NO_PF_BM_SUBEX_PSPLIT
-      #endif // cnBitsInD1 != 8
-      #if cnBitsPerWord < 64
-        #undef  NO_PF_BM_SUBEX_PSPLIT
-        #define NO_PF_BM_SUBEX_PSPLIT
-      #endif // cnBitsPerWord < 64
-      #ifndef NO_PF_BM_SUBEX_PSPLIT
-        #undef  PF_BM_SUBEX_PSPLIT
-        #define PF_BM_SUBEX_PSPLIT
-      #endif // !NO_PF_BM_SUBEX_PSPLIT
-      // Default is PF_BM_[NEXT|PREV]_HALF_VAL.
-      // Default is no PREFETCH_BM_[PSPLIT|NEXT|PREV]_VAL.
-      #ifndef NO_PF_BM_PREV_HALF_VAL
-        #undef   PF_BM_PREV_HALF_VAL
-        #define  PF_BM_PREV_HALF_VAL
-      #endif // #ifndef NO_PF_BM_PREV_HALF_VAL
-      #ifndef NO_PF_BM_NEXT_HALF_VAL
-        #undef   PF_BM_NEXT_HALF_VAL
-        #define  PF_BM_NEXT_HALF_VAL
-      #endif // #ifndef NO_PF_BM_NEXT_HALF_VAL
+
+    #ifdef NO_PF_BM
+      #undef  NO_BM_DSPLIT
+      #define NO_BM_DSPLIT
+      #undef  NO_PF_BM_NEXT_HALF_VAL
+      #define NO_PF_BM_NEXT_HALF_VAL
+      #undef  NO_PF_BM_PREV_HALF_VAL
+      #define NO_PF_BM_PREV_HALF_VAL
     #endif // NO_PF_BM
+
+    #ifndef BM_DSPLIT
+      #if cnBitsInD1 == 8 && cnBitsPerWord == 64 && !defined(NO_BM_DSPLIT)
+        #define BM_DSPLIT
+      #endif // cnBitsInD1 == 8 || cnBitsPerWord == 64 || !NO_BM_DSPLIT
+    #elif cnBitsInD1 != 8 || cnBitsPerWord != 64 || defined(NO_BM_DSPLIT)
+      #error BM_DSPLIT disallowed.
+    #endif // BM_DSPLIT elif cnBitsInD1!=8 || cnBitsPerWord!=64 || NO_BM_DSPLIT
+
+    #ifdef PF_BM_PSPLIT_VAL
+      #undef  NO_PF_BM_NEXT_HALF_VAL
+      #define NO_PF_BM_NEXT_HALF_VAL
+      #undef  NO_PF_BM_PREV_HALF_VAL
+      #define NO_PF_BM_PREV_HALF_VAL
+    #elif defined(PF_BM_NEXT_VAL) || defined(PF_BM_PREV_VAL) //PF_BM_PSPLIT_VAL
+      #undef  NO_PF_BM_NEXT_HALF_VAL
+      #define NO_PF_BM_NEXT_HALF_VAL
+      #undef  NO_PF_BM_PREV_HALF_VAL
+      #define NO_PF_BM_PREV_HALF_VAL
+    #endif // PF_BM_PSPLIT_VAL elif PF_BM_NEXT_VAL || PF_BM_PREV_VAL
+
+    // Default is PF_BM_[NEXT|PREV]_HALF_VAL
+    // so default is no PF_BM_[PSPLIT|NEXT|PREV]_VAL.
+    #ifndef          PF_BM_NEXT_HALF_VAL
+      #ifndef     NO_PF_BM_NEXT_HALF_VAL
+        #define      PF_BM_NEXT_HALF_VAL
+      #endif  // !NO_PF_BM_NEXT_HALF_VAL
+    #elif defined(NO_PF_BM_NEXT_HALF_VAL) // !PF_BM_NEXT_HALF_VAL
+      #error PF_BM_NEXT_HALF_VAL with NO_PF_BM_NEXT_HALF_VAL.
+    #endif       // !PF_BM_NEXT_HALF_VAL elif NO_PF_BM_NEXT_HALF_VAL
+    #ifndef          PF_BM_PREV_HALF_VAL
+      #ifndef     NO_PF_BM_PREV_HALF_VAL
+        #define      PF_BM_PREV_HALF_VAL
+      #endif   // NO_PF_BM_PREV_HALF_VAL
+    #elif defined(NO_PF_BM_PREV_HALF_VAL) // !PF_BM_PREV_HALF_VAL
+      #error PF_BM_PREV_HALF_VAL with NO_PF_BM_PREV_HALF_VAL.
+    #endif //       !PF_BM_PREV_HALF_VAL elif NO_PF_BM_PREV_HALF_VAL
+
   #endif // PACK_BM_VALUES
 
   // UNPACK_BM_VALUES means use an unpacked value area for a bitmap leaf

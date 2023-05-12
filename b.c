@@ -3902,11 +3902,11 @@ InsertAllAtBitmap(qpa, qpx(Old), int nStart, int nPopCnt)
     }
               #ifdef BMLF_CNTS_CUM
     *(Word_t*)pu8Cnts *= 0x01010100;
-                  #ifdef PF_BM_SUBEX_PSPLIT
+                  #ifdef BM_DSPLIT
     for (int nn = 0; nn < (1 << (cnBitsInD1 - cnLogBitsPerWord)); ++nn) {
         pu8Cnts[4+nn] = PopCount64(pwBitmap[nn]);
     }
-                  #endif // PF_BM_SUBEX_PSPLIT
+                  #endif // BM_DSPLIT
               #endif // BMLF_CNTS_CUM
           #endif // #else BMLF_POP_COUNT_8
       #endif // #else BMLF_POP_COUNT_32
@@ -10101,9 +10101,9 @@ done:
     {
         ++pu8Cnts[nn];
     }
-                  #ifdef PF_BM_SUBEX_PSPLIT
+                  #ifdef BM_DSPLIT
     ++pu8Cnts[4+nBmWord];
-                  #endif // PF_BM_SUBEX_PSPLIT
+                  #endif // BM_DSPLIT
               #else // BMLF_CNTS_CUM
     ++pu8Cnts[nBmWord];
               #endif // BMLF_CNTS_CUM else
@@ -10741,14 +10741,14 @@ RemoveAtBitmap(qpa, Word_t wKey)
         pu8Cnts[nn] = PopCount64(pwBitmap[nn]);
     }
               #ifdef BMLF_CNTS_CUM
-                  #ifdef PF_BM_SUBEX_PSPLIT
+                  #ifdef BM_DSPLIT
     Word_t wCnts = *(Word_t*)pu8Cnts;
-                  #endif // PF_BM_SUBEX_PSPLIT
+                  #endif // BM_DSPLIT
     *(Word_t*)pu8Cnts *= 0x01010100;
-                  #ifdef PF_BM_SUBEX_PSPLIT
+                  #ifdef BM_DSPLIT
     *(Word_t*)pu8Cnts &= (Word_t)0xffffffffUL;
     *(Word_t*)pu8Cnts |= wCnts << 32;
-                  #endif // PF_BM_SUBEX_PSPLIT
+                  #endif // BM_DSPLIT
               #endif // BMLF_CNTS_CUM
           #endif // #else BMLF_POP_COUNT_8
       #endif // #else BMLF_POP_COUNT_32
@@ -10849,9 +10849,9 @@ done:
         {
             --pu8Cnts[nn];
         }
-                  #ifdef PF_BM_SUBEX_PSPLIT
+                  #ifdef BM_DSPLIT
         --pu8Cnts[4+nBmWord];
-                  #endif // PF_BM_SUBEX_PSPLIT
+                  #endif // BM_DSPLIT
               #else // BMLF_CNTS_CUM
         --pu8Cnts[nBmWord];
               #endif // BMLF_CNTS_CUM else
@@ -11137,11 +11137,11 @@ Initialize(void)
 #endif //        _USE_LOCATE_KEY else
 
                  // Prefetch bitmap leaf value using subexpanse psplit.
-#ifdef           PF_BM_SUBEX_PSPLIT
-    printf("#    PF_BM_SUBEX_PSPLIT\n");
-#else //         PF_BM_SUBEX_PSPLIT
-    printf("# No PF_BM_SUBEX_PSPLIT\n");
-#endif //        PF_BM_SUBEX_PSPLIT else
+#ifdef           BM_DSPLIT
+    printf("#    BM_DSPLIT\n");
+#else //         BM_DSPLIT
+    printf("# No BM_DSPLIT\n");
+#endif //        BM_DSPLIT else
 
 #ifdef           HYPERTUNE_PF_BM
     printf("#    HYPERTUNE_PF_BM\n");
@@ -11394,11 +11394,11 @@ Initialize(void)
     printf("# No PF_BM_SW_LN\n");
 #endif // #else  PF_BM_SW_LN
 
-#ifdef           PREFETCH_BM_EK
-    printf("#    PREFETCH_BM_EK\n");
-#else //         PREFETCH_BM_EK
-    printf("# No PREFETCH_BM_EK\n");
-#endif // #else  PREFETCH_BM_EK
+#ifdef           PF_BM_SW_LNX
+    printf("#    PF_BM_SW_LNX\n");
+#else //         PF_BM_SW_LNX
+    printf("# No PF_BM_SW_LNX\n");
+#endif // #else  PF_BM_SW_LNX
 
 #ifdef           BMLF_INTERLEAVE
     printf("#    BMLF_INTERLEAVE\n");
@@ -11660,35 +11660,35 @@ Initialize(void)
     printf("# No NO_PF_LK\n");
 #endif // #else  NO_PF_LK
 
-#ifdef           PREFETCH_LOCATEKEY_PSPLIT_VAL
-    printf("#    PREFETCH_LOCATEKEY_PSPLIT_VAL\n");
-#else //         PREFETCH_LOCATEKEY_PSPLIT_VAL
-    printf("# No PREFETCH_LOCATEKEY_PSPLIT_VAL\n");
-#endif // #else  PREFETCH_LOCATEKEY_PSPLIT_VAL
+#ifdef           PF_LK_PSPLIT_VAL
+    printf("#    PF_LK_PSPLIT_VAL\n");
+#else //         PF_LK_PSPLIT_VAL
+    printf("# No PF_LK_PSPLIT_VAL\n");
+#endif // #else  PF_LK_PSPLIT_VAL
 
-#ifdef           PREFETCH_LOCATEKEY_NEXT_VAL
-    printf("#    PREFETCH_LOCATEKEY_NEXT_VAL\n");
-#else //         PREFETCH_LOCATEKEY_NEXT_VAL
-    printf("# No PREFETCH_LOCATEKEY_NEXT_VAL\n");
-#endif // #else  PREFETCH_LOCATEKEY_NEXT_VAL
+#ifdef           PF_LK_NEXT_VAL
+    printf("#    PF_LK_NEXT_VAL\n");
+#else //         PF_LK_NEXT_VAL
+    printf("# No PF_LK_NEXT_VAL\n");
+#endif // #else  PF_LK_NEXT_VAL
 
-#ifdef           PREFETCH_LOCATEKEY_PREV_VAL
-    printf("#    PREFETCH_LOCATEKEY_PREV_VAL\n");
-#else //         PREFETCH_LOCATEKEY_PREV_VAL
-    printf("# No PREFETCH_LOCATEKEY_PREV_VAL\n");
-#endif // #else  PREFETCH_LOCATEKEY_PREV_VAL
+#ifdef           PF_LK_PREV_VAL
+    printf("#    PF_LK_PREV_VAL\n");
+#else //         PF_LK_PREV_VAL
+    printf("# No PF_LK_PREV_VAL\n");
+#endif // #else  PF_LK_PREV_VAL
 
-#ifdef           PREFETCH_LOCATE_KEY_8_BEG_VAL
-    printf("#    PREFETCH_LOCATE_KEY_8_BEG_VAL\n");
-#else //         PREFETCH_LOCATE_KEY_8_BEG_VAL
-    printf("# No PREFETCH_LOCATE_KEY_8_BEG_VAL\n");
-#endif // #else  PREFETCH_LOCATE_KEY_8_BEG_VAL
+#ifdef           PF_LK_8_BEG_VAL
+    printf("#    PF_LK_8_BEG_VAL\n");
+#else //         PF_LK_8_BEG_VAL
+    printf("# No PF_LK_8_BEG_VAL\n");
+#endif // #else  PF_LK_8_BEG_VAL
 
-#ifdef           PREFETCH_LOCATE_KEY_8_END_VAL
-    printf("#    PREFETCH_LOCATE_KEY_8_END_VAL\n");
-#else //         PREFETCH_LOCATE_KEY_8_END_VAL
-    printf("# No PREFETCH_LOCATE_KEY_8_END_VAL\n");
-#endif // #else  PREFETCH_LOCATE_KEY_8_END_VAL
+#ifdef           PF_LK_8_END_VAL
+    printf("#    PF_LK_8_END_VAL\n");
+#else //         PF_LK_8_END_VAL
+    printf("# No PF_LK_8_END_VAL\n");
+#endif // #else  PF_LK_8_END_VAL
 
 #ifdef           LKIL8_ONE_BUCKET
     printf("#    LKIL8_ONE_BUCKET\n");
@@ -11708,35 +11708,35 @@ Initialize(void)
     printf("# No TEST_NPOS_BEFORE_END\n");
 #endif // #else  TEST_NPOS_BEFORE_END
 
-#ifdef           PREFETCH_EK_VAL
-    printf("#    PREFETCH_EK_VAL\n");
-#else //         PREFETCH_EK_VAL
-    printf("# No PREFETCH_EK_VAL\n");
-#endif // #else  PREFETCH_EK_VAL
+#ifdef           PF_EK_VAL
+    printf("#    PF_EK_VAL\n");
+#else //         PF_EK_VAL
+    printf("# No PF_EK_VAL\n");
+#endif // #else  PF_EK_VAL
 
-#ifdef           PREFETCH_BM_VAL
-    printf("#    PREFETCH_BM_VAL\n");
-#else //         PREFETCH_BM_VAL
-    printf("# No PREFETCH_BM_VAL\n");
-#endif // #else  PREFETCH_BM_VAL
+#ifdef           PF_UNPACKED_BM_VAL
+    printf("#    PF_UNPACKED_BM_VAL\n");
+#else //         PF_UNPACKED_BM_VAL
+    printf("# No PF_UNPACKED_BM_VAL\n");
+#endif // #else  PF_UNPACKED_BM_VAL
 
-#ifdef           PREFETCH_BM_PSPLIT_VAL
-    printf("#    PREFETCH_BM_PSPLIT_VAL\n");
-#else //         PREFETCH_BM_PSPLIT_VAL
-    printf("# No PREFETCH_BM_PSPLIT_VAL\n");
-#endif // #else  PREFETCH_BM_PSPLIT_VAL
+#ifdef           PF_BM_PSPLIT_VAL
+    printf("#    PF_BM_PSPLIT_VAL\n");
+#else //         PF_BM_PSPLIT_VAL
+    printf("# No PF_BM_PSPLIT_VAL\n");
+#endif // #else  PF_BM_PSPLIT_VAL
 
-#ifdef           PREFETCH_BM_NEXT_VAL
-    printf("#    PREFETCH_BM_NEXT_VAL\n");
-#else //         PREFETCH_BM_NEXT_VAL
-    printf("# No PREFETCH_BM_NEXT_VAL\n");
-#endif // #else  PREFETCH_BM_NEXT_VAL
+#ifdef           PF_BM_NEXT_VAL
+    printf("#    PF_BM_NEXT_VAL\n");
+#else //         PF_BM_NEXT_VAL
+    printf("# No PF_BM_NEXT_VAL\n");
+#endif // #else  PF_BM_NEXT_VAL
 
-#ifdef           PREFETCH_BM_PREV_VAL
-    printf("#    PREFETCH_BM_PREV_VAL\n");
-#else //         PREFETCH_BM_PREV_VAL
-    printf("# No PREFETCH_BM_PREV_VAL\n");
-#endif // #else  PREFETCH_BM_PREV_VAL
+#ifdef           PF_BM_PREV_VAL
+    printf("#    PF_BM_PREV_VAL\n");
+#else //         PF_BM_PREV_VAL
+    printf("# No PF_BM_PREV_VAL\n");
+#endif // #else  PF_BM_PREV_VAL
 
 #ifdef           PF_BM_PREV_HALF_VAL
     printf("#    PF_BM_PREV_HALF_VAL\n");
@@ -11768,11 +11768,11 @@ Initialize(void)
     printf("# No PREREAD_BM_PSPLIT_VAL\n");
 #endif // #else  PREREAD_BM_PSPLIT_VAL
 
-#ifdef           PREFETCH_PWR
-    printf("#    PREFETCH_PWR\n");
-#else //         PREFETCH_PWR
-    printf("# No PREFETCH_PWR\n");
-#endif // #else  PREFETCH_PWR
+#ifdef           PF_PWR
+    printf("#    PF_PWR\n");
+#else //         PF_PWR
+    printf("# No PF_PWR\n");
+#endif // #else  PF_PWR
 
 #if defined(BUILTIN_PREFETCH_0)
     printf("# BUILTIN_PREFETCH_0\n");
@@ -12879,11 +12879,11 @@ Initialize(void)
     printf("# No GPC_ALL_SKIP_TO_SW_CASES\n");
   #endif //      GPC_ALL_SKIP_TO_SW_CASES else
 
-#ifdef           NO_PF_BM_SUBEX_PSPLIT
-    printf("#    NO_PF_BM_SUBEX_PSPLIT\n");
-#else //         NO_PF_BM_SUBEX_PSPLIT
-    printf("# No NO_PF_BM_SUBEX_PSPLIT\n");
-#endif //        NO_PF_BM_SUBEX_PSPLIT else
+#ifdef           NO_BM_DSPLIT
+    printf("#    NO_BM_DSPLIT\n");
+#else //         NO_BM_DSPLIT
+    printf("# No NO_BM_DSPLIT\n");
+#endif //        NO_BM_DSPLIT else
 
 #ifdef           NO_PF_BM
     printf("#    NO_PF_BM\n");
@@ -12891,47 +12891,41 @@ Initialize(void)
     printf("# No NO_PF_BM\n");
 #endif //        NO_PF_BM else
 
-#ifdef           NO_PREFETCH_LOCATEKEY_PSPLIT_VAL
-    printf("#    NO_PREFETCH_LOCATEKEY_PSPLIT_VAL\n");
-#else //         NO_PREFETCH_LOCATEKEY_PSPLIT_VAL
-    printf("# No NO_PREFETCH_LOCATEKEY_PSPLIT_VAL\n");
-#endif // #else  NO_PREFETCH_LOCATEKEY_PSPLIT_VAL
+#ifdef           NO_PF_LK_PSPLIT_VAL
+    printf("#    NO_PF_LK_PSPLIT_VAL\n");
+#else //         NO_PF_LK_PSPLIT_VAL
+    printf("# No NO_PF_LK_PSPLIT_VAL\n");
+#endif // #else  NO_PF_LK_PSPLIT_VAL
 
-#ifdef           NO_PREFETCH_LOCATEKEY_NEXT_VAL
-    printf("#    NO_PREFETCH_LOCATEKEY_NEXT_VAL\n");
-#else //         NO_PREFETCH_LOCATEKEY_NEXT_VAL
-    printf("# No NO_PREFETCH_LOCATEKEY_NEXT_VAL\n");
-#endif // #else  NO_PREFETCH_LOCATEKEY_NEXT_VAL
+#ifdef           NO_PF_LK_NEXT_VAL
+    printf("#    NO_PF_LK_NEXT_VAL\n");
+#else //         NO_PF_LK_NEXT_VAL
+    printf("# No NO_PF_LK_NEXT_VAL\n");
+#endif // #else  NO_PF_LK_NEXT_VAL
 
-#ifdef           NO_PREFETCH_LOCATEKEY_PREV_VAL
-    printf("#    NO_PREFETCH_LOCATEKEY_PREV_VAL\n");
-#else //         NO_PREFETCH_LOCATEKEY_PREV_VAL
-    printf("# No NO_PREFETCH_LOCATEKEY_PREV_VAL\n");
-#endif // #else  NO_PREFETCH_LOCATEKEY_PREV_VAL
+#ifdef           NO_PF_LK_PREV_VAL
+    printf("#    NO_PF_LK_PREV_VAL\n");
+#else //         NO_PF_LK_PREV_VAL
+    printf("# No NO_PF_LK_PREV_VAL\n");
+#endif // #else  NO_PF_LK_PREV_VAL
 
-#ifdef           NO_PREFETCH_LOCATE_KEY_8_BEG_VAL
-    printf("#    NO_PREFETCH_LOCATE_KEY_8_BEG_VAL\n");
-#else //         NO_PREFETCH_LOCATE_KEY_8_BEG_VAL
-    printf("# No NO_PREFETCH_LOCATE_KEY_8_BEG_VAL\n");
-#endif // #else  NO_PREFETCH_LOCATE_KEY_8_BEG_VAL
+#ifdef           NO_PF_LK_8_BEG_VAL
+    printf("#    NO_PF_LK_8_BEG_VAL\n");
+#else //         NO_PF_LK_8_BEG_VAL
+    printf("# No NO_PF_LK_8_BEG_VAL\n");
+#endif // #else  NO_PF_LK_8_BEG_VAL
 
-#ifdef           NO_PREFETCH_LOCATE_KEY_8_END_VAL
-    printf("#    NO_PREFETCH_LOCATE_KEY_8_END_VAL\n");
-#else //         NO_PREFETCH_LOCATE_KEY_8_END_VAL
-    printf("# No NO_PREFETCH_LOCATE_KEY_8_END_VAL\n");
-#endif // #else  NO_PREFETCH_LOCATE_KEY_8_END_VAL
+#ifdef           NO_PF_LK_8_END_VAL
+    printf("#    NO_PF_LK_8_END_VAL\n");
+#else //         NO_PF_LK_8_END_VAL
+    printf("# No NO_PF_LK_8_END_VAL\n");
+#endif // #else  NO_PF_LK_8_END_VAL
 
-#ifdef           NO_PREFETCH_EK_VAL
-    printf("#    NO_PREFETCH_EK_VAL\n");
-#else //         NO_PREFETCH_EK_VAL
-    printf("# No NO_PREFETCH_EK_VAL\n");
-#endif // #else  NO_PREFETCH_EK_VAL
-
-#ifdef           NO_PREFETCH_BM_VAL
-    printf("#    NO_PREFETCH_BM_VAL\n");
-#else //         NO_PREFETCH_BM_VAL
-    printf("# No NO_PREFETCH_BM_VAL\n");
-#endif // #else  NO_PREFETCH_BM_VAL
+#ifdef           NO_PF_EK_VAL
+    printf("#    NO_PF_EK_VAL\n");
+#else //         NO_PF_EK_VAL
+    printf("# No NO_PF_EK_VAL\n");
+#endif // #else  NO_PF_EK_VAL
 
 #if defined(NO_USE_XX_SW)
     printf("#    NO_USE_XX_SW\n");

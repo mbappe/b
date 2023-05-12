@@ -3985,23 +3985,23 @@ extern const unsigned anBL_to_nDL[];
   #define PREFETCH(_p)  __builtin_prefetch(_p, 0, 0)
 #endif
 
-#ifdef PREFETCH_LOCATEKEY_PSPLIT_VAL
+#ifdef PF_LK_PSPLIT_VAL
 #define _PF_LK(_x)  (_x)
-#else // PREFETCH_LOCATEKEY_PSPLIT_VAL
+#else // PF_LK_PSPLIT_VAL
 #define _PF_LK(_x)
-#endif // #else PREFETCH_LOCATEKEY_PSPLIT_VAL
+#endif // #else PF_LK_PSPLIT_VAL
 
-#ifdef PREFETCH_LOCATEKEY_NEXT_VAL
+#ifdef PF_LK_NEXT_VAL
 #define _PF_LK_NX(_x)  (_x)
-#else // PREFETCH_LOCATEKEY_NEXT_VAL
+#else // PF_LK_NEXT_VAL
 #define _PF_LK_NX(_x)
-#endif // #else PREFETCH_LOCATEKEY_NEXT_VAL
+#endif // #else PF_LK_NEXT_VAL
 
-#ifdef PREFETCH_LOCATEKEY_PREV_VAL
+#ifdef PF_LK_PREV_VAL
 #define _PF_LK_PV(_x)  (_x)
-#else // PREFETCH_LOCATEKEY_PREV_VAL
+#else // PF_LK_PREV_VAL
 #define _PF_LK_PV(_x)
-#endif // #else PREFETCH_LOCATEKEY_PREV_VAL
+#endif // #else PF_LK_PREV_VAL
 
 #ifdef PARALLEL_256
   #define BUCKET_HAS_KEY HasKey256
@@ -7827,17 +7827,17 @@ LocateKeyInList8(qpa, int nBLR, Word_t wKey)
     assert(PWR_xListPopCnt(&wRoot, pwr, 8) <= 16);
   #endif // defined(POP_IN_WR_HB) || defined(LIST_POP_IN_PREAMBLE)
     assert(((Word_t)pwr & ~((Word_t)-1 << 4)) == 0);
-  #ifdef PREFETCH_LOCATE_KEY_8_BEG_VAL
+  #ifdef PF_LK_8_BEG_VAL
     // Prefetch the cache line before the keys.
     // Fetching the keys brings in 0 - 6 values assuming there are
     // no words between keys and values.
     // We'll end up with 8 - 14 values.
     BJL(PREFETCH(pwr - 8));
-  #endif // PREFETCH_LOCATE_KEY_8_BEG_VAL
-  #ifdef PREFETCH_LOCATE_KEY_8_END_VAL
+  #endif // PF_LK_8_BEG_VAL
+  #ifdef PF_LK_8_END_VAL
     // And the one before that.
     BJL(PREFETCH(pwr - 16));
-  #endif // PREFETCH_LOCATE_KEY_8_END_VAL
+  #endif // PF_LK_8_END_VAL
   #ifdef NEXT
   #ifdef TEST_END_BEFORE_BUCKET
     if ((wKey & 0xff) > ((uint8_t*)pwr)[sizeof(Bucket_t) - 1]) {

@@ -1782,14 +1782,14 @@ t_sw_64:
         wDigit = (wKey >> (nBLR - nBW)) & MSK(nBW); // extract bits from key
       #ifdef _LNX
         pwLnXNew = gpwLnX(qy, /* wLinks */ EXP(nBW), /* wIndex */ wDigit);
-          #ifdef PREFETCH_EK_VAL
+          #ifdef PF_EK_VAL
         PREFETCH(pwLnXNew);
-          #endif // PREFETCH_EK_VAL
+          #endif // PF_EK_VAL
       #endif // _LNX
         pLnNew = &pwr_pLinks((Switch_t *)pwr)[wDigit];
-      #ifdef PREFETCH_PWR
+      #ifdef PF_PWR
         PREFETCH(wr_pwr(pLnNew->ln_wRoot));
-      #endif // PREFETCH_PWR
+      #endif // PF_PWR
         SwAdvance(pqya, swapynew, nBW, &nBLR); // updates wRoot
         // Calculate nAugTypeBits while we know nBL is a constant.
         nAugTypeBits = AugTypeBits(nBL);
@@ -1804,14 +1804,14 @@ t_sw_56:
         wDigit = (wKey >> (nBLR - nBW)) & MSK(nBW); // extract bits from key
       #ifdef _LNX
         pwLnXNew = gpwLnX(qy, /* wLinks */ EXP(nBW), /* wIndex */ wDigit);
-          #ifdef PREFETCH_EK_VAL
+          #ifdef PF_EK_VAL
         PREFETCH(pwLnXNew);
-          #endif // PREFETCH_EK_VAL
+          #endif // PF_EK_VAL
       #endif // _LNX
         pLnNew = &pwr_pLinks((Switch_t *)pwr)[wDigit];
-      #ifdef PREFETCH_PWR
+      #ifdef PF_PWR
         PREFETCH(wr_pwr(pLnNew->ln_wRoot));
-      #endif // PREFETCH_PWR
+      #endif // PF_PWR
         SwAdvance(pqya, swapynew, nBW, &nBLR); // updates wRoot
         // Calculate nAugTypeBits while we know nBL is a constant.
         nAugTypeBits = AugTypeBits(nBL);
@@ -1826,14 +1826,14 @@ t_sw_48:
         wDigit = (wKey >> (nBLR - nBW)) & MSK(nBW); // extract bits from key
       #ifdef _LNX
         pwLnXNew = gpwLnX(qy, /* wLinks */ EXP(nBW), /* wIndex */ wDigit);
-          #ifdef PREFETCH_EK_VAL
+          #ifdef PF_EK_VAL
         PREFETCH(pwLnXNew);
-          #endif // PREFETCH_EK_VAL
+          #endif // PF_EK_VAL
       #endif // _LNX
         pLnNew = &pwr_pLinks((Switch_t *)pwr)[wDigit];
-      #ifdef PREFETCH_PWR
+      #ifdef PF_PWR
         PREFETCH(wr_pwr(pLnNew->ln_wRoot));
-      #endif // PREFETCH_PWR
+      #endif // PF_PWR
         SwAdvance(pqya, swapynew, nBW, &nBLR); // updates wRoot
         // Calculate nAugTypeBits while we know nBL is a constant.
         nAugTypeBits = AugTypeBits(nBL);
@@ -1848,14 +1848,14 @@ t_sw_40:
         wDigit = (wKey >> (nBLR - nBW)) & MSK(nBW); // extract bits from key
       #ifdef _LNX
         pwLnXNew = gpwLnX(qy, /* wLinks */ EXP(nBW), /* wIndex */ wDigit);
-          #ifdef PREFETCH_EK_VAL
+          #ifdef PF_EK_VAL
         PREFETCH(pwLnXNew);
-          #endif // PREFETCH_EK_VAL
+          #endif // PF_EK_VAL
       #endif // _LNX
         pLnNew = &pwr_pLinks((Switch_t *)pwr)[wDigit];
-      #ifdef PREFETCH_PWR
+      #ifdef PF_PWR
         PREFETCH(wr_pwr(pLnNew->ln_wRoot));
-      #endif // PREFETCH_PWR
+      #endif // PF_PWR
         SwAdvance(pqya, swapynew, nBW, &nBLR); // updates wRoot
         // Calculate nAugTypeBits while we know nBL is a constant.
         nAugTypeBits = AugTypeBits(nBL);
@@ -1870,14 +1870,14 @@ t_sw_32:
         wDigit = (wKey >> (nBLR - nBW)) & MSK(nBW); // extract bits from key
       #ifdef _LNX
         pwLnXNew = gpwLnX(qy, /* wLinks */ EXP(nBW), /* wIndex */ wDigit);
-          #ifdef PREFETCH_EK_VAL
+          #ifdef PF_EK_VAL
         PREFETCH(pwLnXNew);
-          #endif // PREFETCH_EK_VAL
+          #endif // PF_EK_VAL
       #endif // _LNX
         pLnNew = &pwr_pLinks((Switch_t *)pwr)[wDigit];
-      #ifdef PREFETCH_PWR
+      #ifdef PF_PWR
         PREFETCH(wr_pwr(pLnNew->ln_wRoot));
-      #endif // PREFETCH_PWR
+      #endif // PF_PWR
         SwAdvance(pqya, swapynew, nBW, &nBLR); // updates wRoot
         // Calculate nAugTypeBits while we know nBL is a constant.
         nAugTypeBits = AugTypeBits(nBL);
@@ -1892,14 +1892,14 @@ t_sw_24:
         wDigit = (wKey >> (nBLR - nBW)) & MSK(nBW); // extract bits from key
       #ifdef _LNX
         pwLnXNew = gpwLnX(qy, /* wLinks */ EXP(nBW), /* wIndex */ wDigit);
-          #ifdef PREFETCH_EK_VAL
+          #ifdef PF_EK_VAL
         PREFETCH(pwLnXNew);
-          #endif // PREFETCH_EK_VAL
+          #endif // PF_EK_VAL
       #endif // _LNX
         pLnNew = &pwr_pLinks((Switch_t *)pwr)[wDigit];
-      #ifdef PREFETCH_PWR
+      #ifdef PF_PWR
         PREFETCH(wr_pwr(pLnNew->ln_wRoot));
-      #endif // PREFETCH_PWR
+      #endif // PF_PWR
         SwAdvance(pqya, swapynew, nBW, &nBLR); // updates wRoot
         // Calculate nAugTypeBits while we know nBL is a constant.
         nAugTypeBits = AugTypeBits(nBL);
@@ -1914,14 +1914,14 @@ t_sw_16:
         wDigit = (wKey >> (nBLR - nBW)) & MSK(nBW); // extract bits from key
       #ifdef _LNX
         pwLnXNew = gpwLnX(qy, /* wLinks */ EXP(nBW), /* wIndex */ wDigit);
-          #ifdef PREFETCH_EK_VAL
+          #ifdef PF_EK_VAL
         PREFETCH(pwLnXNew);
-          #endif // PREFETCH_EK_VAL
+          #endif // PF_EK_VAL
       #endif // _LNX
         pLnNew = &pwr_pLinks((Switch_t *)pwr)[wDigit];
-      #ifdef PREFETCH_PWR
+      #ifdef PF_PWR
         PREFETCH(wr_pwr(pLnNew->ln_wRoot));
-      #endif // PREFETCH_PWR
+      #endif // PF_PWR
         SwAdvance(pqya, swapynew, nBW, &nBLR); // updates wRoot
         // Calculate nAugTypeBits while we know nBL is a constant.
         nAugTypeBits = AugTypeBits(nBL);
@@ -1945,14 +1945,14 @@ t_sw_plus_112:
         wDigit = (wKey >> (nBLR - nBW)) & MSK(nBW); // extract bits from key
       #ifdef _LNX
         pwLnXNew = gpwLnX(qy, /* wLinks */ EXP(nBW), /* wIndex */ wDigit);
-          #ifdef PREFETCH_EK_VAL
+          #ifdef PF_EK_VAL
         PREFETCH(pwLnXNew);
-          #endif // PREFETCH_EK_VAL
+          #endif // PF_EK_VAL
       #endif // _LNX
         pLnNew = &pwr_pLinks((Switch_t *)pwr)[wDigit];
-      #ifdef PREFETCH_PWR
+      #ifdef PF_PWR
         PREFETCH(wr_pwr(pLnNew->ln_wRoot));
-      #endif // PREFETCH_PWR
+      #endif // PF_PWR
         SwAdvance(pqya, swapynew, nBW, &nBLR); // updates wRoot
         // Calculate nAugTypeBits while we know nBL is a constant.
         nAugTypeBits = AugTypeBits(nBL);
@@ -1972,14 +1972,14 @@ t_sw_plus_96:
         wDigit = (wKey >> (nBLR - nBW)) & MSK(nBW); // extract bits from key
       #ifdef _LNX
         pwLnXNew = gpwLnX(qy, /* wLinks */ EXP(nBW), /* wIndex */ wDigit);
-          #ifdef PREFETCH_EK_VAL
+          #ifdef PF_EK_VAL
         PREFETCH(pwLnXNew);
-          #endif // PREFETCH_EK_VAL
+          #endif // PF_EK_VAL
       #endif // _LNX
         pLnNew = &pwr_pLinks((Switch_t *)pwr)[wDigit];
-      #ifdef PREFETCH_PWR
+      #ifdef PF_PWR
         PREFETCH(wr_pwr(pLnNew->ln_wRoot));
-      #endif // PREFETCH_PWR
+      #endif // PF_PWR
         SwAdvance(pqya, swapynew, nBW, &nBLR); // updates wRoot
         // Calculate nAugTypeBits while we know nBL is a constant.
         nAugTypeBits = AugTypeBits(nBL);
@@ -1999,14 +1999,14 @@ t_sw_plus_80:
         wDigit = (wKey >> (nBLR - nBW)) & MSK(nBW); // extract bits from key
       #ifdef _LNX
         pwLnXNew = gpwLnX(qy, /* wLinks */ EXP(nBW), /* wIndex */ wDigit);
-          #ifdef PREFETCH_EK_VAL
+          #ifdef PF_EK_VAL
         PREFETCH(pwLnXNew);
-          #endif // PREFETCH_EK_VAL
+          #endif // PF_EK_VAL
       #endif // _LNX
         pLnNew = &pwr_pLinks((Switch_t *)pwr)[wDigit];
-      #ifdef PREFETCH_PWR
+      #ifdef PF_PWR
         PREFETCH(wr_pwr(pLnNew->ln_wRoot));
-      #endif // PREFETCH_PWR
+      #endif // PF_PWR
         SwAdvance(pqya, swapynew, nBW, &nBLR); // updates wRoot
         // Calculate nAugTypeBits while we know nBL is a constant.
         nAugTypeBits = AugTypeBits(nBL);
@@ -2026,14 +2026,14 @@ t_sw_plus_64:
         wDigit = (wKey >> (nBLR - nBW)) & MSK(nBW); // extract bits from key
       #ifdef _LNX
         pwLnXNew = gpwLnX(qy, /* wLinks */ EXP(nBW), /* wIndex */ wDigit);
-          #ifdef PREFETCH_EK_VAL
+          #ifdef PF_EK_VAL
         PREFETCH(pwLnXNew);
-          #endif // PREFETCH_EK_VAL
+          #endif // PF_EK_VAL
       #endif // _LNX
         pLnNew = &pwr_pLinks((Switch_t *)pwr)[wDigit];
-      #ifdef PREFETCH_PWR
+      #ifdef PF_PWR
         PREFETCH(wr_pwr(pLnNew->ln_wRoot));
-      #endif // PREFETCH_PWR
+      #endif // PF_PWR
         SwAdvance(pqya, swapynew, nBW, &nBLR); // updates wRoot
         // Calculate nAugTypeBits while we know nBL is a constant.
         nAugTypeBits = AugTypeBits(nBL);
@@ -2071,14 +2071,14 @@ t_sw_plus_48:
         wDigit = (wKey >> (nBLR - nBW)) & MSK(nBW); // extract bits from key
       #ifdef _LNX
         pwLnXNew = gpwLnX(qy, /* wLinks */ EXP(nBW), /* wIndex */ wDigit);
-          #ifdef PREFETCH_EK_VAL
+          #ifdef PF_EK_VAL
         PREFETCH(pwLnXNew);
-          #endif // PREFETCH_EK_VAL
+          #endif // PF_EK_VAL
       #endif // _LNX
         pLnNew = &pwr_pLinks((Switch_t *)pwr)[wDigit];
-      #ifdef PREFETCH_PWR
+      #ifdef PF_PWR
         PREFETCH(wr_pwr(pLnNew->ln_wRoot));
-      #endif // PREFETCH_PWR
+      #endif // PF_PWR
         SwAdvance(pqya, swapynew, nBW, &nBLR); // updates wRoot
       #ifdef AUGMENT_TYPE_8
         // Calculate nAugTypeBits while we know nBL is a constant.
@@ -2118,14 +2118,14 @@ t_sw_plus_32:
         wDigit = (wKey >> (nBLR - nBW)) & MSK(nBW); // extract bits from key
       #ifdef _LNX
         pwLnXNew = gpwLnX(qy, /* wLinks */ EXP(nBW), /* wIndex */ wDigit);
-          #ifdef PREFETCH_EK_VAL
+          #ifdef PF_EK_VAL
         PREFETCH(pwLnXNew);
-          #endif // PREFETCH_EK_VAL
+          #endif // PF_EK_VAL
       #endif // _LNX
         pLnNew = &pwr_pLinks((Switch_t *)pwr)[wDigit];
-      #ifdef PREFETCH_PWR
+      #ifdef PF_PWR
         PREFETCH(wr_pwr(pLnNew->ln_wRoot));
-      #endif // PREFETCH_PWR
+      #endif // PF_PWR
         SwAdvance(pqya, swapynew, nBW, &nBLR); // updates wRoot
       #ifdef AUGMENT_TYPE_8
         nAugTypeBits = AugTypeBits(nBL);
@@ -2168,14 +2168,14 @@ t_sw_plus_16:
         wDigit = (wKey >> (nBLR - nBW)) & MSK(nBW); // extract bits from key
       #ifdef _LNX
         pwLnXNew = gpwLnX(qy, /* wLinks */ EXP(nBW), /* wIndex */ wDigit);
-          #ifdef PREFETCH_EK_VAL
+          #ifdef PF_EK_VAL
         PREFETCH(pwLnXNew);
-          #endif // PREFETCH_EK_VAL
+          #endif // PF_EK_VAL
       #endif // _LNX
         pLnNew = &pwr_pLinks((Switch_t *)pwr)[wDigit];
-      #ifdef PREFETCH_PWR
+      #ifdef PF_PWR
         PREFETCH(wr_pwr(pLnNew->ln_wRoot));
-      #endif // PREFETCH_PWR
+      #endif // PF_PWR
         SwAdvance(pqya, swapynew, nBW, &nBLR); // updates wRoot
       #ifdef BITMAP
         // Can't assume embedded bitmap for JudyL. Might be T_EMBEDDED_KEYS,
@@ -2270,16 +2270,16 @@ t_switch:
       #ifdef _LNX
         pwLnXNew = gpwLnX(qy, /* wLinks */ EXP(nBW), /* wIndex */ wDigit);
         DBGX(printf("pwLnXNew %p\n", pwLnXNew));
-          #ifdef PREFETCH_EK_VAL
+          #ifdef PF_EK_VAL
           #ifdef LOOKUP
         PREFETCH(pwLnXNew);
           #endif // LOOKUP
-          #endif // PREFETCH_EK_VAL
+          #endif // PF_EK_VAL
       #endif // _LNX
         pLnNew = &pwr_pLinks((Switch_t *)pwr)[wDigit];
-      #ifdef PREFETCH_PWR
+      #ifdef PF_PWR
         PREFETCH(wr_pwr(pLnNew->ln_wRoot));
-      #endif // PREFETCH_PWR
+      #endif // PF_PWR
         IF_COUNT(bLinkPresent = 1);
         IF_COUNT(nLinks = 1 << nBW);
   //#endif // !AUGMENT_TYPE || !LOOKUP || SKIP_LINKS
@@ -2682,14 +2682,14 @@ t_bm_sw:
             PREFETCH(pcPrefetch);
             PREFETCH(pcPrefetch + 64);
               #endif // PF_BM_SW_LN
-              #ifdef _LNX
-              #ifdef PREFETCH_BM_EK
+              #ifdef REMOTE_LNX
+              #ifdef PF_BM_SW_LNX
             pcPrefetch = (void*)gpwLnX(qy, nLinkCnt, wSwIndex);
             PREFETCH(pcPrefetch - 64);
             PREFETCH(pcPrefetch);
             PREFETCH(pcPrefetch + 64);
-              #endif // PREFETCH_BM_EK
-              #endif // _LNX
+              #endif // PF_BM_SW_LNX
+              #endif // REMOTE_LNX
           #endif // (cnBitsPerWord > 32)
           #endif // B_JUDYL
 //printf("# wDigit %zd\n", wDigit);
@@ -3721,14 +3721,14 @@ t_bitmap:
     #if defined(HYPERTUNE_PF_BM) && defined(LOOKUP) && defined(B_JUDYL)
         // What else are we assuming here in our overzealous hand-tuning of
         // this case necessitated by the untuned code being too slow?
-      #ifndef PF_BM_SUBEX_PSPLIT
-        #error HYPERTUNE_PF_BM without PF_BM_SUBEX_PSPLIT
-      #endif // PF_BM_SUBEX_PSPLIT
+      #ifndef BM_DSPLIT
+        #error HYPERTUNE_PF_BM without BM_DSPLIT
+      #endif // BM_DSPLIT
       #ifdef BMLF_POP_COUNT_32
         #error HYPERTUNE_PF_BM with BMLF_POP_COUNT_32 is TBD
       #endif // BMLF_POP_COUNT_32
       #if cnBitsInD1 != 8
-        #error cnBitsInD1 != 8 with PF_BM_SUBEX_PSPLIT is TBD
+        #error cnBitsInD1 != 8 with BM_DSPLIT is TBD
       #endif // cnBitsInD1 != 8
         // wKey already contains the key on entry here; wKey is a Word_t
         // pwLnX already contains a pointer to the second word of the JP on
@@ -4068,9 +4068,9 @@ t_bitmap:
 // the exact same cache lines relative to pwr and be able to initiate the
 // prefetch before the switch;
 // pop in wRoot and value area starting at pwr[-1].
-                              #ifdef PF_BM_SUBEX_PSPLIT
+                              #ifdef BM_DSPLIT
                                   #if cnBitsInD1 != 8
-              #error cnBitsInD1 != 8 with PF_BM_SUBEX_PSPLIT is TBD
+              #error cnBitsInD1 != 8 with BM_DSPLIT is TBD
                                   #endif // cnBitsInD1 != 8
             (void)wPopCnt;
             Word_t wDigit = wKey & MSK(nBLR);
@@ -4092,32 +4092,32 @@ t_bitmap:
                 = (char*)&pwBitmapValues[
                     nIndex + Psplit(subcnt, 6, /*nShift*/ 0, wKey & 0x3f)];
                                   #endif // BMLF_POP_COUNT_32 else
-                              #else // PF_BM_SUBEX_PSPLIT
+                              #else // BM_DSPLIT
             char* pcPrefetch
                 = (char*)&pwBitmapValues[
                     Psplit(wPopCnt, cnBitsInD1, /*nShift*/ 0, wKey)];
-                              #endif // PF_BM_SUBEX_PSPLIT else
+                              #endif // BM_DSPLIT else
             (void)pcPrefetch;
                               #ifdef PF_BM_PREV_HALF_VAL
             PREFETCH(pcPrefetch - 32);
                               #endif // PF_BM_PREV_HALF_VAL
-                              #ifdef PREFETCH_BM_PSPLIT_VAL
+                              #ifdef PF_BM_PSPLIT_VAL
             PREFETCH(pcPrefetch);
-                              #endif // PREFETCH_BM_PSPLIT_VAL
-                              #ifdef PREFETCH_BM_PREV_VAL
+                              #endif // PF_BM_PSPLIT_VAL
+                              #ifdef PF_BM_PREV_VAL
             PREFETCH(pcPrefetch - 64);
-                              #endif // PREFETCH_BM_PREV_VAL
+                              #endif // PF_BM_PREV_VAL
                               #ifdef PF_BM_NEXT_HALF_VAL
             PREFETCH(pcPrefetch + 32);
                               #endif // PF_BM_NEXT_HALF_VAL
-                              #ifdef PREFETCH_BM_NEXT_VAL
+                              #ifdef PF_BM_NEXT_VAL
             PREFETCH(pcPrefetch + 64);
-                              #endif // PREFETCH_BM_NEXT_VAL
+                              #endif // PF_BM_NEXT_VAL
                           #endif // PACK_BM_VALUES
                           #ifdef UNPACK_BM_VALUES
-                          #ifdef PREFETCH_BM_VAL
+                          #ifdef PF_UNPACKED_BM_VAL
             PREFETCH(&pwBitmapValues[wKey & MSK(cnBitsInD1)]);
-                          #endif // PREFETCH_BM_VAL
+                          #endif // PF_UNPACKED_BM_VAL
                           #endif // UNPACK_BM_VALUES
                       #endif // LOOKUP
                   #else // B_JUDYL
@@ -4188,11 +4188,11 @@ t_bitmap:
                       #endif // !BMLFI_BM_AT_END
                                  ];
                   #else // defined(BMLF_INTERLEAVE) && !defined(LOOKUP)
-  #if defined(LOOKUP) && defined(PACK_BM_VALUES) && defined(PF_BM_SUBEX_PSPLIT)
+  #if defined(LOOKUP) && defined(PACK_BM_VALUES) && defined(BM_DSPLIT)
                 {
                                   #ifdef BMLF_POP_COUNT_32
                                       #ifdef BMLF_CNTS_CUM
-    #error BMLF_CNTS_CUM with BMLF_POP_COUNT_32 with PF_BM_SUBEX_PSPLIT is TBD
+    #error BMLF_CNTS_CUM with BMLF_POP_COUNT_32 with BM_DSPLIT is TBD
                                       #endif // BMLF_CNTS_CUM
                     uint32_t *pu32Bms
                                 = (uint32_t*)((BmLeaf_t*)pwr)->bmlf_awBitmap;
@@ -4201,14 +4201,14 @@ t_bitmap:
                     nIndex += PopCount32(u32Bm & (u32BmBitMask - 1));
                                   #else // BMLF_POP_COUNT_32
   #ifdef BMLF_POP_COUNT_8
-    #error BMLF_POP_COUNT_8 with PF_BM_SUBEX_PSPLIT
+    #error BMLF_POP_COUNT_8 with BM_DSPLIT
   #elif defined(BMLF_POP_COUNT_1) // BMLF_POP_COUNT_8
-    #error BMLF_POP_COUNT_1 with PF_BM_SUBEX_PSPLIT
+    #error BMLF_POP_COUNT_1 with BM_DSPLIT
   #else // BMLF_POP_COUNT_8 elif BMLF_POP_COUNT_1
     // The name "BMLF_POP_COUNT_64" doesn't exist. But that is where we are.
     // Subexpanse counts are for 64-bit bitmaps.
     #ifndef BMLF_CNTS_CUM
-      #error PF_BM_SUBEX_PSPLIT w/o BMLF_CNTS_CUM (and not BMLF_POP_COUNT_32)
+      #error BM_DSPLIT w/o BMLF_CNTS_CUM (and not BMLF_POP_COUNT_32)
     #endif // !BMLF_CNTS_CUM
   #endif // BMLF_POP_COUNT_8 elif BMLF_POP_COUNT_1 else
                     Word_t *pwBmWords = ((BmLeaf_t*)pwr)->bmlf_awBitmap;
@@ -4217,67 +4217,67 @@ t_bitmap:
                     nIndex += PopCount64(wBmWord & (wBmBitMask - 1));
                                   #endif // BMLF_POP_COUNT_32 else
                 }
-  #else // LOOKUP && PACK_BM_VALUES && PF_BM_SUBEX_PSPLIT
+  #else // LOOKUP && PACK_BM_VALUES && BM_DSPLIT
                 int nIndex =
                           #ifndef LOOKUP
                     BM_UNPACKED(wRoot) ? (int)(wKey & MSK(cnBitsInD1)) :
                           #endif // !LOOKUP
                         BmIndex(qya, cnBitsInD1, wKey);
-  #endif // LOOKUP && PACK_BM_VALUES && PF_BM_SUBEX_PSPLIT
+  #endif // LOOKUP && PACK_BM_VALUES && BM_DSPLIT
                 Word_t* pwValue = &pwBitmapValues[nIndex];
                       #ifdef LOOKUP
                       #ifdef PACK_BM_VALUES
-                          #ifndef PREFETCH_BM_PREV_VAL
+                          #ifndef PF_BM_PREV_VAL
                           #ifndef PF_BM_PREV_HALF_VAL
-                          #ifndef PREFETCH_BM_PSPLIT_VAL
+                          #ifndef PF_BM_PSPLIT_VAL
                           #ifndef PF_BM_NEXT_HALF_VAL
-                          #ifndef PREFETCH_BM_NEXT_VAL
+                          #ifndef PF_BM_NEXT_VAL
                 //Word_t wDiff = 0;
                 if (1)
-                          #endif // !PREFETCH_BM_NEXT_VAL
+                          #endif // !PF_BM_NEXT_VAL
                           #endif // !PF_BM_NEXT_HALF_VAL
-                          #endif // !PREFETCH_BM_PSPLIT_VAL
+                          #endif // !PF_BM_PSPLIT_VAL
                           #endif // !PF_BM_PREV_HALF_VAL
-                          #endif // !PREFETCH_BM_PREV_VAL
-                          #ifndef PREFETCH_BM_PREV_VAL
+                          #endif // !PF_BM_PREV_VAL
+                          #ifndef PF_BM_PREV_VAL
                           #ifndef PF_BM_PREV_HALF_VAL
-                          #ifdef PREFETCH_BM_PSPLIT_VAL
+                          #ifdef PF_BM_PSPLIT_VAL
                           #ifndef PF_BM_NEXT_HALF_VAL
-                          #ifndef PREFETCH_BM_NEXT_VAL
+                          #ifndef PF_BM_NEXT_VAL
                 Word_t wDiff
                     = (Word_t)pwValue - ((Word_t)pcPrefetch & ~MSK(6));
                 if (wDiff < 64)
-                          #endif // #ifndef PREFETCH_BM_NEXT_VAL
+                          #endif // #ifndef PF_BM_NEXT_VAL
                           #endif // #ifndef PF_BM_NEXT_HALF_VAL
-                          #endif // PREFETCH_BM_PSPLIT_VAL
+                          #endif // PF_BM_PSPLIT_VAL
                           #endif // #ifndef PF_BM_PREV_HALF_VAL
-                          #endif // #ifndef PREFETCH_BM_PREV_VAL
-                          #ifndef PREFETCH_BM_PREV_VAL
+                          #endif // #ifndef PF_BM_PREV_VAL
+                          #ifndef PF_BM_PREV_VAL
                           #ifdef PF_BM_PREV_HALF_VAL
-                          #ifndef PREFETCH_BM_PSPLIT_VAL
+                          #ifndef PF_BM_PSPLIT_VAL
                           #ifdef PF_BM_NEXT_HALF_VAL
-                          #ifndef PREFETCH_BM_NEXT_VAL
+                          #ifndef PF_BM_NEXT_VAL
                 Word_t wDiff
                     = (Word_t)pwValue - (((Word_t)pcPrefetch - 32) & ~MSK(6));
                 if (wDiff < 128)
-                          #endif // #ifndef PREFETCH_BM_NEXT_VAL
+                          #endif // #ifndef PF_BM_NEXT_VAL
                           #endif // PF_BM_NEXT_HALF_VAL
-                          #endif // #ifndef PREFETCH_BM_PSPLIT_VAL
+                          #endif // #ifndef PF_BM_PSPLIT_VAL
                           #endif // PF_BM_PREV_HALF_VAL
-                          #endif // #ifndef PREFETCH_BM_PREV_VAL
-                          #ifdef PREFETCH_BM_PREV_VAL
+                          #endif // #ifndef PF_BM_PREV_VAL
+                          #ifdef PF_BM_PREV_VAL
                           #ifndef PF_BM_PREV_HALF_VAL
-                          #ifdef PREFETCH_BM_PSPLIT_VAL
+                          #ifdef PF_BM_PSPLIT_VAL
                           #ifndef PF_BM_NEXT_HALF_VAL
-                          #ifdef PREFETCH_BM_NEXT_VAL
+                          #ifdef PF_BM_NEXT_VAL
                 Word_t wDiff
                     = (Word_t)pwValue - (((Word_t)pcPrefetch - 64) & ~MSK(6));
                 if (wDiff < 192)
-                          #endif // PREFETCH_BM_NEXT_VAL
+                          #endif // PF_BM_NEXT_VAL
                           #endif // #ifndef PF_BM_NEXT_HALF_VAL
-                          #endif // PREFETCH_BM_PSPLIT_VAL
+                          #endif // PF_BM_PSPLIT_VAL
                           #endif // #ifndef PF_BM_PREV_HALF_VAL
-                          #endif // PREFETCH_BM_PREV_VAL
+                          #endif // PF_BM_PREV_VAL
                 {
                     SMETRICS_HIT(++j__DirectHits);
                 } else {
@@ -4464,9 +4464,9 @@ t_unpacked_bm:
             }
               #else // BMLF_INTERLEAVE
             Word_t* pwBitmapValues = gpwBitmapValues(qy, cnBitsInD1);
-                  #ifdef PREFETCH_BM_VAL
+                  #ifdef PF_UNPACKED_BM_VAL
             PREFETCH(&pwBitmapValues[wKey & MSK(cnBitsInD1)]);
-                  #endif // PREFETCH_BM_VAL
+                  #endif // PF_UNPACKED_BM_VAL
             if (BitIsSet(
                   #ifdef _BMLF_BM_IN_LNX
                          pwLnX,
