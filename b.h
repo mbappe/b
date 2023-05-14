@@ -4230,11 +4230,16 @@ DSplit16(qpa, int nPopCnt, uint16_t sKey)
       #ifdef DS_8_WAY
     int nSubx = sKey >> 13;
     int nSubxPop = ((uint8_t*)pwLnX)[nSubx];
+    assert(nSubxPop <= nPopCnt);
     Word_t wSubxOffsets = *pwLnX * 0x0101010101010100;
     int nSubxOff = ((uint8_t*)&wSubxOffsets)[nSubx];
+    assert(nSubxOff <= nPopCnt);
+// What if sKey is bigger than the biggest key in the list?
+// The simple calculation would result in nSplit >= nPopCnt.
+// Can the caller handle this? No.
     int nSplit
-        = (nSubxPop == 0) ? ~nSubxOff
-                          : nSubxOff + ((sKey & 0x1fff) * nSubxPop >> 13);
+        = __builtin_expect(nSubxPop == 0, 0) ? ~nSubxOff
+            : nSubxOff + ((sKey & 0x1fff) * nSubxPop >> 13);
       #elif defined(DS_16_WAY) // DS_8_WAY
     int nSubx = sKey >> 12;
     int nSubxPop = GetBits(*pwLnX, 4, nSubx * 4);
@@ -4379,8 +4384,13 @@ DSplit16(qpa, int nPopCnt, uint16_t sKey)
               #else // DS_ONE_DIV
     // first key in partition for the Subexpanse
     int nSplit = nSubxIdx * nPopCnt / nSubxCnt;
+                  #ifdef NO_DS_PSPLIT_ADD
+                  #elif defined(NO_DS_PSPLIT)
+    nSplit += nPopCnt / nSubxCnt / 2;
+                  #else // NO_DS_PSPLIT
     // add how far into the partition should we look
     nSplit += (sKey & MSK(10)) * nPopCnt / nSubxCnt >> 10;
+                  #endif // NO_DS_PSPLIT else
               #endif // DS_ONE_DIV else
           #endif // DS_SAVE_DIV else
       #endif // DS_8_WAY elif DS_16_WAY else
@@ -4501,6 +4511,70 @@ DSplit16(qpa, int nPopCnt, uint16_t sKey)
     } \
 }
 
+#ifdef DS_EARLY_OUT_CHECK
+  #define DS_EARLY_OUT(nSplit)  (nSplit < 0)
+#else // DS_EARLY_OUT_CHECK
+  #define DS_EARLY_OUT(nSplit)  0
+#endif // DS_8_WAY elif DS_EARLY_OUT_CHECK else
+
+#define DSPLIT_SEARCH_BY_KEY_GUTS(_x_t, _nBL, /* nPsplitShift */ _x, \
+                                  _pxKeys, _nPopCnt, _xKey, _nPos) \
+{ \
+    SMETRICS_POP(j__SearchPopulation += (_nPopCnt)); \
+    int nSplit = DSplit16(qya, (_nPopCnt), (_xKey)); \
+    if (DS_EARLY_OUT(nSplit)) { \
+        /* What about SMETRICS? */ \
+        /* It's not a hit. It's not a miss. It's not a get. Pop? */ \
+        /* It looks like the get and pop are being counted. */ \
+        /* SMETRICS isn't designed for lookup failures. */ \
+        (_nPos) = nSplit; \
+    } else { \
+    /*BJL(char* pcPf = (char*)&gpwValues(qy)[~nSplit]; (void)pcPf);*/ \
+    /*BJL(_PF_LK(PREFETCH(pcPf)));*/ \
+    /*BJL(_PF_LK_NX(PREFETCH(pcPf - 64)));*/ \
+    /*BJL(_PF_LK_PV(PREFETCH(pcPf + 64)));*/ \
+    /* if (TEST_AND_SPLIT_EQ_KEY(_pxKeys, _xKey)) */\
+    if ((_pxKeys)[nSplit] == (_xKey)) \
+    { \
+        (_nPos) += nSplit; \
+        SMETRICS_HIT(++j__DirectHits); \
+    } \
+    else if ((_pxKeys)[nSplit] < (_xKey)) \
+    { \
+        SMETRICS_NHIT(++j__GetCallsP); \
+        SMETRICS_MIS(++j__MisComparesP); \
+        if (nSplit == (_nPopCnt) - 1) \
+        { \
+            (_nPos) = ~((_nPos) + (_nPopCnt)); \
+        } \
+        else if (TEST_AND_KEY_IS_MAX(_x_t, _pxKeys, _nPopCnt, _xKey)) \
+        { \
+            (_nPos) += ((_pxKeys)[(_nPopCnt) - 1] == (_x_t)-1) \
+                        ? (_nPopCnt) - 1 : ~(_nPopCnt); \
+        } \
+        else \
+        { \
+            (_nPos) = nSplit + 1; \
+            SEARCHF(_x_t, (_pxKeys), (_nPopCnt) - (_nPos), (_xKey), (_nPos)); \
+        } \
+    } \
+    else /* here if (_xKey) < (_pxKeys)[nSplit] (and possibly if equal) */ \
+    { \
+        SMETRICS_NHIT(++j__GetCallsM); \
+        SMETRICS_MIS(++j__MisComparesM); \
+        if (TEST_AND_KEY_IS_ZERO(_x_t, _pxKeys, _nPopCnt, _xKey)) \
+        { \
+            if ((_pxKeys)[0] != 0) { (_nPos) ^= -1; } \
+        } \
+        else \
+        { \
+            assert((_nPos) == 0); \
+            SEARCHB(_x_t, (_pxKeys), nSplit + 1, (_xKey), (_nPos)); \
+        } \
+    } \
+    } /* DS_EARLY_OUT */ \
+}
+
 // This is a non-parallel psplit search that calculates a descriptive _nPos.
 #define PSPLIT_SEARCH_BY_KEY(_x_t, _nBL, _pxKeys, _nPopCnt, _xKey, _nPos) \
 { \
@@ -4516,6 +4590,12 @@ DSplit16(qpa, int nPopCnt, uint16_t sKey)
                               (_pwKeys), (_nPopCnt), (_wKey), (_nPos)); \
 }
 
+#define DSPLIT_SEARCH_BY_KEY(_x_t, _nBL, _pxKeys, _nPopCnt, _xKey, _nPos) \
+{ \
+    assert((_nBL) <= cnBitsPerWord); \
+    DSPLIT_SEARCH_BY_KEY_GUTS(_x_t, (_nBL), /* nPsplitShift */ 0, \
+                              (_pxKeys), (_nPopCnt), (_xKey), (_nPos)); \
+}
 static int
 PsplitSearchByKeyWord(qp, Word_t *pwKeys, int nPopCnt, Word_t wKey, int nPos)
 {
@@ -4989,12 +5069,6 @@ PsplitSearchByKey8(qp, uint8_t *pcKeys, int nPopCnt, uint8_t cKey, int nPos)
                        (_pwKeys), (_nPopCnt), (_wKey), _nPos); \
 }
 
-#ifdef DS_EARLY_OUT_CHECK
-  #define DS_EARLY_OUT(nSplit)  (nSplit < 0)
-#else // DS_EARLY_OUT_CHECK
-  #define DS_EARLY_OUT(nSplit)  0
-#endif // DS_8_WAY elif DS_EARLY_OUT_CHECK else
-
 // DSPLIT_SEARCH_GUTS uses qya for Dsplit16 and qy for prefetch but neither
 // is in the parameter list. Shame on us.
 #define DSPLIT_SEARCH_GUTS(_FUNC, _b_t, _x_t, _nBL, /*nPsplitShift*/ _xShift, \
@@ -5007,6 +5081,10 @@ PsplitSearchByKey8(qp, uint8_t *pcKeys, int nPopCnt, uint8_t cKey, int nPos)
     /* nSplit is the key number */ \
     int nSplit = DSplit16(qya, (_nPopCnt), (_xKey)); \
     if (DS_EARLY_OUT(nSplit)) { \
+        /* What about SMETRICS? */ \
+        /* It's not a hit. It's not a miss. It's not a get. Pop? */ \
+        /* It looks like the get and pop are being counted. */ \
+        /* SMETRICS isn't designed for lookup failures. */ \
         (_nPos) = nSplit; \
     } else { \
     BJL(char* pcPrefetch = (char*)&gpwValues(qy)[~nSplit]; (void)pcPrefetch); \
@@ -7955,7 +8033,15 @@ LocateKeyInList16(qpa, int nBLR, Word_t wKey)
     }
           #endif // _ALL_DIGITS_ARE_8_BITS && !USE_XX_SW else
       #else // PSPLIT_PARALLEL
+          #if defined(_ALL_DIGITS_ARE_8_BITS) && !defined(USE_XX_SW)
+              #ifdef DSPLIT_16
+    DSPLIT_SEARCH_BY_KEY(uint16_t, 16, psKeys, nPopCnt, sKey, nPos);
+              #else // DSPLIT_16
+    PSPLIT_SEARCH_BY_KEY(uint16_t, 16, psKeys, nPopCnt, sKey, nPos);
+              #endif // else DSPLIT_16
+          #else // _ALL_DIGITS_ARE_8_BITS && !USE_XX_SW
     PSPLIT_SEARCH_BY_KEY(uint16_t, nBLR, psKeys, nPopCnt, sKey, nPos);
+          #endif // _ALL_DIGITS_ARE_8_BITS && !USE_XX_SW else
       #endif // #else PSPLIT_PARALLEL
   #elif defined(BACKWARD_SEARCH_16) // defined(PSPLIT_SEARCH_16)
     SEARCHB(uint16_t, psKeys, nPopCnt, sKey, nPos);

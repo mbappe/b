@@ -8951,17 +8951,18 @@ copyWithInsertWord:
       #endif // B_JUDYL
   #endif // !defined(EMBED_KEYS) && ... && defined(PSPLIT_PARALLEL)
             } else if (nBLR <= 16) {
-  #if !defined(EMBED_KEYS) \
-      && defined(PSPLIT_SEARCH_16) && defined(PSPLIT_PARALLEL)
-                nPos = 0;
-                //printf("goto copyWithInsert16\n");
-                goto copyWithInsert16;
-  #else // !defined(EMBED_KEYS) && ... && defined(PSPLIT_PARALLEL)
+  #ifdef EMBED_KEYS
                 ls_psKeysNATX(pwList, wPopCnt + 1)[wPopCnt] = wKey;
       #ifdef B_JUDYL
                 pwValue = &gpwValues(qy)[~wPopCnt];
       #endif // B_JUDYL
-  #endif // !defined(EMBED_KEYS) && ... && defined(PSPLIT_PARALLEL)
+  #else // EMBED_KEYS
+                // PSPLIT_PARALLEL && PSPLIT_SEARCH_16 needs to pad the
+                // bucket, or DSPLIT_16 needs to call UpdateDist.
+                nPos = 0;
+                //printf("goto copyWithInsert16\n");
+                goto copyWithInsert16;
+  #endif // EMBED_KEYS
 #if (cnBitsPerWord > 32)
             } else if (nBLR <= 32) {
   #if !defined(EMBED_KEYS) \
@@ -13379,75 +13380,75 @@ Initialize(void)
 
     printf("# Link types:\n\n");
 #if defined(SEPARATE_T_NULL)
-    printf("# 0x%x %-20s\n", T_NULL, "T_NULL");
+    printf("# 0x%x %s\n", T_NULL, "T_NULL");
 #endif // defined(SEPARATE_T_NULL)
 #if (cwListPopCntMax != 0)
-    printf("# 0x%x %-20s\n", T_LIST, "T_LIST");
+    printf("# 0x%x %s\n", T_LIST, "T_LIST");
   #ifdef XX_LISTS
-    printf("# 0x%x %-20s\n", T_XX_LIST, "T_XX_LIST");
+    printf("# 0x%x %s\n", T_XX_LIST, "T_XX_LIST");
   #endif // XX_LISTS
 #if defined(SKIP_TO_LIST)
-    printf("# 0x%x %-20s\n", T_SKIP_TO_LIST, "T_SKIP_TO_LIST");
+    printf("# 0x%x %s\n", T_SKIP_TO_LIST, "T_SKIP_TO_LIST");
 #endif // defined(SKIP_TO_LIST)
 #if defined(UA_PARALLEL_128)
-    printf("# 0x%x %-20s\n", T_LIST_UA, "T_LIST_UA");
+    printf("# 0x%x %s\n", T_LIST_UA, "T_LIST_UA");
 #endif // defined(UA_PARALLEL_128)
 #endif // (cwListPopCntMax != 0)
 #if defined(BITMAP)
-    printf("# 0x%x %-20s\n", T_BITMAP, "T_BITMAP");
+    printf("# 0x%x %s\n", T_BITMAP, "T_BITMAP");
   #if defined(SKIP_TO_BITMAP)
-    printf("# 0x%x %-20s\n", T_SKIP_TO_BITMAP, "T_SKIP_TO_BITMAP");
+    printf("# 0x%x %s\n", T_SKIP_TO_BITMAP, "T_SKIP_TO_BITMAP");
   #endif // defined(SKIP_TO_BITMAP)
   #if defined(UNPACK_BM_VALUES)
-    printf("# 0x%x %-20s\n", T_UNPACKED_BM, "T_UNPACKED_BM");
+    printf("# 0x%x %s\n", T_UNPACKED_BM, "T_UNPACKED_BM");
   #endif // defined(UNPACK_BM_VALUES)
 #endif // defined(BITMAP)
 #if defined(CODE_LIST_SW)
-    printf("# 0x%x %-20s\n", T_LIST_SW, "T_LIST_SW");
+    printf("# 0x%x %s\n", T_LIST_SW, "T_LIST_SW");
 #endif // defined(CODE_LIST_SW)
 #if defined(SKIP_TO_LIST_SW)
-    printf("# 0x%x %-20s\n", T_SKIP_TO_LIST_SW, "T_SKIP_TO_LIST_SW");
+    printf("# 0x%x %s\n", T_SKIP_TO_LIST_SW, "T_SKIP_TO_LIST_SW");
 #endif // defined(SKIP_TO_LIST_SW)
 #if defined(CODE_BM_SW)
-    printf("# 0x%x %-20s\n", T_BM_SW, "T_BM_SW");
+    printf("# 0x%x %s\n", T_BM_SW, "T_BM_SW");
 #endif // defined(CODE_BM_SW)
 #if defined(SKIP_TO_BM_SW)
-    printf("# 0x%x %-20s\n", T_SKIP_TO_BM_SW, "T_SKIP_TO_BM_SW");
+    printf("# 0x%x %s\n", T_SKIP_TO_BM_SW, "T_SKIP_TO_BM_SW");
 #endif // defined(SKIP_TO_BM_SW)
 #if defined(RETYPE_FULL_BM_SW) && ! defined(USE_BM_IN_NON_BM_SW)
-    printf("# 0x%x %-20s\n", T_FULL_BM_SW, "T_FULL_BM_SW");
+    printf("# 0x%x %s\n", T_FULL_BM_SW, "T_FULL_BM_SW");
 #endif // defined(RETYPE_FULL_BM_SW) && ! defined(USE_BM_IN_NON_BM_SW)
 #if defined(RETYPE_FULL_BM_SW) && ! defined(USE_BM_IN_NON_BM_SW)
   #ifdef SKIP_TO_BM_SW
-    printf("# 0x%x %-20s\n", T_SKIP_TO_FULL_BM_SW, "T_SKIP_TO_FULL_BM_SW");
+    printf("# 0x%x %s\n", T_SKIP_TO_FULL_BM_SW, "T_SKIP_TO_FULL_BM_SW");
   #endif // SKIP_TO_BM_SW
 #endif // defined(RETYPE_FULL_BM_SW) && ! defined(USE_BM_IN_NON_BM_SW)
 #if defined(EMBED_KEYS)
-    printf("# 0x%x %-20s\n", T_EMBEDDED_KEYS, "T_EMBEDDED_KEYS");
+    printf("# 0x%x %s\n", T_EMBEDDED_KEYS, "T_EMBEDDED_KEYS");
       #ifdef EK_XV
-    printf("# 0x%x %-20s\n", T_EK_XV, "T_EK_XV");
+    printf("# 0x%x %s\n", T_EK_XV, "T_EK_XV");
       #endif // EK_XV
 #endif // defined(EMBED_KEYS)
-    printf("# 0x%x %-20s\n", T_SWITCH, "T_SWITCH");
+    printf("# 0x%x %s\n", T_SWITCH, "T_SWITCH");
     assert(T_SWITCH < EXP(cnBitsMallocMask));
   #ifdef FULL_SW
-    printf("# 0x%x %-20s\n", T_FULL_SW, "T_FULL_SW");
+    printf("# 0x%x %s\n", T_FULL_SW, "T_FULL_SW");
     assert(T_FULL_SW < EXP(cnBitsMallocMask));
       #ifdef _SKIP_TO_FULL_SW
-    printf("# 0x%x %-20s\n", T_SKIP_TO_FULL_SW, "T_SKIP_TO_FULL_SW");
+    printf("# 0x%x %s\n", T_SKIP_TO_FULL_SW, "T_SKIP_TO_FULL_SW");
     assert(T_SKIP_TO_FULL_SW < EXP(cnBitsMallocMask));
       #endif // _SKIP_TO_FULL_SW
   #endif // FULL_SW
 #if defined(CODE_XX_SW)
-    printf("# 0x%x %-20s\n", T_XX_SW, "T_XX_SW");
+    printf("# 0x%x %s\n", T_XX_SW, "T_XX_SW");
     assert(T_XX_SW < EXP(cnBitsMallocMask));
 #endif // defined(CODE_XX_SW)
 #if defined(SKIP_TO_XX_SW) // doesn't work yet
-    printf("# 0x%x %-20s\n", T_SKIP_TO_XX_SW, "T_SKIP_TO_XX_SW");
+    printf("# 0x%x %s\n", T_SKIP_TO_XX_SW, "T_SKIP_TO_XX_SW");
     assert(T_SKIP_TO_XX_SW < EXP(cnBitsMallocMask));
 #endif // defined(SKIP_TO_XX_SW) // doesn't work yet
 #if defined(SKIP_LINKS)
-    printf("# 0x%x %-20s\n", T_SKIP_TO_SWITCH, "T_SKIP_TO_SWITCH");
+    printf("# 0x%x %s\n", T_SKIP_TO_SWITCH, "T_SKIP_TO_SWITCH");
     assert(T_SKIP_TO_SWITCH < EXP(cnBitsMallocMask));
 #endif // defined(SKIP_LINKS)
   #ifdef ALL_SKIP_TO_SW_CASES
