@@ -584,7 +584,7 @@ bne-do.c: bne.c
     | egrep -v "^# [0-9]+|^ *$$" | expand > $@
 
 b-L-do.c: b.c b.h bdefines.h Judy.h
-	gcc $(CFLAGS) $(DEFINES) -E -fdirectives-only $< \
+	gcc $(CFLAGS) $(DEFINES) -DB_JUDYL -E -fdirectives-only $< \
     | egrep -v "^# [0-9]+|^ *$$" | expand > $@
 
 blL-do.c: blL.c bli.c b.h bdefines.h Judy.h
@@ -596,19 +596,19 @@ biL-do.c: biL.c bli.c b.h bdefines.h Judy.h
     | egrep -v "^# [0-9]+|^ *$$" | expand > $@
 
 brL-do.c: brL.c bli.c b.h bdefines.h Judy.h
-	gcc $(CFLAGS) $(DEFINES) -E -fdirectives-only $< \
+	gcc $(CFLAGS) $(DEFINES) -DB_JUDYL -E -fdirectives-only $< \
     | egrep -v "^# [0-9]+|^ *$$" | expand > $@
 
 bcL-do.c: bcL.c bli.c b.h bdefines.h Judy.h
-	gcc $(CFLAGS) $(DEFINES) -E -fdirectives-only $< \
+	gcc $(CFLAGS) $(DEFINES) -DB_JUDYL -E -fdirectives-only $< \
     | egrep -v "^# [0-9]+|^ *$$" | expand > $@
 
 bnL-do.c: bn.c bli.c b.h bdefines.h Judy.h
-	gcc $(CFLAGS) $(DEFINES) -E -fdirectives-only $< \
+	gcc $(CFLAGS) $(DEFINES) -DB_JUDYL -E -fdirectives-only $< \
     | egrep -v "^# [0-9]+|^ *$$" | expand > $@
 
 bneL-do.c: bne.c bli.c b.h bdefines.h Judy.h
-	gcc $(CFLAGS) $(DEFINES) -E -fdirectives-only $< \
+	gcc $(CFLAGS) $(DEFINES) -DB_JUDYL -E -fdirectives-only $< \
     | egrep -v "^# [0-9]+|^ *$$" | expand > $@
 
 Judy1LHTime-do.c: Judy1LHTime.c
