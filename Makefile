@@ -436,10 +436,10 @@ bnL.c: bn.c
 bneL.c: bne.c
 	ln -s $^ $@
 
-# dlmalloc.c needs special accommodations
+# dlmalloc.c needs special accommodations (ok, maybe JudyMalloc.c too)
 # We put them in MALLOC_FLAGS.
 MALLOC_FLAGS += -Wno-null-pointer-arithmetic -Wno-expansion-to-defined \
- -Wno-unknown-warning-option
+ -Wno-unknown-warning-option -Wno-maybe-uninitialized
 
 ifneq "$(CC)" "c++"
 ifneq "$(CC)" "g++"

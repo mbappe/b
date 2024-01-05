@@ -240,12 +240,12 @@ static Word_t* apwFreeBufs[130];
 static int
 CheckMalloc(Word_t* pw, Word_t wWords, int nLogAlignment)
 {
-    (void)wWords; (void)nLogAlignment;
+    (void)pw; (void)wWords; (void)nLogAlignment;
   #ifdef FAST_MALLOC
     if ((pw[-1] & ~0x1fffff) != 0) { return -1; }
   #else // FAST_MALLOC
-    if (!(pw[-1] & 2)) { return -1; }
       #ifndef LIBCMALLOC
+    if (!(pw[-1] & 2)) { return -1; }
       #if !defined(LIST_POP_IN_PREAMBLE) || defined(B_JUDYL)
           #ifdef MY_MALLOC_ALIGN
     if (nLogAlignment > cnBitsMallocMask) {
@@ -328,8 +328,7 @@ MyMallocGutsRM(Word_t wWords, int nLogAlignment, Word_t *pwAllocWords)
         wOff = ALIGN_UP(ww + 1, /* power of 2 */ 1 << nLogAlignment) - ww;
         ((Word_t*)(ww + wOff))[-1] = wOff;
   #else // MY_MALLOC_ALIGN
-        ww = JudyMallocX(wWords + cnMallocExtraWords,
-                         /* Space */ -1, nLogAlignment);
+        ww = JudyMallocAlign(wWords + cnMallocExtraWords, nLogAlignment);
         wOff = 0;
   #endif // #else MY_MALLOC_ALIGN
     } else {
