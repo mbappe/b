@@ -4,9 +4,11 @@
 
 #if defined(NEW_NEXT) || !defined(NEXT)
 
+#if defined(__amd64__) || defined(i386)
 //#include <emmintrin.h>
 //#include <smmintrin.h>
 #include <immintrin.h> // __m128i
+#endif // __amd64__ || i386
 
   #if defined(COUNT)
 // Return the total number of keys in the subtrees rooted by links that
@@ -3858,7 +3860,7 @@ t_bitmap:
                 }
                 if (++nWordNum
                     >= (int)((cbEmbeddedBitmap && (nBLR <= cnLogBitsPerWord))
-                        ? 0 : EXP(nBLR - cnLogBitsPerWord)))
+                        ? 0 : EXP(MAX(nBLR, cnLogBitsPerWord) - cnLogBitsPerWord)))
                 {
           #ifdef SKIP_TO_BITMAP
           #ifndef NO_SKIP_AT_TOP
@@ -3982,7 +3984,7 @@ t_bitmap:
                         wPopCnt = EXP(nBLR);
                     }
                     for (int nn = nWordOffset + 1;
-                             nn < (int)EXP(nBLR - cnLogBitsPerWord); nn++) {
+                             nn < (int)EXP(MAX(nBLR, cnLogBitsPerWord) - cnLogBitsPerWord); nn++) {
                         wPopCnt -= __builtin_popcountll(pwBitmap[nn]);
                     }
                     Word_t wBmMask = ~NZ_MSK((wKey & MSK(nBLR)
@@ -4342,7 +4344,7 @@ t_bitmap:
                     if (++nWordNum
                         >= (int)((cbEmbeddedBitmap
                                      && (nBLR <= cnLogBitsPerWord))
-                           ? 0 : EXP(nBLR - cnLogBitsPerWord)))
+                           ? 0 : EXP(MAX(nBLR, cnLogBitsPerWord) - cnLogBitsPerWord)))
                     {
                         wKey = (wKey & ~MSK(nBLR)) + EXP(nBLR);
                         goto break_from_main_switch;
@@ -5217,6 +5219,9 @@ t_separate_t_null:
           #endif // defined(INSERT) && defined(B_JUDYL)
         }
       #endif // defined(INSERT) || defined(REMOVE)
+      #if defined(NEXT_EMPTY) || defined(PREV_EMPTY)
+            *pwKey = wKey; return Success;
+      #endif // NEXT_EMPTY || PREV_EMPTY
 
         goto break_from_main_switch;
 
@@ -5502,7 +5507,12 @@ restart:;
           #ifdef _LNX
         pwLnX = pwLnXOrig;
           #endif // _LNX
+// Work around bogus warning from gcc 11.4.0 in Ubuntu 22.04 with
+// -DBM_IN_LINK -DDEBUG.
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Warray-bounds"
         wRoot = pLn->ln_wRoot;
+#pragma GCC diagnostic pop
         goto top;
   #endif // !COUNT
   #endif // !LOOKUP

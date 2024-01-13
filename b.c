@@ -2790,7 +2790,9 @@ embeddedKeys:;
                         );
     }
 
+#if cwListPopCntMax != 0
 zeroLink:
+#endif // cwListPopCntMax != 0
     *pwRootArg = (nBLR != cnBitsPerWord) ? WROOT_NULL : 0;
     return wBytes;
 }
@@ -3334,6 +3336,8 @@ CopyWithInsert8(qp, uint8_t *pSrc,
 
 #endif // defined(COMPRESSED_LISTS)
 
+#endif // (cwListPopCntMax != 0)
+
 // Figure out the length of the prefix that is common for all the keys in the
 // list and wKey.
 // Return the length of the remainder, i.e. the minimum nBL that will not
@@ -3381,8 +3385,6 @@ SignificantBitCnt(qp, Word_t wKey, int nPopCnt)
     assert(((wSuffix ^ wMin) | (wSuffix ^ wMax)) != 0);
     return LOG((wSuffix ^ wMin) | (wSuffix ^ wMax)) + 1;
 }
-
-#endif // (cwListPopCntMax != 0)
 
 #ifdef B_JUDYL
 Word_t *
@@ -3732,8 +3734,6 @@ embeddedKeys:;
   #endif // #else defined(B_JUDYL) && defined(EMBED_KEYS)
 }
 
-#if (cwListPopCntMax != 0)
-
 #ifdef BITMAP
 // Insert all of the keys from a list into a bitmap that has already been
 // created.
@@ -3914,6 +3914,8 @@ InsertAllAtBitmap(qpa, qpx(Old), int nStart, int nPopCnt)
     CheckBitmapGuardband(pwr, nBL, nPopCnt);
 }
 #endif // BITMAP
+
+#if (cwListPopCntMax != 0)
 
 static int
 SplayMaxPopCnt(Word_t *pwRootOld, int nBLOld, Word_t wKey, int nBLNew)
@@ -8186,9 +8188,11 @@ newSkipToBitmap:;
         }
         // I wish I didn't have to call InsertAllAtBitmap if nPopCntOld==0.
         InsertAllAtBitmap(qya, qyx(Old), /*nnStart*/ 0, nPopCntOld);
+  #if cwListPopCntMax != 0
         if (nPopCntOld != 0) {
             OldList(pwrOld, nPopCntOld, nBLOld, nTypeOld);
         }
+  #endif // cwListPopCntMax != 0
         goto finalInsert;
     }
     else
@@ -8439,10 +8443,14 @@ newSkipToBitmap:;
 
     // Shortcut to finalInsert for empty list.
     if (wPopCnt == 0) {
-        assert((wr_nType(WROOT_NULL) == T_LIST) && (wRoot == WROOT_NULL));
+        assert(wRoot == WROOT_NULL);
+#if cwListPopCntMax != 0
+        assert(wr_nType(WROOT_NULL) == T_LIST);
         assert(auListPopCntMax[nBL] == 0);
+#endif // cwListPopCntMax != 0
         goto finalInsert;
     }
+#if cwListPopCntMax != 0
     assert(wRoot != WROOT_NULL);
     assert(auListPopCntMax[nBL] != 0);
 
@@ -8505,6 +8513,7 @@ newSkipToBitmap:;
             Splay(qya, /*old*/ &wRoot, /*old*/ nBL, wKey);
         }
     }
+#endif // cwListPopCntMax != 0
 
     goto finalInsert;
 finalInsert:;
@@ -8569,14 +8578,15 @@ InsertAtList(qpa,
              )
 {
     qva;
+    (void)nPos;
   #ifdef CODE_XX_SW
   #ifdef REMOTE_LNX
     (void)pwLnXUp;
   #endif // REMOTE_LNX
   #endif // CODE_XX_SW
     int nDL = nBL_to_nDL(nBL); (void)nDL;
-    int nBLR = gnListBLR(qy);
-    Word_t wPopCnt = 0;
+    int nBLR = gnListBLR(qy); (void)nBLR;
+    Word_t wPopCnt = 0; (void)wPopCnt;
 #ifdef B_JUDYL
     Word_t *pwValue = NULL;
 #endif // B_JUDYL
@@ -8590,11 +8600,13 @@ InsertAtList(qpa,
     // We get here no matter which type of WROOT_NULL we have.
     // When we insert into an empty expanse we call InsertAtList.
     if (wRoot != WROOT_NULL) { // pwr is pointer to old List
+#if cwListPopCntMax != 0
 #if defined(EMBED_KEYS)
         assert(nType != T_EMBEDDED_KEYS);
 #endif // defined(EMBED_KEYS)
         wPopCnt = PWR_xListPopCnt(pwRoot, pwr, nBLR);
         // prefix is already set
+#endif // cwListPopCntMax != 0
     } else {
 #if defined(PP_IN_LINK)
         if (nBL != cnBitsPerWord) {
@@ -8622,8 +8634,6 @@ InsertAtList(qpa,
 //  - list switch -- level, prefix, pop, width, link indexes, links
 
     int nBLOld = nBL; (void)nBLOld;
-
-#if (cwListPopCntMax != 0) // true if we are using lists; embedded or external
 
   #if defined(EMBED_KEYS)
   #if ! defined(POP_CNT_MAX_IS_KING) || defined(CODE_XX_SW)
@@ -8658,6 +8668,7 @@ InsertAtList(qpa,
     }
   #endif // defined(NO_TYPE_IN_XX_SW)
 
+  #if (cwListPopCntMax != 0)
     if ((int)wPopCnt < auListPopCntMax[nBLR]) {
         // Here only if list has room for another key.
   #ifdef DOUBLE_DOWN
@@ -9069,7 +9080,7 @@ copyWithInsertWord:
 #endif // defined(EMBED_KEYS)
     }
     else
-#endif // (cwListPopCntMax != 0)
+  #endif // (cwListPopCntMax != 0)
     {
         DBGI(printf("List is full nBLR %d wPopCnt %zd.\n", nBLR, wPopCnt));
       #ifdef XX_LISTS
@@ -10259,7 +10270,7 @@ RemoveGuts(qpa, Word_t wKey)
     if ((cbEmbeddedBitmap && (nBL <= cnLogBitsPerLink))
         || tp_bIsBitmap(nType))
   #else // (cwListPopCntMax != 0)
-    assert((cbEmbeddedBitmap && (nBL <= cnLogBitsInLink))
+    assert((cbEmbeddedBitmap && (nBL <= cnLogBitsPerLink))
         || tp_bIsBitmap(nType));
   #endif // (cwListPopCntMax != 0)
     {
@@ -10889,6 +10900,7 @@ done:
 static void
 Initialize(void)
 {
+#if cwListPopCntMax != 0
     // Fine tune auListPopCntMax from cnListPopCntMaxDl*.
     // I wonder if we should apply cnListPopCntMaxDl* to more values of nBL.
     // For example, apply cnListPopCntMaxDl1 or cnListPopCntMaxDl2 for
@@ -10909,6 +10921,7 @@ Initialize(void)
     assert(cnBitsLeftAtDl3 > cnBitsLeftAtDl2);
     auListPopCntMax[cnBitsLeftAtDl3] = cnListPopCntMaxDl3;
 #endif // defined(cnListPopCntMaxDl3)
+#endif // cwListPopCntMax != 0
     // If EmbeddedListPopCntMax > auListPopCntMax adjust auListPopCntMax
     // to simplify code elsewhere.
     for (int nBL = cnBitsPerWord;
@@ -10930,6 +10943,7 @@ Initialize(void)
         }
   #endif // #ifndef POP_CNT_MAX_IS_KING
   #endif // EMBED_KEYS
+  #if cwListPopCntMax != 0
         // Splay gets pretty costly and ugly if the new lists don't fit.
         // The simplest way to avoid it is ensure that
         // auListPopCntMax[nBL] >= auListPopCntMax[nBL+1] for all nBL.
@@ -10962,6 +10976,7 @@ Initialize(void)
                auListPopCntMax[nBL]);
         }
   #endif
+  #endif // cwListPopCntMax != 0
     }
 
 #ifdef WROOT_NULL_IS_EK
@@ -12776,11 +12791,29 @@ Initialize(void)
     printf("# No GUARDBAND\n");
 #endif // defined(GUARDBAND)
 
+#ifdef           FAST_MALLOC
+    printf("#    FAST_MALLOC\n");
+#else //         FAST_MALLOC
+    printf("# No FAST_MALLOC\n");
+#endif //        FAST_MALLOC else
+
 #if defined(MY_MALLOC_ALIGN)
     printf("#    MY_MALLOC_ALIGN\n");
 #else // defined(MY_MALLOC_ALIGN)
     printf("# No MY_MALLOC_ALIGN\n");
 #endif // defined(MY_MALLOC_ALIGN)
+
+  #ifdef MALLOC_ALIGNMENT
+    printf("# MALLOC_ALIGNMENT %d\n", MALLOC_ALIGNMENT);
+  #endif // MALLOC_ALIGNMENT
+
+  #ifdef JUDY_MALLOC_ALIGNMENT
+    printf("# JUDY_MALLOC_ALIGNMENT %d\n", JUDY_MALLOC_ALIGNMENT);
+  #endif // JUDY_MALLOC_ALIGNMENT
+
+  #ifdef JUDY_MALLOC_NUM_SPACES
+    printf("# JUDY_MALLOC_NUM_SPACES %d\n", JUDY_MALLOC_NUM_SPACES);
+  #endif // JUDY_MALLOC_NUM_SPACES
 
   #ifdef         EXCLUDE_MALLOC_OVERHEAD
     printf("#    EXCLUDE_MALLOC_OVERHEAD\n");
@@ -12878,6 +12911,18 @@ Initialize(void)
   #else //       GPC_ALL_SKIP_TO_SW_CASES
     printf("# No GPC_ALL_SKIP_TO_SW_CASES\n");
   #endif //      GPC_ALL_SKIP_TO_SW_CASES else
+
+  #ifdef         LIBCMALLOC
+    printf("#    LIBCMALLOC\n");
+  #else //       LIBCMALLOC
+    printf("# No LIBCMALLOC\n");
+  #endif //      LIBCMALLOC else
+
+  #ifdef         USE_DLMALLOC_DEFAULT_SIZES
+    printf("#    USE_DLMALLOC_DEFAULT_SIZES\n");
+  #else //       USE_DLMALLOC_DEFAULT_SIZES
+    printf("# No USE_DLMALLOC_DEFAULT_SIZES\n");
+  #endif //      USE_DLMALLOC_DEFAULT_SIZES else
 
 #ifdef           NO_BM_DSPLIT
     printf("#    NO_BM_DSPLIT\n");
@@ -13234,6 +13279,7 @@ Initialize(void)
     printf("# No cnLogBmlfCnts\n");
   #endif //      cnLogBmlfCnts else
 
+#if cwListPopCntMax != 0
 #ifndef OLD_LIST_WORD_CNT
     for (int nLogBytesPerKey = cnLogBytesPerWord;
              nLogBytesPerKey >= 0;
@@ -13272,6 +13318,7 @@ Initialize(void)
         }
     }
 #endif // #ifndef OLD_LIST_WORD_CNT
+#endif // cwListPopCntMax != 0
 
 #if defined(CODE_XX_SW)
     printf("\n");
@@ -13301,6 +13348,7 @@ Initialize(void)
     }
 #endif // defined(EMBED_KEYS)
 
+#if cwListPopCntMax != 0
     // How big are T_LIST leaves.
     for (int nBL = cnBitsPerWord; nBL >= 8; nBL >>= 1) {
         printf("\n");
@@ -13331,6 +13379,7 @@ Initialize(void)
             }
         }
     }
+#endif // cwListPopCntMax != 0
 
   #ifdef BITMAP
     printf("\n");
@@ -13689,6 +13738,7 @@ NextGuts(qpa, Word_t *pwKey, Word_t wSkip, int bPrev, int bEmpty
   #ifdef XX_LISTS
     case T_XX_LIST:
   #endif // XX_LISTS
+  #if cwListPopCntMax != 0
     case T_LIST: {
         DBGN(printf("T_LIST nType %d\n", nType));
         //A(0);
@@ -13741,6 +13791,7 @@ NextGuts(qpa, Word_t *pwKey, Word_t wSkip, int bPrev, int bEmpty
         //A(0);
         return 0;
     }
+  #endif // cwListPopCntMax != 0
   #ifdef EK_XV
     case T_EK_XV:
         DBGN(printf("T_EK_XV: *pwKey " OWx" wSkip %" _fw"u\n",
@@ -14866,7 +14917,9 @@ NextEmptyGuts(qpa, Word_t *pwKey, int bPrev)
         goto embeddedBitmap;
     }
   #endif // BITMAP
+  #if cwListPopCntMax != 0 || defined(EMBED_KEYS)
     int nIncr;
+  #endif // cwListPopCntMax != 0 || EMBED_KEYS
     DBGN(printf("NEG: nType 0x%x\n", nType));
     switch (nType) {
   #ifdef UA_PARALLEL_128
@@ -14875,6 +14928,7 @@ NextEmptyGuts(qpa, Word_t *pwKey, int bPrev)
   #ifdef XX_LISTS
     case T_XX_LIST:
   #endif // XX_LISTS
+  #if cwListPopCntMax != 0
     case T_LIST:; {
         nBLR = gnListBLR(qy);
   #ifndef BITMAP
@@ -14941,6 +14995,7 @@ NextEmptyGuts(qpa, Word_t *pwKey, int bPrev)
         *pwKey |= wKeyLoop;
         return Success;
     }
+  #endif // cwListPopCntMax != 0
   #ifdef EK_XV
     case T_EK_XV:
         goto t_embedded_keys;
@@ -15103,10 +15158,10 @@ embeddedBitmap:;
     }
     assert(0);
   #endif // BITMAP
-  #ifdef SEPARATE_T_NULL
+  #if defined(SEPARATE_T_NULL) || (cwListPopCntMax == 0)
     case T_NULL:
         return Success;
-  #endif // SEPARATE_T_NULL
+  #endif // SEPARATE_T_NULL || (cwListPopCntMax == 0)
   #if defined(SKIP_LINKS)
     default: {
     /* case T_SKIP_TO_SWITCH */

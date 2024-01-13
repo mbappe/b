@@ -54,7 +54,6 @@ Judy1First(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
   #endif // NEXT_CHECK_ARGS else
     DBGN(printf("\n# JxF: *pwKey " OWx"\n", *pwKey));
   #if defined(_NEXT_QPA) || defined(_NEXT_QP)
-    int nBL = cnBitsPerWord;
     Word_t* pwRoot = (Word_t*)&PArray; (void)pwRoot;
       #ifdef _NEXT_QPA
       #ifdef REMOTE_LNX
@@ -62,7 +61,9 @@ Judy1First(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
       #endif // REMOTE_LNX
       #endif // _NEXT_QPA
   #endif // _NEXT_QPA || _NEXT_QP
+  #if cwListPopCntMax != 0
   #ifdef NEXT_FROM_WRAPPER
+    int nBL = cnBitsPerWord;
     if (wr_nType((Word_t)PArray) == T_LIST) {
       #ifndef _NEXT_QPA
       #ifdef REMOTE_LNX
@@ -81,6 +82,7 @@ Judy1First(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
         return BJL((PPvoid_t)&gpwValues(qy)[~nPos])BJ1(1);
     }
   #endif // NEXT_FROM_WRAPPER
+  #endif // cwListPopCntMax != 0
   #ifdef NEW_NEXT
       #ifdef NEW_NEXT_IS_EXCLUSIVE
     Word_t wKey = *pwKey;
@@ -200,7 +202,6 @@ Judy1Next(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
       #endif // DEBUG || NEXT_CHECK_ARGS
   #endif // NEXT_FROM_WRAPPER || !NEW_NEXT_IS_EXCLUSIVE
   #if defined(_NEXT_QPA) || defined(_NEXT_QP)
-    int nBL = cnBitsPerWord;
     Word_t* pwRoot = (Word_t*)&PArray; (void)pwRoot;
       #ifdef _NEXT_QPA
       #ifdef REMOTE_LNX
@@ -208,7 +209,9 @@ Judy1Next(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
       #endif // REMOTE_LNX
       #endif // _NEXT_QPA
   #endif // _NEXT_QPA || _NEXT_QP
+  #if cwListPopCntMax != 0
   #ifdef NEXT_FROM_WRAPPER
+    int nBL = cnBitsPerWord;
     if (wr_nType((Word_t)PArray) == T_LIST) {
       #ifndef _NEXT_QPA
       #ifdef REMOTE_LNX
@@ -227,6 +230,7 @@ Judy1Next(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
         return BJL((PPvoid_t)&gpwValues(qy)[~nPos])BJ1(1);
     }
   #endif // NEXT_FROM_WRAPPER
+  #endif // cwListPopCntMax != 0
   #ifdef NEW_NEXT
       #ifdef NEW_NEXT_IS_EXCLUSIVE
           #ifdef NEXT_QPA

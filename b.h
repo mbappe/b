@@ -322,7 +322,8 @@
 // 20 < nBL <= 24.
 // EmbeddedListPopCntMax(nBL) governs maximum embedded list size unless
 // defined(POP_CNT_MAX_IS_KING) in which case the rules above for maximum
-// external list size also govern the maximum embedded list size.
+// external list size also apply hence can yield a maximum embedded list
+// size of less than EmbeddedListPopCntMax(nBL).
 // I wonder if we should extend the reach of cnListPopCntMaxDl<blah>.
 
 // USE_XX_SW_ONLY_AT_DL2 should ignore anListPopCntMax
@@ -432,10 +433,12 @@ ExtListBytesPerKey(int nBL)
   #endif // defined(COMPRESSED_LISTS)
 }
 
+#if defined(__amd64__) || defined(i386)
 #include <immintrin.h> // __m128i
 #ifdef B_JUDYL
   #include <xmmintrin.h> // _MM_HINT_ET0, _MM_HINT_T0, _MM_HINT_NTA
 #endif // B_JUDYL
+#endif // __amd64__ || i386
 
 // unsigned greater than or equal
 #define _mm_cmpge_pu8(a, b) \
@@ -619,6 +622,7 @@ typedef Word_t Bucket_t;
 
 // If we're not using bitmaps then we must have some other way of getting to
 // full pop. The only options are embedded or external list at Dl1 or higher.
+// Set cnListPopCntMaxDl1 accordingly.
 #ifdef BITMAP
   #ifndef cnListPopCntMaxDl1
     // Default cnListPopCntMaxDl1 is defined in bdefines.h for B_JUDYL.
@@ -650,6 +654,9 @@ typedef Word_t Bucket_t;
 #define MAX(_x, _y)  ((_x) > (_y) ? (_x) : (_y))
 //#define MIN(_a, _b)  ((_a) < (_b) ? (_a) : (_b))
 
+// _cnListPopCntMax0 is the largest of the external list sizes without
+// considering cnListPopCntMaxDl<x>.
+// What are we doing here? Trying to establish cwListPopCntMax?
 #if (cnBitsPerWord >= 64)
   #define _cnListPopCntMax0 \
     MAX(cnListPopCntMax64, \
@@ -667,6 +674,11 @@ typedef Word_t Bucket_t;
             MAX(cnListPopCntMax8, 0))))
 #endif // (cnBitsPerWord >= 64)
 
+// What are we doing here? Still working on cwListPopCntMax?
+// If cnListPopCntMaxDl1 is bigger than any other external list then
+// make _cnListPopCntMaxDl1 bigger than _cnListPopCntMax0?
+// What if _cnListPopCntMaxDl0 is only as big as it is because
+// cnListPopCntMax<x> is the biggest one where <x> == cnBitsInD1?
 #ifdef cnListPopCntMaxDl1
   #define _cnListPopCntMax1  MAX(_cnListPopCntMax0, cnListPopCntMaxDl1)
 #else // cnListPopCntMaxDl1
@@ -774,9 +786,9 @@ enum {
     // Put T_NULL and T_LIST at beginning of enum so one of them gets
     // type == 0 if either exists. For no reason other than a dump with
     // a NULL will have a somewhat intuitive meaning.
-#if defined(SEPARATE_T_NULL)
+#if defined(SEPARATE_T_NULL) || cwListPopCntMax == 0
     T_NULL, // no keys below
-#endif // defined(SEPARATE_T_NULL)
+#endif // defined(SEPARATE_T_NULL) || cwListPopCntMax == 0
 #if (cwListPopCntMax != 0)
     T_LIST, // external list of keys
   #ifdef XX_LISTS
@@ -1872,6 +1884,7 @@ tp_bIsSkip(int nType)
 static inline int
 tp_bIsList(int nType)
 {
+    (void)nType;
     return
   // Even though _cnListPopCntMax3 might be zero we still have to concern
   // ourselves with temporarily inflated lists.
@@ -3122,10 +3135,6 @@ static inline void
 swPopCnt(qpa, int nBLR, Word_t wPopCnt)
 {
     qva; (void)nBLR;
-    if (!tp_bIsSwitch(nType)) {
-printf("\n## swPopCnt nType %d\n", nType);
-exit(1);
-    }
     assert(tp_bIsSwitch(nType));
     // NewSwitchX calls swPopCnt with wPopCnt == 0.
     //assert(wPopCnt != 0);
@@ -4206,6 +4215,8 @@ extern const unsigned anBL_to_nDL[];
 
 #endif // defined(LIST_END_MARKERS)
 
+#endif // cwListPopCntMax != 0
+
 static int
 Psplit(int nPopCnt, int nBL, int nShift, Word_t wKey)
 {
@@ -4216,6 +4227,8 @@ Psplit(int nPopCnt, int nBL, int nShift, Word_t wKey)
     // key * pop / expanse
     return ((wKey & NZ_MSK(nBL)) >> nShift) * nPopCnt >> (nBL - nShift);
 }
+
+#if cwListPopCntMax != 0
 
 #ifdef DSPLIT_16
 // DSplit is for Distribution Split.
@@ -6022,7 +6035,7 @@ HasKey64(uint64_t *px, Word_t wKey, int nBL)
 }
 
 static int
-LocateKey64(uint64_t *px, Word_t wKey, int nBL)
+LocateKey64(void* px, Word_t wKey, int nBL)
 {
     Word_t wHasKey = HasKey64(px, wKey, nBL);
     if (wHasKey == 0) {
@@ -6960,6 +6973,7 @@ SearchList(qpa, int nBLR, Word_t wKey)
   #endif // SEARCH_USING_LOCATE_GE
 }
 
+#ifdef EK_XV
 #if cnBitsPerWord > 32
 // Return nPos >= 0 if key >= wKey exists in wWord.
 // Otherwise return -1.
@@ -6970,6 +6984,7 @@ LocateGeKeyInWord8(Word_t wWord, Word_t wKey)
     uint64_t u64GE = (uint64_t)_mm_cmpge_pu8((__m64)wWord, m64Key);
     return (u64GE != 0) ? __builtin_ctzll(u64GE) / 8 : -1;
 }
+#endif // EK_XV
 
 #if 0
 // Return nPos >= 0 if key >= wKey exists in wWord.
@@ -7596,6 +7611,7 @@ EmbeddedListMagic(Word_t wRoot, Word_t wKey, int nBL)
     return (wXor - wLsbs) & ~wXor & wMsbs; // wMagic
 }
 
+#if 0
 #if cnBitsPerWord > 32
 
 static uint64_t // bool
@@ -7643,6 +7659,7 @@ EmbeddedListHasKey56(Word_t wRoot, Word_t wKey)
 }
 
 #endif // cnBitsPerWord > 32
+#endif // 0
 
 static int // bool
 EmbeddedListHasKey(Word_t wRoot, Word_t wKey, int nBL)
@@ -7863,6 +7880,7 @@ BmSwIndex(qpa, Word_t wDigit,
 }
 #endif // CODE_BM_SW
 
+#if cwListPopCntMax != 0
 #if defined(COMPRESSED_LISTS)
 
   #if (cnBitsInD1 <= 8) || defined(USE_XX_SW_ONLY_AT_DL2)
@@ -8184,6 +8202,7 @@ LocateKeyInList(qpa, int nBLR, Word_t wKey)
   #endif // defined(COMPRESSED_LISTS)
     return LocateKeyInListWord(qya, nBLR, wKey);
 }
+#endif // cwListPopCntMax != 0
 
 #ifdef XX_LISTS
   #ifdef B_JUDYL
@@ -8301,6 +8320,7 @@ GetPopCnt(qpa)
                     ? 0 : wr_nPopCnt(wRoot, nBL);
             break;
   #endif // defined(EMBED_KEYS)
+  #if cwListPopCntMax != 0
         case T_LIST:
   #if defined(UA_PARALLEL_128)
         case T_LIST_UA:
@@ -8314,6 +8334,7 @@ GetPopCnt(qpa)
                 assert(wPopCnt != 0);
             }
             break;
+  #endif // cwListPopCntMax != 0
   #ifdef BITMAP
       #ifdef UNPACK_BM_VALUES
         case T_UNPACKED_BM:
@@ -8325,11 +8346,11 @@ GetPopCnt(qpa)
             wPopCnt = gwBitmapPopCnt(qya, gnBLR(qy));
             break;
   #endif // BITMAP
-  #ifdef SEPARATE_T_NULL
+  #if defined(SEPARATE_T_NULL) || (cwListPopCntMax == 0)
         case T_NULL:
             wPopCnt = 0;
             break;
-  #endif // SEPARATE_T_NULL
+  #endif // SEPARATE_T_NULL || (cwListPopCntMax == 0)
   #ifdef XX_LISTS
         case T_XX_LIST:
             assert(0); // Our parameters are inadequate. Use GetPopCntX.

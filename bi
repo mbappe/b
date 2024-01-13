@@ -26,13 +26,8 @@ REGRESS=${1:-"regress"}
 
 # Use "OFLAGS=-O0 nohup bi true" to make sure all cases build (without
 # optimization). It's quicker than optimizing.
-# May need "WFLAGSA_B=-Wno-psabi OFLAGS=-O0 nohup bi true" on Linux.
-CCA=clang
-CCB=gcc
-CC=$CCA
-WFLAGSA=$WFLAGSA_A
-export CC WFLAGSA
-
+# May need -Wno-psabi on Linux.
+CC=${CC:-"cc"}
 MAKE=make
 
 # How do we tell if AVX2 is supported by the cpu?
@@ -42,7 +37,7 @@ MAKE=make
 if [ `uname` = Linux ]
 then
     # echo Linux
-    if grep avx2 /proc/cpuinfo
+    if lscpu | grep avx2
     then
         MAVX2=-mavx2
     fi
@@ -54,18 +49,19 @@ else # [ `uname` = Linux ]
     fi
 fi # [ `uname` = Linux ] else
 
+# man uname on Mac indicates make uses uname -p to set the MACHINE_ARCH
+# variable, e.g. "arm"
+MACHINE_ARCH=`uname -p`
+
 : \
 && ${MAKE} clean default && ${REGRESS} \
-&& DEFINES="-DREGRESS -DDEBUG_ALL" ${MAKE} clean default \
 && DEFINES="-DREGRESS -DDEBUG_ALL -DFULL_DUMP" ${MAKE} clean default \
-&& CC=$CCB WFLAGSA=$WFLAGSA_B ${MAKE} clean default \
-&& CC=$CCB WFLAGSA=$WFLAGSA_B DEFINES="-DREGRESS -DDEBUG" \
-    ${MAKE} clean default \
-&& CC=$CCB WFLAGSA=$WFLAGSA_B DEFINES="-DREGRESS -DDEBUG_ALL" \
-    ${MAKE} clean default \
-&& CC=$CCB WFLAGSA=$WFLAGSA_B DEFINES="-DREGRESS -DDEBUG_ALL -DFULL_DUMP" \
-    ${MAKE} clean default \
 && DEFINES="-DREGRESS -DDEBUG" ${MAKE} clean default \
+&& ${REGRESS} \
+&& DEFINES="-DLIBCMALLOC -DREGRESS -DDEBUG" ${MAKE} clean default \
+&& ${REGRESS} \
+&& DEFINES="-DUSE_DLMALLOC_DEFAULT_SIZES -DREGRESS -DDEBUG" \
+    ${MAKE} clean default \
 && ${REGRESS} \
 && DEFINES="-DNO_USE_BM_SW -DREGRESS -DDEBUG" ${MAKE} clean default \
 && ${REGRESS} \
@@ -148,17 +144,44 @@ fi # [ `uname` = Linux ] else
 && DEFINES="-DNO_LOCATE_GE_KEY_X -DDEBUG_LOCATE_GE -DREGRESS -DDEBUG" \
     ${MAKE} clean default \
 && ${REGRESS} \
-&& CC_MFLAGS=$MAVX2 DEFINES="-DPARALLEL_256 -DREGRESS -DDEBUG" \
-    ${MAKE} clean default \
+&& : "-mavx2 is default in Makefile if Linux and the cpu supports avx2" \
+&& : "PARALLEL_256 is default if PSPLIT_PARALLEL || PARALLEL_SEARCH_WORD" \
+&& DEFINES="-mno-avx -DREGRESS -DDEBUG" ${MAKE} clean default \
 && ${REGRESS} \
-&& DEFINES="-DPARALLEL_256 -DREGRESS -DDEBUG" ${MAKE} clean default \
+&& DEFINES="-mno-sse4.2 -DREGRESS -DDEBUG" ${MAKE} clean default \
 && ${REGRESS} \
-&& MALLOC_ALIGNMENT=32 CC_MFLAGS=$MAVX2 \
-    DEFINES="-DPARALLEL_256 -DREGRESS -DDEBUG" \
-    ${MAKE} clean default \
+:
+
+# We don't support parallel searching on ARM Mac yet.
+# supported yet.
+if [ ${MACHINE_ARCH} != "arm" ]
+then
+    : \
+    && DEFINES="-DPARALLEL_128 -DREGRESS -DDEBUG" ${MAKE} clean default \
+    && ${REGRESS} \
+    && DEFINES="-mno-sse4.2 -DPARALLEL_128 -DREGRESS -DDEBUG" \
+        ${MAKE} clean default \
+    && ${REGRESS} \
+    && DEFINES="-DPARALLEL_SEARCH_WORD -DNO_PSPLIT_PARALLEL \
+                -DREGRESS -DDEBUG" \
+        ${MAKE} clean default \
+    && ${REGRESS} \
+    && DEFINES="-DDOUBLE_DOWN -DUSE_LOWER_XX_SW -DUSE_XX_SW_ONLY_AT_DL2 \
+                -DNO_USE_BM_SW -DcnListPopCntMax64=48 \
+                -DcnListPopCntMaxDl1=256 -DDEBUG" \
+        ${MAKE} clean default \
+    && ${REGRESS} \
+    && DEFINES="-DUSE_XX_SW_ONLY_AT_DL2 -DcnListPopCntMax64=64 \
+                -DREGRESS -DDEBUG" \
+       ${MAKE} clean default \
+    && ${REGRESS} \
+    :
+fi
+
+: \
+&& DEFINES="-DPARALLEL_64 -DREGRESS -DDEBUG" ${MAKE} clean default \
 && ${REGRESS} \
-&& DEFINES="-DPARALLEL_SEARCH_WORD -DNO_PSPLIT_PARALLEL -DREGRESS -DDEBUG" \
-    ${MAKE} clean default \
+&& MALLOC_ALIGNMENT=32 DEFINES="-DREGRESS -DDEBUG" ${MAKE} clean default \
 && ${REGRESS} \
 && : "Default for Judy1 is REVERSE_SORT, FILL_W_BIG_KEY, NO_EK_CALC_POP" \
 && DEFINES="-DNO_REVERSE_SORT_EMBEDDED_KEYS -DREGRESS -DDEBUG" \
@@ -280,18 +303,11 @@ done
 -DREGRESS -DDEBUG" \
    ${MAKE} clean default \
 && ${REGRESS} \
-&& DEFINES="-DDOUBLE_DOWN -DUSE_LOWER_XX_SW -DUSE_XX_SW_ONLY_AT_DL2 \
--DNO_USE_BM_SW -DcnListPopCntMax64=48 -DcnListPopCntMaxDl1=256 -DDEBUG" \
-    ${MAKE} clean default \
-&& ${REGRESS} \
 && DEFINES="-DBM_IN_LINK -DREGRESS -DDEBUG" ${MAKE} clean default \
 && ${REGRESS} \
 && DEFINES=-DSEARCHMETRICS ${MAKE} clean default \
 && ${REGRESS} \
 && DEFINES="-URAMMETRICS -DSEARCHMETRICS" ${MAKE} clean default \
-&& ${REGRESS} \
-&& DEFINES="-DUSE_XX_SW_ONLY_AT_DL2 -DcnListPopCntMax64=64 -DREGRESS -DDEBUG" \
-   ${MAKE} clean default \
 && ${REGRESS} \
 && DEFINES="-DcnBitsPerDigit=16 -Dcn2dBmMaxWpkPercent=0 -UREGRESS -DDEBUG" \
    ${MAKE} clean default \
@@ -398,29 +414,13 @@ then
     ${MAKE} clean default \
 && BPW=32 ${MAKE} clean default \
 && BPW=32 DEFINES="-DREGRESS -DDEBUG" ${MAKE} clean default \
-&& BPW=32 DEFINES="-DREGRESS -DDEBUG_ALL" ${MAKE} clean default \
 && BPW=32 DEFINES="-DREGRESS -DDEBUG_ALL -DFULL_DUMP" ${MAKE} clean default \
-&& BPW=32 CC=$CCB WFLAGSA=$WFLAGSA_B ${MAKE} clean default \
-&& BPW=32 CC=$CCB WFLAGSA=$WFLAGSA_B DEFINES="-DREGRESS -DDEBUG" \
-    ${MAKE} clean default \
-&& BPW=32 CC=$CCB WFLAGSA=$WFLAGSA_B DEFINES="-DREGRESS -DDEBUG_ALL" \
-    ${MAKE} clean default \
-&& BPW=32 CC=$CCB WFLAGSA=$WFLAGSA_B \
-    DEFINES="-DREGRESS -DDEBUG_ALL -DFULL_DUMP" \
-    ${MAKE} clean default \
 && BPW=32 DEFINES="-DALL_SKIP_TO_SW_CASES" ${MAKE} clean default \
 && BPW=32 DEFINES="-DALL_SKIP_TO_SW_CASES -DREGRESS -DDEBUG" \
     ${MAKE} clean default \
 && BPW=32 DEFINES="-DALL_SKIP_TO_SW_CASES -DREGRESS -DDEBUG_ALL -DFULL_DUMP" \
     ${MAKE} clean default \
 && BPW=32 DEFINES="-DNO_LOCATE_GE_KEY_X -DREGRESS -DDEBUG_ALL -DFULL_DUMP" \
-    ${MAKE} clean default \
-&& BPW=32 CC=$CCB WFLAGSA=$WFLAGSA_B DEFINES="-DALL_SKIP_TO_SW_CASES" \
-    ${MAKE} clean default \
-&& BPW=32 CC=$CCB WFLAGSA=$WFLAGSA_B \
-    DEFINES="-DALL_SKIP_TO_SW_CASES -DREGRESS -DDEBUG" ${MAKE} clean default \
-&& BPW=32 CC=$CCB WFLAGSA=$WFLAGSA_B \
-    DEFINES="-DALL_SKIP_TO_SW_CASES -DREGRESS -DDEBUG_ALL -DFULL_DUMP" \
     ${MAKE} clean default \
 && :
 if [ $? != 0 ]; then echo "non-zero exit"; exit 1; fi

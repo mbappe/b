@@ -36,6 +36,32 @@
 # via the C compiler. The precise recipe used is:
 #   ‘$(CC) $(LDFLAGS) n.o $(LOADLIBES) $(LDLIBS)’.
 
+ifeq ($(OS),Windows_NT)
+#   my_OS = Windows
+#   ifeq ($(PROCESSOR_ARCHITECTURE),ARM64)
+#       my_ARCH = arm
+#   else
+#       my_ARCH = x86_64
+#   endif
+else
+    my_OS = $(shell uname)
+    my_ARCH = $(shell uname -p)
+    ifeq ($(my_OS),Linux)
+        my_AVX2 = $(shell lscpu | grep avx2 | wc -l)
+    endif
+endif
+
+# If we're running on a Mac we should look for:
+#
+# CC="cc -target x86_64-apple-macos10.12"
+#
+# x86_app: main.c
+#    $(CC) main.c -o x86_app -target x86_64-apple-macos10.12
+# arm_app: main.c
+#    $(CC) main.c -o arm_app -target arm64-apple-macos11
+# universal_app: x86_app arm_app
+#    lipo -create -output universal_app x86_app arm_app
+
 # The default build is 64-bits.
 # Use "BPW=32 make" to get a 32-bit build.
 # I wonder if it works on a 32-bit system.
@@ -142,7 +168,9 @@ endif
 # CC_MFLAGS += -mno-sse4     # implies no -msse4.1
 # CC_MFLAGS += -mavx         # implies -msse4.2
 # CC_MFLAGS += -mno-avx      # implies no -mavx2
+ifeq ($(my_AVX2),1)
   CC_MFLAGS += -mavx2        # implies -mavx
+endif
 # CC_MFLAGS += -mno-avx2
 # CC_MFLAGS += -mbmi         # for lzcnt, tzcnt
 # CC_MFLAGS += -mbmi2        # for pdep
@@ -168,6 +196,9 @@ endif
   WFLAGS += -Werror
   WFLAGS += -Wfatal-errors
   WFLAGS += -Wno-unused-value
+ifeq ($(my_ARCH),arm)
+  WFLAGS += -Wno-unused-command-line-argument
+endif
 
 # We need to override a compiler warning for "-DJUMP_TABLE -DAUGMENT_TYPE".
 # But the option is different for clang than for gcc.
@@ -288,9 +319,9 @@ ASMS  = b.s bl.s bi.s br.s bc.s bn.s bne.s
 ASMS += b-L.s blL.s biL.s brL.s bcL.s bnL.s bneL.s
 ASMS += JudyMalloc.s # t.s
 ASMS += Judy1LHTime.s Judy1LHCheck.s
-CPPS  = b.i bl.i bi.i br.i bc.i bn.i bne.i
-CPPS += b-L.i blL.i biL.i brL.i bcL.i bnL.i bneL.i
-CPPS += JudyMalloc.i Judy1LHTime.i Judy1LHCheck.i # t.i
+CPPS  = b-do.c bl-do.c bi-do.c br-do.c bc-do.c bn-do.c bne-do.c
+CPPS += b-L-do.c blL-do.c biL-do.c brL-do.c bcL-do.c bnL-do.c bneL-do.c
+CPPS += JudyMalloc-do.c Judy1LHTime-do.c Judy1LHCheck-do.c # t-do.c
 # bitcode temporary files saved by cc -save-temps
 BCFILES = b.bc bl.bc bi.bc br.bc bc.bc bn.bc bne.bc
 BCFILES += b-L.bc blL.bc biL.bc brL.bc bcL.bc bnL.bc bneL.bc
@@ -439,7 +470,7 @@ bneL.c: bne.c
 # dlmalloc.c needs special accommodations (ok, maybe JudyMalloc.c too)
 # We put them in MALLOC_FLAGS.
 MALLOC_FLAGS += -Wno-null-pointer-arithmetic -Wno-expansion-to-defined \
- -Wno-unknown-warning-option -Wno-maybe-uninitialized
+ -Wno-unknown-warning-option -Wno-unused-but-set-variable -Wno-maybe-uninitialized
 
 ifneq "$(CC)" "c++"
 ifneq "$(CC)" "g++"
@@ -688,3 +719,12 @@ psc: psc.c
 	clang++ -O3 $(PSC_FLAGS) -S -o psc-clang++.s psc.cpp
 	rm -f psc
 	ln -s psc-gcc psc
+
+# Print all Makefile variables.
+.PHONY: printvars
+printvars:
+	@$(foreach V,$(sort $(.VARIABLES)), $(warning $V=$($V) ($(value $V))))
+
+#	@$(foreach V,$(sort $(.VARIABLES)), \
+#            $(if $(filter-out environment% default automatic, \
+#            $(origin $V)),$(warning $V=$($V) ($(value $V)))))

@@ -81,34 +81,46 @@ Word_t j__MisComparesP;
 Word_t j__MisComparesM;
 #endif // SEARCHMETRICS
 
+// JUDY_MALLOC_ALIGNMENT is for internal use only.
+#ifndef JUDY_MALLOC_ALIGNMENT
+  #ifdef MALLOC_ALIGNMENT
+    #define JUDY_MALLOC_ALIGNMENT  MALLOC_ALIGNMENT
+  #else // MALLOC_ALIGNMENT
+    #define JUDY_MALLOC_ALIGNMENT  (2 * sizeof(Word_t))
+  #endif // MALLOC_ALIGNMENT
+#endif // !JUDY_MALLOC_ALIGNMENT
+
 // Use -DLIBCMALLOC if you want to use the libc malloc() instead of this
 // internal memory allocator.  (This one is much faster on some OS).
-#ifdef LIBCMALLOC
+#ifndef LIBCMALLOC
 
-  // JUDY_MALLOC_ALIGNMENT is for internal use only.
-  #ifndef JUDY_MALLOC_ALIGNMENT
-    #define JUDY_MALLOC_ALIGNMENT  (2 * sizeof(Word_t))
-  #endif // JUDY_MALLOC_ALIGNMENT
+//===============
+// dlmalloc stuff
+//===============
 
-#else // LIBCMALLOC
+#define USE_DL_PREFIX
+#define HAVE_MORECORE 0 // do not use sbrk
+#define HAVE_MMAP 1 // use mmap
 
-  // JUDY_MALLOC_ALIGNMENT is for internal use only.
-  // It is derived from MALLOC_ALIGNMENT.
-  #ifndef JUDY_MALLOC_ALIGNMENT
-    #ifdef MALLOC_ALIGNMENT
-      #define JUDY_MALLOC_ALIGNMENT  MALLOC_ALIGNMENT
-    #else // MALLOC_ALIGNMENT
-      #define JUDY_MALLOC_ALIGNMENT  (2 * sizeof(Word_t))
-    #endif // MALLOC_ALIGNMENT
-  #endif // JUDY_MALLOC_ALIGNMENT
+#define USE_LOCKS 0 // no need for thread-safety
 
-// only use the libc malloc of defined
-#include <sys/mman.h>
+#ifdef DEBUG
+  // Enable additional user error checking with FOOTERS=1.
+  #define FOOTERS  1
+  // Disable some user error checking with INSECURE=1.
+#endif // DEBUG
+
+// Use -DUSE_DLMALLOC_DEFAULT_SIZES if you don't want to use this
+// dlmalloc configuration stuff for Haswell huge pages.
+#ifndef USE_DLMALLOC_DEFAULT_SIZES
 
 //=======================================================================
 // J U D Y  /  D L M A L L O C interface for huge pages Ubuntu 3.13+ kernel
 //=======================================================================
 //
+
+#include <sys/mman.h>
+
 #define PRINTMMAP(BUF, LENGTH)                                          \
    fprintf(stderr,                                                      \
         "%p:buf = mmap(addr:0x0, length:%p, prot:0x%x, flags:0x%x, fd:%d) line %d\n", \
@@ -130,19 +142,15 @@ static int    pre_munmap(void *, Word_t);
 // Stuff to modify dlmalloc to use 2MiB pages
 #define DLMALLOC_EXPORT static
 #define dlmalloc_usable_size static dlmalloc_usable_size
-#define USE_DL_PREFIX
 #define HAVE_MREMAP     0
 #define DEFAULT_MMAP_THRESHOLD HUGETLBSZ
 // normal default == 64 * 1024
 #define DEFAULT_GRANULARITY HUGETLBSZ
 
-// #define DARWIN  1
-#define HAVE_MORECORE 0
-#define HAVE_MMAP 1
-#define USE_LOCKS 0 // work around Ubuntu 18.04 c++ complaint about dlmalloc.c
-
 #define mmap            pre_mmap        // re-define for dlmalloc
 #define munmap          pre_munmap      // re-define for dlmalloc
+
+#endif // !USE_DLMALLOC_DEFAULT_SIZES
 
 #if JUDY_MALLOC_NUM_SPACES != 0
   // Include create/destroy_mspace and
@@ -151,32 +159,12 @@ static int    pre_munmap(void *, Word_t);
   // Exclude regular malloc/free with ONLY_MSPACES=1.
 #endif // JUDY_MALLOC_NUM_SPACES != 0
 
-#ifdef DEBUG
-  // Enable additional user error checking with FOOTERS=1.
-  #define FOOTERS  1
-  // Disable some user error checking with INSECURE=1.
-#endif // DEBUG
-
 #include "dlmalloc.c"   // Version 2.8.6 Wed Aug 29 06:57:58 2012  Doug Lea
+
+#ifndef USE_DLMALLOC_DEFAULT_SIZES
 
 #undef mmap // restore it for rest of routine
 #undef munmap // restore it for rest of routine
-
-#if JUDY_MALLOC_NUM_SPACES != 0
-
-static mspace JudyMallocSpaces[JUDY_MALLOC_NUM_SPACES];
-
-static inline void
-JudyMallocPrepSpace(int nSpace)
-{
-    if (JudyMallocSpaces[nSpace] == 0) {
-        JudyMallocSpaces[nSpace] = create_mspace(
-            /* initial capacity */ 0, /* locked */ 0);
-        assert(JudyMallocSpaces[nSpace] != NULL);
-    }
-}
-
-#endif // JUDY_MALLOC_NUM_SPACES != 0
 
 // This code is not necessary except if j__MFlag is set
 static int
@@ -294,7 +282,25 @@ pre_mmap(void *addr, Word_t length, int prot, int flags, int fd, off_t offset)
     return(buf);
 }
 
-#endif // LIBCMALLOC
+#endif // !USE_DLMALLOC_DEFAULT_SIZES
+
+#if JUDY_MALLOC_NUM_SPACES != 0
+
+static mspace JudyMallocSpaces[JUDY_MALLOC_NUM_SPACES];
+
+static inline void
+JudyMallocPrepSpace(int nSpace)
+{
+    if (JudyMallocSpaces[nSpace] == 0) {
+        JudyMallocSpaces[nSpace] = create_mspace(
+            /* initial capacity */ 0, /* locked */ 0);
+        assert(JudyMallocSpaces[nSpace] != NULL);
+    }
+}
+
+#endif // JUDY_MALLOC_NUM_SPACES != 0
+
+#endif // !LIBCMALLOC
 
 #ifdef RAMMETRICS
 static Word_t

@@ -2,6 +2,15 @@
 #if ( ! defined(_BDEFINES_H_INCLUDED) )
 #define _BDEFINES_H_INCLUDED
 
+#ifdef __aarch64__
+  #undef  NO_PSPLIT_PARALLEL
+  #define NO_PSPLIT_PARALLEL
+  #undef  NO_PARALLEL_SEARCH_WORD
+  #define NO_PARALLEL_SEARCH_WORD
+  #undef  NO_EMBED_KEYS
+  #define NO_EMBED_KEYS
+#endif // __aarch64__
+
 // Add one word in Switch_t for subexpanse pop count(s) to improve performance
 // of Count by default.
 #ifndef cnSwCnts
@@ -195,15 +204,6 @@
   #undef  COUNT_2
   #define COUNT_2
 #endif // COUNT_2_PREFIX
-
-// Default is -DPARALLEL_256.
-// Determines type hence size of Bucket_t.
-#ifndef PARALLEL_128
-#if !defined(PARALLEL_64) && !defined(NO_PARALLEL_256)
-  #undef  PARALLEL_256
-  #define PARALLEL_256
-#endif // !PARALLEL_64 && !NO_PARALLEL_256
-#endif // !PARALLEL_128
 
 // Default is LVL_IN_WR_HB for 64-bit and level in nType for 32-bit.
 // The absence of LVL_IN_WR_HB and LVL_IN_PP is level in nType.
@@ -995,6 +995,17 @@
   #undef PSPLIT_PARALLEL
   #define PSPLIT_PARALLEL
 #endif // NO_PSPLIT_PARALLEL
+
+// Default is -DPARALLEL_256.
+// Determines type hence size of Bucket_t.
+#ifndef PARALLEL_128
+#if !defined(PARALLEL_64) && !defined(NO_PARALLEL_256)
+#if defined(PSPLIT_PARALLEL) || defined(PARALLEL_SEARCH_WORD)
+  #undef  PARALLEL_256
+  #define PARALLEL_256
+#endif // PSPLIT_PARALLEL || PARALLEL_SEARCH_WORD
+#endif // !PARALLEL_64 && !NO_PARALLEL_256
+#endif // !PARALLEL_128
 
 #ifdef PSPLIT_SEARCH_8
 #ifdef PSPLIT_PARALLEL

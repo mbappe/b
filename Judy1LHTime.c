@@ -268,15 +268,39 @@ SM_EXTERN Word_t j__MisComparesM;
 #include <time.h>
 
 #if defined __APPLE__ && defined __MACH__
-
 #include <mach/mach_time.h>
+mach_timebase_info_data_t sTimebase;
+#endif // __APPLE__ && __MACH__
+
+#ifdef MAC_GETTIME_NSEC
+  #undef  MAC_TIME
+  #define MAC_TIME
+#endif // MAC_GETTIME_NSEC
+
+#if defined MAC_TIME && defined __APPLE__ && defined __MACH__
 
 uint64_t  start__;
 
-#define STARTTm  (start__ = mach_absolute_time())
-#define ENDTm(D) ((D) = (double)(mach_absolute_time() - start__))
+  #ifdef MAC_GETTIME_NSEC
 
-#else  // POSIX Linux and Unix
+#define STARTTm (start__ = clock_gettime_nsec_np(CLOCK_UPTIME_RAW))
+#define ENDTm(D) \
+{ \
+    (D) = (double)(clock_gettime_nsec_np(CLOCK_UPTIME_RAW) - start__); \
+}
+
+  #else // MAC_GETTIME_NSEC
+
+#define STARTTm  (start__ = mach_absolute_time())
+#define ENDTm(D) \
+{ \
+    (D) = (double)(mach_absolute_time() - start__); \
+    (D) = (D) * sTimebase.numer / sTimebase.denom; \
+}
+
+  #endif // MAC_GETTIME_NSEC
+
+#else // MAC_TIME && __APPLE__ && __MACH__
 
 struct timespec TVBeg__, TVEnd__;
 
@@ -296,7 +320,8 @@ struct timespec TVBeg__, TVEnd__;
     (D) = (double)(TVEnd__.tv_sec - TVBeg__.tv_sec) * 1E9 +             \
          ((double)(TVEnd__.tv_nsec - TVBeg__.tv_nsec));                 \
 }
-#endif // POSIX Linux and Unix
+
+#endif // else MAC_TIME && __APPLE__ && __MACH__
 
 Word_t    xFlag = 0;    // Turn ON 'waiting for Context Switch'
 
@@ -1004,9 +1029,7 @@ Word_t    PtsPdec = 50;                 // 4.71% spacing - default
 // For example, we can use negative numbers as option arguments on the
 // command line for -s to get numbers near the maximum of the expanse.
 #define DEFAULT_BVALUE  (sizeof(Word_t) * 8)
-Word_t    BValue = DEFAULT_BVALUE;
-long double    Bpercent = 100.0; // Default MaxNumb assumes 100.0.
-// MaxNumb is initialized from DEFAULT_BVALUE and assumes Bpercent = 100.0.
+// BValue and MaxNumb are both initialized from DEFAULT_BVALUE.
 // Then overridden by -N and/or by -B. The last one on the command line wins.
 // Then trimmed if bSplayKeyBits
 // and there aren't enough bits set in wSplayMask.
@@ -1015,7 +1038,9 @@ long double    Bpercent = 100.0; // Default MaxNumb assumes 100.0.
 // key values getting bigger than MaxNumb.
 // MaxNumb is also used to specifiy -b and -y array sizes.
 // It's meaning is more confusing for GValue != 0.
+Word_t BValue = DEFAULT_BVALUE;
 Word_t MaxNumb = ((Word_t)1 << (DEFAULT_BVALUE-1)) * 2 - 1;
+enum { None, B, N } ExpanseOpt = None;
 Word_t    GValue = 0;                   // 0 = flat spectrum random numbers
 //Word_t    GValue = 1;                 // 1 = pyramid spectrum random numbers
 //Word_t    GValue = 2;                 // 2 = Gaussian random numbers
@@ -1518,9 +1543,8 @@ BitmapSet(PWord_t B1, Word_t TstKey)
 static Word_t
 oa2w(char *str, char **endptr, int base, int ch)
 {
-    (void)base;
     char *lendptr;
-    Word_t ul;
+    Word_t w;
 
     if ((str == NULL) || *str == '\0') {
         printf("\nError --- Illegal optarg, \"\", for option \"-%c\".\n", ch);
@@ -1529,27 +1553,37 @@ oa2w(char *str, char **endptr, int base, int ch)
 
     errno = 0;
 
-    long double ld = strtold(str, &lendptr);
-    ul = (Word_t)ld;
-
-    if (errno != 0) {
-        printf("\nError --- Illegal optarg, \"%s\", for option \"-%c\": %s.\n",
-               str, ch, strerror(errno));
-        exit(1);
-    }
-
-    if (*lendptr != '\0') {
-        printf(
-          "\nError --- Illegal optarg, \"%s\", for option \"-%c\" is not a number.\n",
-            str, ch);
-        exit(1);
+    unsigned long ul = strtoul(str, &lendptr, base);
+    if ((*lendptr == '\0') && (errno == 0)) {
+        w = ul;
+    } else {
+        long double ld = strtold(str, &lendptr);
+        if (*lendptr == '\0' && (errno == 0)) {
+            // Casting a negative float to an unsigned int is undefined and
+            // we don't want to give up the one extra bit of precision we get
+            // with an unsigned int over a signed int.
+            // Especially on ARM64 where long double is only 64 bits.
+            if (ld < 0) {
+                w = (long)ld;
+            } else {
+                w = ld;
+            }
+        } else {
+            printf(
+                "\nError --- Illegal optarg, \"%s\", for option \"-%c\".",
+                str, ch);
+            if (errno != 0) {
+                printf(" %s.\n", strerror(errno));
+            }
+            exit(1);
+        }
     }
 
     if (endptr != NULL) {
         *endptr = lendptr;
     }
 
-    return (ul);
+    return w;
 }
 
 static struct option longopts[] = {
@@ -1640,6 +1674,18 @@ void
 LogIfdefs(void)
 {
     printf("# === Time program ifdefs ===\n");
+
+  #ifdef         MAC_TIME
+    printf("#    MAC_TIME\n");
+  #else //       MAC_TIME
+    printf("# No MAC_TIME\n");
+  #endif //      MAC_TIME else
+
+  #ifdef         MAC_GETTIME_NSEC
+    printf("#    MAC_GETTIME_NSEC\n");
+  #else //       MAC_GETTIME_NSEC
+    printf("# No MAC_GETTIME_NSEC\n");
+  #endif //      MAC_GETTIME_NSEC else
 
     // BITMAP_BY_BYTE
 
@@ -1785,6 +1831,12 @@ LogIfdefs(void)
     // NO_SPLAY_KEY_BITS
     // NO_SVALUE
 
+  #ifdef         NO_TEST_GET // for debug; to filter debug output
+    printf("#    NO_TEST_GET\n");
+  #else //       NO_TEST_GET
+    printf("# No NO_TEST_GET\n");
+  #endif //      NO_TEST_GET else
+
   #ifdef         TEST_FIRST_EMPTY // and LAST_EMPTY not [NEXT|PREV]_EMPTY
     printf("#    TEST_FIRST_EMPTY\n");
   #else //       TEST_FIRST_EMPTY
@@ -1885,7 +1937,6 @@ PrintRowHeader(Word_t wPop, Word_t wDelta, Word_t wMeas)
 #if 0
     if (bPureDS1) {
         printf(" 0x%-10" PRIxPTR" 0x%-8" PRIxPTR" %10" PRIuPTR,
-        //printf("%6" PRIxPTR" %5" PRIxPTR" %5" PRIuPTR,
                wFinalPop1, Pms[grp].ms_delta, Meas);
     } else
 #endif
@@ -1945,10 +1996,16 @@ main(int argc, char *argv[])
     double    Davg = 0.0;
 #endif // LATER
 
-    // Validate static initialization of MaxNumb, BValue and Bpercent.
-    assert(MaxNumb == (Word_t)(pow(2.0, BValue) * Bpercent / 100) - 1);
+    // Validate static initialization of BValue and MaxNumb.
+    assert(MaxNumb == ((Word_t)1 << (BValue - 1)) * 2 - 1);
+    long double Bpercent = 100;
+    assert(MaxNumb == powl(2.0, BValue) * (Bpercent / 100) - 1);
 
     setbuf(stdout, NULL);               // unbuffer output
+
+#if defined __APPLE__ && defined __MACH__
+    (void)mach_timebase_info(&sTimebase);
+#endif // __APPLE__ && __MACH__
 
 #if 0
     // Different get time functions on Linux.
@@ -2174,13 +2231,14 @@ eopt:
 
         case 'N':       // max key number; alternative to -B
         {
+            ExpanseOpt = N;
             MaxNumb = oa2w(optarg, NULL, 0, c);
             if (MaxNumb == 0)
                 FAILURE("Error --- No tests: -N", MaxNumb);
-
             BValue = (sizeof(Word_t) * 8) - __builtin_clzl(MaxNumb);
-            Bpercent = (MaxNumb/2.0 + 0.5) / pow(2.0, BValue - 1) * 100;
-
+            // Bpercent may not be precise enough the reproduce MaxNumb
+            // from BValue. We calculate it only so we can print it.
+            Bpercent = (MaxNumb/2.0l + 0.5) / powl(2.0, BValue - 1) * 100;
             break;
         }
         case 'S':                      // Step Size, 0 == Random
@@ -2217,6 +2275,8 @@ eopt:
             char *str, *tok;
             char *saveptr = NULL;
 
+            ExpanseOpt = B;
+
 //          parse the sub parameters of the -b option
             str = optarg;
             tok = strtok_r(str, ":", &saveptr);
@@ -2225,6 +2285,7 @@ eopt:
 
             BValue = oa2w(tok, NULL, 0, c);
 
+            Bpercent = 100;
             tok = strtok_r(str, ":", &saveptr);
             if (tok != NULL) {
                 Bpercent = atof(tok); // default is Bpercent = 100
@@ -2254,8 +2315,22 @@ eopt:
                 break;
             }
 
-            MaxNumb = pow(2.0, BValue) * Bpercent / 100;
-            --MaxNumb; // Do this after converting back to Word_t.
+            MaxNumb
+                = (Word_t)(((Word_t)1 << (BValue - 1)) * (Bpercent / 100))
+                    * 2 - 1;
+            // Make sure there are no rounding errors in MaxNumb calculation
+            // for Bpercent values that are integral multiples of reciprocals
+            // of powers of two (e.g. 3/4, 5/8, 7/8, ... 255/256)
+            // up to (1<<8) == 256.
+            // Choose 256 because bigger would be problematic with -B10.
+            assert((MaxNumb + 1
+                    == ((Word_t)1 << (BValue - 10))
+                        * (int)(Bpercent * 256 / 100))
+                || ((int)(Bpercent * 256 / 100) == Bpercent * 256 / 100));
+            // Can we go back and forth between Bpercent and MaxNumb with
+            // no rounding errors?
+            assert((MaxNumb/2.0l + 0.5) / powl(2, BValue - 1) * 100
+                == Bpercent);
 
             break;
         }
@@ -2524,14 +2599,6 @@ eopt:
         }
     }
 
-    // Make sure there are no rounding errors in MaxNumb calculation for
-    // Bpercent values that are integral multiples of reciprocals of powers
-    // of two up to (1<<10) == 1024.
-    // Choose 1024 because bigger would be problematic with -B10.
-    assert((MaxNumb + 1
-            == ((Word_t)1 << (BValue - 10)) * (int)(Bpercent * 1024 / 100))
-        || ((int)(Bpercent * 1024 / 100) == Bpercent * 1024 / 100));
-
     if ((   bFlag && (J1Flag|JLFlag|JRFlag|yFlag))
         || (yFlag && (J1Flag|JLFlag|JRFlag|bFlag)))
     {
@@ -2688,9 +2755,13 @@ eopt:
     {
         if (StartSequent > MaxNumb)
         {
+  #ifdef DEBUG
             printf("\n# Trimming '-s 0x%zx'", StartSequent);
+  #endif // DEBUG
             StartSequent %= MaxNumb + 1;
+  #ifdef DEBUG
             printf(" to 0x%zx.\n", StartSequent);
+  #endif // DEBUG
         }
         if (StartSequent == 0 && (SValue == 0))
         {
@@ -2702,35 +2773,28 @@ eopt:
     if (ErrorFlag)
         Usage(argc, argv);
 
+    if (nElms > MaxNumb)
     {
-        if (nElms > MaxNumb)
+        nElms = MaxNumb;
+        if (Offset)
         {
-            nElms = MaxNumb;
-
-            printf("# Trim Max number of Elements -n%" PRIuPTR" due to max -B%" PRIuPTR" bit Keys",
-                   MaxNumb, BValue);
-            fprintf(stderr, "# Trim Max number of Elements -n%" PRIuPTR" due to max -B%" PRIuPTR" bit Keys",
-                   MaxNumb, BValue);
-
-            if (Offset)
-            {
-                printf(", add %" PRIdPTR" (0x%" PRIxPTR") to Key values", Offset, Offset);
-                fprintf(stderr,", add %" PRIdPTR" (0x%" PRIxPTR") to Key values", Offset, Offset);
-            }
-            printf("\n");
-            fprintf(stderr, "\n");
-
+            printf(", add %" PRIdPTR" (0x%" PRIxPTR") to Key values\n",
+                Offset, Offset);
+            fprintf(stderr,
+                ", add %" PRIdPTR" (0x%" PRIxPTR") to Key values\n",
+                Offset, Offset);
         }
-        if (GValue != 0) // This needs work and review!!!!!
-        {
+    }
+
+    if (GValue != 0) // This needs work and review!!!!!
+    {
 // MEB: I have no idea what's going on here.
-            if (nElms > (MaxNumb >> 1))
-            {
-                printf
-                    ("# Trim Max number of Elements -n%" PRIuPTR" to -n%" PRIuPTR" due to -G%" PRIuPTR" spectrum of Keys\n",
-                     MaxNumb, MaxNumb >> 1, GValue);
-                nElms = MaxNumb >> 1;
-            }
+        if (nElms > (MaxNumb >> 1))
+        {
+            printf
+                ("# Trim Max number of Elements -n%" PRIuPTR" to -n%" PRIuPTR" due to -G%" PRIuPTR" spectrum of Keys\n",
+                 MaxNumb, MaxNumb >> 1, GValue);
+            nElms = MaxNumb >> 1;
         }
     }
 
@@ -2769,8 +2833,6 @@ eopt:
         }
         //printf("# wFeedBTap 0x%zx\n", wFeedBTap);
     }
-
-    printf("# StartSequent 0x%zx\n", StartSequent);
 
 //  Print out the number set used for testing
     if (pFlag)
@@ -2818,9 +2880,24 @@ eopt:
         exit(0);
     }
 
+    if (sizeof(Word_t) == 8)
+        printf("# %s 64 Bit version\n", argv[0]);
+    else if (sizeof(Word_t) == 4)
+        printf("# %s 32 Bit version\n", argv[0]);
+
+//  uname(2) strings describing the machine
+    {
+        struct utsname ubuf;            // for system name
+
+        if (uname(&ubuf) == -1)
+            printf("# Uname(2) failed\n");
+        else
+            printf("# %s %s %s %s %s\n", ubuf.sysname, ubuf.nodename,
+                   ubuf.release, ubuf.version, ubuf.machine);
+    }
+
 //  print Title for plotting -- command + run arguments
 //
-
     printf("# TITLE");
     if (wCloseCountsMask) printf(" CLOSE_COUNTS_MASK=0x%zx", wCloseCountsMask);
     if (bCountTwiddledKeys) printf(" COUNT_TWIDDLED_KEYS=1");
@@ -2875,10 +2952,13 @@ eopt:
     if (!PartitionDeltaFlag)
         printf("Z");
 
-    if (Bpercent == 100.0) {
-         printf(" -B%" PRIuPTR, BValue);
-    } else {
+    if (ExpanseOpt == N) {
          printf(" -N0x%" PRIxPTR, MaxNumb);
+    } else {
+         printf(" -B%" PRIuPTR, BValue);
+         if (Bpercent != 100) {
+             printf(":%Lg", Bpercent);
+         }
     }
 
     if (DFlag || SValue) {
@@ -2893,7 +2973,13 @@ eopt:
     }
 
 //  print more options - default, adjusted or otherwise
-    printf(" -n%" PRIuPTR" -T%" PRIuPTR" -P%" PRIuPTR, nElms, TValues, PtsPdec);
+    if (nElms == MaxNumb)
+        printf(" -n-1");
+    else
+        printf(" -n%" PRIuPTR, nElms);
+
+    printf(" -T%" PRIuPTR" -P%" PRIuPTR, TValues, PtsPdec);
+
     if (bFlag && (bParm[0] != 0))
     {
         int ii;
@@ -2952,33 +3038,24 @@ eopt:
         }
     }
 
-    if (Bpercent != 100.0)
-        printf("# MaxNumb of Random Number generator was trimed to 0x%" PRIxPTR" (%" PRIuPTR")\n", MaxNumb, MaxNumb);
-
-//  uname(2) strings describing the machine
-    {
-        struct utsname ubuf;            // for system name
-
-        if (uname(&ubuf) == -1)
-            printf("# Uname(2) failed\n");
-        else
-            printf("# %s %s %s %s %s\n", ubuf.sysname, ubuf.nodename,
-                   ubuf.release, ubuf.version, ubuf.machine);
-    }
-    if (sizeof(Word_t) == 8)
-        printf("# %s 64 Bit version\n", argv[0]);
-    else if (sizeof(Word_t) == 4)
-        printf("# %s 32 Bit version\n", argv[0]);
-
 //    Debug
-    printf("# nElms (number of keys to be inserted) = %" PRIuPTR"[0x%" PRIxPTR"]\n", nElms, nElms);
-    printf("# MaxNumb (maximum key in expanse) = %" PRIuPTR"[0x%" PRIxPTR"]\n", MaxNumb, MaxNumb);
+    if (ExpanseOpt == N)
+        printf("# MaxNumb (maximum key in expanse) = 0x%" PRIxPTR" %" PRIuPTR"\n", MaxNumb, MaxNumb);
     printf("# BValue = %" PRIuPTR"\n", BValue);
-    printf("# Bpercent = %20.18Lf\n", Bpercent);
+    if ((ExpanseOpt == B) && (Bpercent != 100))
+        printf("# Bpercent = %Lg\n", Bpercent);
+    if (ExpanseOpt != N)
+        printf("# MaxNumb (maximum key in expanse) = 0x%" PRIxPTR" %" PRIuPTR"\n", MaxNumb, MaxNumb);
+    printf("# nElms (number of keys to be inserted) = %" PRIuPTR" 0x%" PRIxPTR"\n", nElms, nElms);
+    printf("# StartSequent 0x%zx\n", StartSequent);
 
     // Put run date (not build date) in output.
     printf("# Run date "); fflush(stdout);
     int sysret = system("date"); (void)sysret;
+
+#if defined __APPLE__ && defined __MACH__
+    printf("# sTimebase %f ns/tick\n", (double)sTimebase.numer/sTimebase.denom);
+#endif // __APPLE__ && __MACH__
 
     printf("# XLABEL Array Population\n");
     printf("# YLABEL Nano-Seconds -or- ???\n");
@@ -3526,7 +3603,7 @@ eopt:
     }
 
 //  If this number is not consistant, then a longer warmup period is required
-    printf("# random() = %4.2f nSec per/call\n", DeltanSecW/1000000);
+    printf("# random() = %4.2f nSec per call\n", DeltanSecW/1000000);
     printf("#\n");
 
 // ============================================================
@@ -4778,12 +4855,13 @@ TestJudyIns(void **J1, void **JL, PNewSeed_t PSeed, Word_t Elements)
     DeltanSecHS = 0.0;
 
     // Loops don't work as expected for array modifying ops.
-    Word_t Loops = Tit ? 1 : (MAXLOOPS / Elements) + MINLOOPS;
+    Word_t Loops = lFlag ? 1 : (MAXLOOPS / Elements) + MINLOOPS;
 
 //  Judy1Set timings
 
     if (J1Flag)
     {
+        int nNonZeros = 0;
         for (DminTime = 1e40, icnt = ICNT, lp = 0; lp < Loops; lp++)
         {
             WorkingSeed = *PSeed;
@@ -4879,15 +4957,22 @@ TestJudyIns(void **J1, void **JL, PNewSeed_t PSeed, Word_t Elements)
             if (DminTime > DeltanSec1)
             {
                 icnt = ICNT;
-                if (DeltanSec1 > 0.0)   // Ignore 0
-                    DminTime = DeltanSec1;
+                DminTime = DeltanSec1;
             }
-            else
+            else if (DminTime > 0)
             {
                 if (--icnt == 0)
                     break;
             }
+            if (DeltanSec1 > 0) {
+                ++nNonZeros;
+            }
         }
+  #if defined(__APPLE__) && defined(__MACH__)
+        if ((DminTime == 0) && (lp > 1))  {
+            DeltanSec1 = nNonZeros * sTimebase.numer / sTimebase.denom / lp;
+        } else
+  #endif // __APPLE__ && __MACH__
         DeltanSec1 = DminTime;
     }
 
@@ -4895,6 +4980,7 @@ TestJudyIns(void **J1, void **JL, PNewSeed_t PSeed, Word_t Elements)
 
     if (JLFlag)
     {
+        int nNonZeros = 0;
         for (DminTime = 1e40, icnt = ICNT, lp = 0; lp < Loops; lp++)
         {
             WorkingSeed = *PSeed;
@@ -5046,15 +5132,22 @@ TestJudyIns(void **J1, void **JL, PNewSeed_t PSeed, Word_t Elements)
             if (DminTime > DeltanSecL)
             {
                 icnt = ICNT;
-                if (DeltanSecL > 0.0)   // Ignore 0
-                    DminTime = DeltanSecL;
+                DminTime = DeltanSecL;
             }
-            else
+            else if (DminTime > 0)
             {
                 if (--icnt == 0)
                     break;
             }
+            if (DeltanSecL > 0) {
+                ++nNonZeros;
+            }
         }
+  #if defined(__APPLE__) && defined(__MACH__)
+        if ((DminTime == 0) && (lp > 1))  {
+            DeltanSecL = nNonZeros * sTimebase.numer / sTimebase.denom / lp;
+        } else
+  #endif // __APPLE__ && __MACH__
         DeltanSecL = DminTime;
     }
 
@@ -5258,6 +5351,15 @@ static inline int
 TestJudyGet(void *J1, void *JL, PNewSeed_t PSeed, Word_t Elements,
             Word_t Tit, Word_t KFlag, Word_t hFlag, int bLfsrOnly)
 {
+  #ifdef NO_TEST_GET
+
+    (void)J1; (void)JL; (void)PSeed; (void)Elements;
+    (void)Tit; (void)KFlag; (void)hFlag; (void)bLfsrOnly;
+    DeltanSec1 = 0;
+    DeltanSecL = 0;
+
+  #else // NO_TEST_GET
+
     Word_t    TstKey;
     Word_t    elm;
     Word_t   *PValue;
@@ -5268,6 +5370,7 @@ TestJudyGet(void *J1, void *JL, PNewSeed_t PSeed, Word_t Elements,
     Word_t    lp;
     PWord_t   DmyStackMem = NULL;
 
+    int coarse_clock_loops;
     NewSeed_t WorkingSeed;
 
     if (PreStack)
@@ -5286,60 +5389,66 @@ TestJudyGet(void *J1, void *JL, PNewSeed_t PSeed, Word_t Elements,
         WaitForContextSwitch(xFlag, Elements);
         for (DminTime = 1e40, icnt = ICNT, lp = 0; lp < Loops; lp++)
         {
-            WorkingSeed = *PSeed;
             Word_t wFeedBTapLocal = wFeedBTap; // don't know why this is faster
+            STARTTm;
+            for (coarse_clock_loops = 0;
+                 coarse_clock_loops * Elements < 1000;
+               ++coarse_clock_loops)
+            {
+                WorkingSeed = *PSeed;
 
-            // reset j__* for this lp loop
-            // caller will examine j__* for final lp loop when we return
-            j__GetCalls = j__DirectHits = 0;
-            j__GetCallsP = j__GetCallsM = 0;
-            j__MisComparesP = j__MisComparesM = 0;
-            j__SearchPopulation = 0;
+                // reset j__* for this lp loop
+                // caller will examine j__* for final lp loop when we return
+                j__GetCalls = j__DirectHits = 0;
+                j__GetCallsP = j__GetCallsM = 0;
+                j__MisComparesP = j__MisComparesM = 0;
+                j__SearchPopulation = 0;
   #ifdef DSMETRICS_GETS
-            j__GetCallsNot = 0;
+                j__GetCallsNot = 0;
   #endif // DSMETRICS_GETS
   #ifdef DSMETRICS_HITS
-            j__NotDirectHits = 0;
+                j__NotDirectHits = 0;
   #endif // DSMETRICS_HITS
   #ifdef SMETRICS_SEARCH_POP
-            j__GetCallsSansPop = 0;
+                j__GetCallsSansPop = 0;
   #endif // SMETRICS_SEARCH_POP
 
-            STARTTm;
-            for (elm = 0; elm < Elements; elm++)
-            {
-                SYNC_SYNC_IF_KFLAG(KFlag, TstKey = GetNextKeyX(&WorkingSeed, wFeedBTapLocal, bLfsrOnly));
-                //SYNC_SYNC_IF_KFLAG(KFlag, TstKey = GetNextKeyX(&WorkingSeed, wFeedBTap, bLfsrOnly));
-
-//              Holes in the Set Code ?
-                if (hFlag && ((TstKey & 0x3F) == 13))
+                for (elm = 0; elm < Elements; elm++)
                 {
-                    if (Tit)
+                    SYNC_SYNC_IF_KFLAG(KFlag,
+                         TstKey = GetNextKeyX(&WorkingSeed,
+                                              wFeedBTapLocal, bLfsrOnly));
+//                  Holes in the Set Code ?
+                    if (hFlag && ((TstKey & 0x3F) == 13))
                     {
-                        Rc = Judy1Test(J1, TstKey, PJE0);
-                        if (Rc != 0)
+                        if (Tit)
                         {
-                            printf("\n--- Judy1Test wrong Rc = %d, Key = 0x%" PRIxPTR", elm = %" PRIuPTR"",
-                                 Rc, TstKey, elm);
-                            FAILURE("Judy1Test Rc != 0", Rc);
+                            Rc = Judy1Test(J1, TstKey, PJE0);
+                            if (Rc != 0)
+                            {
+                                printf("\n--- Judy1Test wrong Rc = %d, Key = 0x%" PRIxPTR", elm = %" PRIuPTR"",
+                                    Rc, TstKey, elm);
+                                FAILURE("Judy1Test Rc != 0", Rc);
+                            }
                         }
                     }
-                }
-                else
-                {
-                    if (Tit)
+                    else
                     {
-                        Rc = Judy1Test(J1, TstKey, PJE0);
-                        if (Rc != 1)
+                        if (Tit)
                         {
-                            printf("\n--- Judy1Test wrong Rc = %d, Key = 0x%" PRIxPTR", elm = %" PRIuPTR"",
-                                 Rc, TstKey, elm);
-                            FAILURE("Judy1Test Rc != 1", Rc);
+                            Rc = Judy1Test(J1, TstKey, PJE0);
+                            if (Rc != 1)
+                            {
+                                printf("\n--- Judy1Test wrong Rc = %d, Key = 0x%" PRIxPTR", elm = %" PRIuPTR"",
+                                    Rc, TstKey, elm);
+                                FAILURE("Judy1Test Rc != 1", Rc);
+                            }
                         }
                     }
                 }
             }
             ENDTm(DeltanSec1);
+            DeltanSec1 /= coarse_clock_loops;
             if (DminTime > DeltanSec1)
             {
                 icnt = ICNT;
@@ -5362,66 +5471,72 @@ TestJudyGet(void *J1, void *JL, PNewSeed_t PSeed, Word_t Elements,
         WaitForContextSwitch(xFlag, Elements);
         for (DminTime = 1e40, lp = 0; lp < Loops; lp++)
         {
-            WorkingSeed = *PSeed;
             Word_t wFeedBTapLocal = wFeedBTap; // don't know why this is faster
+            STARTTm;
+            for (coarse_clock_loops = 0;
+                 coarse_clock_loops * Elements < 1000;
+               ++coarse_clock_loops)
+            {
+                WorkingSeed = *PSeed;
 
-            // reset j__* for this lp loop
-            // caller will examine j__* for final lp loop when we return
-            j__GetCalls = j__DirectHits = 0;
-            j__GetCallsP = j__GetCallsM = 0;
-            j__MisComparesP = j__MisComparesM = 0;
-            j__SearchPopulation = 0;
+                // reset j__* for this lp loop
+                // caller will examine j__* for final lp loop when we return
+                j__GetCalls = j__DirectHits = 0;
+                j__GetCallsP = j__GetCallsM = 0;
+                j__MisComparesP = j__MisComparesM = 0;
+                j__SearchPopulation = 0;
   #ifdef DSMETRICS_GETS
-            j__GetCallsNot = 0;
+                j__GetCallsNot = 0;
   #endif // DSMETRICS_GETS
   #ifdef DSMETRICS_HITS
-            j__NotDirectHits = 0;
+                j__NotDirectHits = 0;
   #endif // DSMETRICS_HITS
   #ifdef SMETRICS_SEARCH_POP
-            j__GetCallsSansPop = 0;
+                j__GetCallsSansPop = 0;
   #endif // SMETRICS_SEARCH_POP
 
-            STARTTm;
-            for (elm = 0; elm < Elements; elm++)
-            {
-                SYNC_SYNC_IF_KFLAG(KFlag, TstKey = GetNextKeyX(&WorkingSeed, wFeedBTapLocal, bLfsrOnly));
-                //SYNC_SYNC_IF_KFLAG(KFlag, TstKey = GetNextKeyX(&WorkingSeed, wFeedBTap, bLfsrOnly));
-
-//              Holes in the Insert Code ?
-                if (hFlag && ((TstKey & 0x3F) == 13))
+                for (elm = 0; elm < Elements; elm++)
                 {
-                    if (Tit)
+                    SYNC_SYNC_IF_KFLAG(KFlag,
+                        TstKey = GetNextKeyX(&WorkingSeed,
+                                             wFeedBTapLocal, bLfsrOnly));
+//                  Holes in the Insert Code ?
+                    if (hFlag && ((TstKey & 0x3F) == 13))
                     {
-                        PValue = (PWord_t)JudyLGet(JL, TstKey, PJE0);
-                        if (PValue != (Word_t *)NULL)
+                        if (Tit)
                         {
-                            printf("\n--- JudyLGet Key = 0x%" PRIxPTR"", TstKey);
-                            FAILURE("JudyLGet ret PValue != NULL -- Key inserted???", 0L);
+                            PValue = (PWord_t)JudyLGet(JL, TstKey, PJE0);
+                            if (PValue != (Word_t *)NULL)
+                            {
+                                printf("\n--- JudyLGet Key = 0x%" PRIxPTR"", TstKey);
+                                FAILURE("JudyLGet ret PValue != NULL -- Key inserted???", 0L);
+                            }
                         }
                     }
-                }
-                else
-                {
-                    if (Tit)
+                    else
                     {
-                        PValue = (PWord_t)JudyLGet(JL, TstKey, PJE0);
-                        if (PValue == (Word_t *)NULL)
+                        if (Tit)
                         {
-                            printf("\n--- JudyLGet Key = 0x%" PRIxPTR"", TstKey);
-                            FAILURE("JudyLGet ret PValue = NULL", 0L);
-                        }
-                        else if (VFlag && (*PValue != TstKey))
-                        {
-                            printf
-                                ("--- JudyLGet Key 0x%" PRIxPTR" returned PValue %p Value=0x%" PRIxPTR", should be=0x%" PRIxPTR"",
-                                 TstKey, PValue, *PValue, TstKey);
-                            JudyLDump((Word_t)JL, sizeof(Word_t) * 8, TstKey);
-                            FAILURE("JudyLGet ret wrong Value at", elm);
+                            PValue = (PWord_t)JudyLGet(JL, TstKey, PJE0);
+                            if (PValue == (Word_t *)NULL)
+                            {
+                                printf("\n--- JudyLGet Key = 0x%" PRIxPTR"", TstKey);
+                                FAILURE("JudyLGet ret PValue = NULL", 0L);
+                            }
+                            else if (VFlag && (*PValue != TstKey))
+                            {
+                                printf
+                                    ("--- JudyLGet Key 0x%" PRIxPTR" returned PValue %p Value=0x%" PRIxPTR", should be=0x%" PRIxPTR"",
+                                        TstKey, PValue, *PValue, TstKey);
+                                JudyLDump((Word_t)JL, sizeof(Word_t) * 8, TstKey);
+                                FAILURE("JudyLGet ret wrong Value at", elm);
+                            }
                         }
                     }
                 }
             }
             ENDTm(DeltanSecL);
+            DeltanSecL /= coarse_clock_loops;
             if (DminTime > DeltanSecL)
             {
                 icnt = ICNT;
@@ -5438,6 +5553,8 @@ TestJudyGet(void *J1, void *JL, PNewSeed_t PSeed, Word_t Elements,
     }
 
     icnt = ICNT;
+
+  #endif // NO_TEST_GET else
 
     return 0;
 }
