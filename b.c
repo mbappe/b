@@ -7411,10 +7411,14 @@ DoubleDown(qpa, // (nBL, pLn) of link to original switch
     swPopCnt(qya, nBLR, wPopCnt - 1);
   #else // _RETURN_NULL_TO_INSERT_AGAIN
     if (gwPopCnt(qya, nBLR) != wPopCnt - 1) {
-printf("# DoubleDown wPopCnt %zd gwPopCnt %zd\n", wPopCnt, gwPopCnt(qya, nBLR));
-Dump(pwRootLast, 0, cnBitsPerWord);
-exit(1);
+      #ifdef DEBUG
+        printf("# DoubleDown wPopCnt %zd gwPopCnt %zd\n",
+            wPopCnt, gwPopCnt(qya, nBLR));
+        Dump(pwRootLast, 0, cnBitsPerWord);
+        exit(1);
+      #endif // DEBUG
     }
+    assert(gwPopCnt(qya, nBLR) == wPopCnt - 1);
   #endif // _RETURN_NULL_TO_INSERT_AGAIN
   #ifdef _RETURN_NULL_TO_INSERT_AGAIN
   #if cnSwCnts != 0
@@ -11969,18 +11973,6 @@ Initialize(void)
     printf("# No PARALLEL_EK_FOR_NEXT\n");
 #endif // #else  PARALLEL_EK_FOR_NEXT
 
-#if defined(EMBEDDED_KEYS_PSPLIT_BY_KEY_FOR_LOOKUP)
-    printf("#    EMBEDDED_KEYS_PSPLIT_BY_KEY_FOR_LOOKUP\n");
-#else // defined(EMBEDDED_KEYS_PSPLIT_BY_KEY_FOR_LOOKUP)
-    printf("# No EMBEDDED_KEYS_PSPLIT_BY_KEY_FOR_LOOKUP\n");
-#endif // defined(EMBEDDED_KEYS_PSPLIT_BY_KEY_FOR_LOOKUP)
-
-#if defined(EMBEDDED_KEYS_PSPLIT_BY_KEY_FOR_INSERT)
-    printf("#    EMBEDDED_KEYS_PSPLIT_BY_KEY_FOR_INSERT\n");
-#else // defined(EMBEDDED_KEYS_PSPLIT_BY_KEY_FOR_INSERT)
-    printf("# No EMBEDDED_KEYS_PSPLIT_BY_KEY_FOR_INSERT\n");
-#endif // defined(EMBEDDED_KEYS_PSPLIT_BY_KEY_FOR_INSERT)
-
 #if defined(EMBEDDED_KEYS_UNROLLED_FOR_LOOKUP)
     printf("#    EMBEDDED_KEYS_UNROLLED_FOR_LOOKUP\n");
 #else // defined(EMBEDDED_KEYS_UNROLLED_FOR_LOOKUP)
@@ -12918,11 +12910,17 @@ Initialize(void)
     printf("# No LIBCMALLOC\n");
   #endif //      LIBCMALLOC else
 
-  #ifdef         USE_DLMALLOC_DEFAULT_SIZES
-    printf("#    USE_DLMALLOC_DEFAULT_SIZES\n");
-  #else //       USE_DLMALLOC_DEFAULT_SIZES
-    printf("# No USE_DLMALLOC_DEFAULT_SIZES\n");
-  #endif //      USE_DLMALLOC_DEFAULT_SIZES else
+  #ifdef         DLMALLOC_2MiB_PAGES
+    printf("#    DLMALLOC_2MiB_PAGES\n");
+  #else //       DLMALLOC_2MiB_PAGES
+    printf("# No DLMALLOC_2MiB_PAGES\n");
+  #endif //      DLMALLOC_2MiB_PAGES else
+
+  #ifdef         NO_DLMALLOC_2MiB_PAGES
+    printf("#    NO_DLMALLOC_2MiB_PAGES\n");
+  #else //       NO_DLMALLOC_2MiB_PAGES
+    printf("# No NO_DLMALLOC_2MiB_PAGES\n");
+  #endif //      NO_DLMALLOC_2MiB_PAGES else
 
 #ifdef           NO_BM_DSPLIT
     printf("#    NO_BM_DSPLIT\n");

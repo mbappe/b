@@ -58,10 +58,19 @@ MACHINE_ARCH=`uname -p`
 && DEFINES="-DREGRESS -DDEBUG_ALL -DFULL_DUMP" ${MAKE} clean default \
 && DEFINES="-DREGRESS -DDEBUG" ${MAKE} clean default \
 && ${REGRESS} \
+&& DEFINES="-DNO_REVERSE_SORT_EMBEDDED_KEYS -DDEBUG" ${MAKE} clean default \
+&& ${REGRESS} \
+&& DEFINES="-DNO_REVERSE_SORT_EMBEDDED_KEYS -DDEBUG \
+-DEMBEDDED_KEYS_UNROLLED_FOR_INSERT -DEMBEDDED_KEYS_UNROLLED_FOR_LOOKUP" \
+   ${MAKE} clean default \
+&& : "NO_DLMALLOC_2MiB_PAGES is default for ARM" \
+&& DEFINES="-DDLMALLOC_2MiB_PAGES -DREGRESS -DDEBUG" ${MAKE} clean default \
+&& ${REGRESS} \
 && DEFINES="-DLIBCMALLOC -DREGRESS -DDEBUG" ${MAKE} clean default \
 && ${REGRESS} \
-&& DEFINES="-DUSE_DLMALLOC_DEFAULT_SIZES -DREGRESS -DDEBUG" \
-    ${MAKE} clean default \
+&& DEFINES="-DNO_DLMALLOC_2MiB_PAGES -DREGRESS -DDEBUG" \
+   ${MAKE} clean default \
+&& ${REGRESS} \
 && ${REGRESS} \
 && DEFINES="-DNO_USE_BM_SW -DREGRESS -DDEBUG" ${MAKE} clean default \
 && ${REGRESS} \
@@ -135,7 +144,8 @@ MACHINE_ARCH=`uname -p`
 && ${REGRESS} \
 && DEFINES="-DOLD_HK_128 -DREGRESS -DDEBUG" ${MAKE} clean default \
 && ${REGRESS} \
-&& DEFINES="-DNO_PARALLEL_HK_128_64 -DREGRESS -DDEBUG" ${MAKE} clean default \
+&& DEFINES="-DPARALLEL_SEARCH_WORD -DNO_PSPLIT_PARALLEL -DREGRESS -DDEBUG" \
+    ${MAKE} clean default \
 && ${REGRESS} \
 && DEFINES="-DNO_LOCATE_GE_AFTER_LOCATE_EQ -DDEBUG_LOCATE_GE \
 -DREGRESS -DDEBUG" \
@@ -152,8 +162,7 @@ MACHINE_ARCH=`uname -p`
 && ${REGRESS} \
 :
 
-# We don't support parallel searching on ARM Mac yet.
-# supported yet.
+# We don't support PARALLEL_128 or PARALLEL_256 on ARM Mac yet.
 if [ ${MACHINE_ARCH} != "arm" ]
 then
     : \
@@ -162,23 +171,22 @@ then
     && DEFINES="-mno-sse4.2 -DPARALLEL_128 -DREGRESS -DDEBUG" \
         ${MAKE} clean default \
     && ${REGRESS} \
-    && DEFINES="-DPARALLEL_SEARCH_WORD -DNO_PSPLIT_PARALLEL \
-                -DREGRESS -DDEBUG" \
+    && DEFINES="-DNO_PARALLEL_HK_128_64 -DREGRESS -DDEBUG" \
         ${MAKE} clean default \
-    && ${REGRESS} \
-    && DEFINES="-DDOUBLE_DOWN -DUSE_LOWER_XX_SW -DUSE_XX_SW_ONLY_AT_DL2 \
-                -DNO_USE_BM_SW -DcnListPopCntMax64=48 \
-                -DcnListPopCntMaxDl1=256 -DDEBUG" \
-        ${MAKE} clean default \
-    && ${REGRESS} \
-    && DEFINES="-DUSE_XX_SW_ONLY_AT_DL2 -DcnListPopCntMax64=64 \
-                -DREGRESS -DDEBUG" \
-       ${MAKE} clean default \
     && ${REGRESS} \
     :
 fi
 
 : \
+&& DEFINES="-DDOUBLE_DOWN -DUSE_LOWER_XX_SW -DUSE_XX_SW_ONLY_AT_DL2 \
+            -DNO_USE_BM_SW -DcnListPopCntMax64=48 \
+            -DcnListPopCntMaxDl1=256 -DDEBUG" \
+   ${MAKE} clean default \
+&& ${REGRESS} \
+&& DEFINES="-DUSE_XX_SW_ONLY_AT_DL2 -DcnListPopCntMax64=64 \
+            -DREGRESS -DDEBUG" \
+   ${MAKE} clean default \
+&& ${REGRESS} \
 && DEFINES="-DPARALLEL_64 -DREGRESS -DDEBUG" ${MAKE} clean default \
 && ${REGRESS} \
 && MALLOC_ALIGNMENT=32 DEFINES="-DREGRESS -DDEBUG" ${MAKE} clean default \

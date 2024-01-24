@@ -2,13 +2,21 @@
 #if ( ! defined(_BDEFINES_H_INCLUDED) )
 #define _BDEFINES_H_INCLUDED
 
-#ifdef __aarch64__
-  #undef  NO_PSPLIT_PARALLEL
-  #define NO_PSPLIT_PARALLEL
-  #undef  NO_PARALLEL_SEARCH_WORD
-  #define NO_PARALLEL_SEARCH_WORD
-  #undef  NO_EMBED_KEYS
-  #define NO_EMBED_KEYS
+#ifdef __aarch64__ // ARM e.g. Apple Silicon Mac
+  #ifndef LIBCMALLOC
+  // NO_DLMALLOC_2MiB_PAGES is default for ARM.
+  // The construct is strange because DLMALLOC_2MiB_PAGES is default for x86.
+  #ifndef DLMALLOC_2MiB_PAGES
+    #undef  NO_DLMALLOC_2MiB_PAGES
+    #define NO_DLMALLOC_2MiB_PAGES
+  #endif // DLMALLOC_2MiB_PAGES
+  #endif // LIBCMALLOC
+  #ifndef PARALLEL_256
+  #ifndef PARALLEL_128
+    #undef  PARALLEL_64
+    #define PARALLEL_64
+  #endif // PARALLEL_128
+  #endif // PARALLEL_256
 #endif // __aarch64__
 
 // Add one word in Switch_t for subexpanse pop count(s) to improve performance
@@ -1178,18 +1186,50 @@
   #undef DUMMY_REMOTE_LNX
 #endif // REMOTE_LNX
 
+// Default is -DEMBEDDED_KEYS_PARALLEL_FOR_LOOKUP.
+// It applies to LOOKUP.
+// And it applies to NEXT_EMPTY for some ifdef combos.
+// EMBEDDED_KEYS_UNROLLED_FOR_LOOKUP should really be
+// NO_PARALLEL_EK_FOR_LOOKUP until we have another method.
+#ifdef EMBEDDED_KEYS_UNROLLED_FOR_LOOKUP
+  #ifdef REVERSE_SORT_EMBEDDED_KEYS
+    #error EMBEDDED_KEYS_UNROLLED_FOR_LOOKUP with REVERSE_SORT_EMBEDDED_KEYS
+  #else // REVERSE_SORT_EMBEDDED_KEYS
+    #undef   NO_REVERSE_SORT_EMBEDDED_KEYS
+    #define  NO_REVERSE_SORT_EMBEDDED_KEYS
+  #endif // REVERSE_SORT_EMBEDDED_KEYS else
+#else // EMBEDDED_KEYS_UNROLLED_FOR_LOOKUP
+  #undef   EMBEDDED_KEYS_PARALLEL_FOR_LOOKUP
+  #define  EMBEDDED_KEYS_PARALLEL_FOR_LOOKUP
+#endif // EMBEDDED_KEYS_UNROLLED_FOR_LOOKUP else
+
+// Default is -DEMBEDDED_KEYS_PARALLEL_FOR_INSERT.
+// It applies to INSERT and REMOVE.
+// EMBEDDED_KEYS_UNROLLED_FOR_LOOKUP should really be
+// NO_PARALLEL_EK_FOR_INSERT until we have another method.
+#ifdef EMBEDDED_KEYS_UNROLLED_FOR_INSERT
+  #ifdef REVERSE_SORT_EMBEDDED_KEYS
+    #error EMBEDDED_KEYS_UNROLLED_FOR_INSERT with REVERSE_SORT_EMBEDDED_KEYS
+  #else // REVERSE_SORT_EMBEDDED_KEYS
+    #undef   NO_REVERSE_SORT_EMBEDDED_KEYS
+    #define  NO_REVERSE_SORT_EMBEDDED_KEYS
+  #endif // REVERSE_SORT_EMBEDDED_KEYS
+#else // EMBEDDED_KEYS_UNROLLED_FOR_LOOKUP
+  #undef   EMBEDDED_KEYS_PARALLEL_FOR_INSERT
+  #define  EMBEDDED_KEYS_PARALLEL_FOR_INSERT
+#endif // EMBEDDED_KEYS_UNROLLED_FOR_INSERT else
+
 // Embedded keys were originally sorted with the smallest key in the most
 // significant bits of the word -- opposite of an external list.
 // Hence REVERSE_SORT_EMBEDDED_KEYS means the biggest key is put in the most
 // significant bits of the word -- same as an external list.
+// The parallel variants of (Insert|Remove), Lookup, Count and
+// (Next|Prev)[Empty] all work when the embedded keys are sorted either way.
+// But the non-parallel variants do not all work with reverse sort.
 #ifndef   NO_REVERSE_SORT_EMBEDDED_KEYS
   #undef     REVERSE_SORT_EMBEDDED_KEYS
   #define    REVERSE_SORT_EMBEDDED_KEYS
 #endif // NO_REVERSE_SORT_EMBEDDED_KEYS
-
-#ifdef B_JUDYL
-  #undef  REVERSE_SORT_EMBEDDED_KEYS
-#endif // B_JUDYL
 
 #ifdef REVERSE_SORT_EMBEDDED_KEYS
   #undef  FILL_W_BIG_KEY

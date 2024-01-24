@@ -110,10 +110,15 @@ Word_t j__MisComparesM;
   // Disable some user error checking with INSECURE=1.
 #endif // DEBUG
 
-// Use -DUSE_DLMALLOC_DEFAULT_SIZES if you don't want to use this
+// Default is DLMALLOC_2MiB_PAGES.
+// Use -DNO_DLMALLOC_2MiB_PAGES if you don't want to use this
 // dlmalloc configuration stuff for Haswell huge pages.
-#ifndef USE_DLMALLOC_DEFAULT_SIZES
+#ifndef   NO_DLMALLOC_2MiB_PAGES
+  #undef     DLMALLOC_2MiB_PAGES
+  #define    DLMALLOC_2MiB_PAGES
+#endif // NO_DLMALLOC_2MiB_PAGES
 
+#ifdef DLMALLOC_2MiB_PAGES
 //=======================================================================
 // J U D Y  /  D L M A L L O C interface for huge pages Ubuntu 3.13+ kernel
 //=======================================================================
@@ -150,7 +155,7 @@ static int    pre_munmap(void *, Word_t);
 #define mmap            pre_mmap        // re-define for dlmalloc
 #define munmap          pre_munmap      // re-define for dlmalloc
 
-#endif // !USE_DLMALLOC_DEFAULT_SIZES
+#endif // DLMALLOC_2MiB_PAGES
 
 #if JUDY_MALLOC_NUM_SPACES != 0
   // Include create/destroy_mspace and
@@ -161,7 +166,7 @@ static int    pre_munmap(void *, Word_t);
 
 #include "dlmalloc.c"   // Version 2.8.6 Wed Aug 29 06:57:58 2012  Doug Lea
 
-#ifndef USE_DLMALLOC_DEFAULT_SIZES
+#ifdef DLMALLOC_2MiB_PAGES
 
 #undef mmap // restore it for rest of routine
 #undef munmap // restore it for rest of routine
@@ -282,7 +287,7 @@ pre_mmap(void *addr, Word_t length, int prot, int flags, int fd, off_t offset)
     return(buf);
 }
 
-#endif // !USE_DLMALLOC_DEFAULT_SIZES
+#endif // DLMALLOC_2MiB_PAGES
 
 #if JUDY_MALLOC_NUM_SPACES != 0
 

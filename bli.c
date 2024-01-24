@@ -5139,6 +5139,7 @@ t_ek_xv:
 xv_break2:;
 
       #else // _PARALLEL_EK && !NEXT
+          #ifdef _PARALLEL_EK
           #ifdef NEXT
             if (nBL == 8) {
                 if ((nPos = LocateGeKeyInWord8(*pwLnX, wKey)) >= 0) {
@@ -5148,6 +5149,7 @@ xv_break2:;
                 goto break_from_main_switch;
             }
           #endif // NEXT
+          #endif // _PARALLEL_EK
             if ((nPos = SearchEmbeddedX(qya, wKey)) >= 0) {
                 goto xv_foundIt;
             }

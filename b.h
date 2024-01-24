@@ -335,22 +335,6 @@
 #define BL_SPECIFIC_PSPLIT_SEARCH
 #endif // ! defined(NO_BL_SPECIFIC_PSPLIT_SEARCH)
 
-// Default is -DEMBEDDED_KEYS_PARALLEL_FOR_LOOKUP.
-// It applies to Insert AND Remove.
-#if ! defined(EMBEDDED_KEYS_PSPLIT_BY_KEY_FOR_LOOKUP) \
-  && ! defined(EMBEDDED_KEYS_UNROLLED_FOR_LOOKUP)
-#undef EMBEDDED_KEYS_PARALLEL_FOR_LOOKUP
-#define EMBEDDED_KEYS_PARALLEL_FOR_LOOKUP
-#endif
-
-// Default is -DEMBEDDED_KEYS_PARALLEL_FOR_INSERT.
-// It applies to Insert AND Remove.
-#if ! defined(EMBEDDED_KEYS_PSPLIT_BY_KEY_FOR_INSERT) \
-  && ! defined(EMBEDDED_KEYS_UNROLLED_FOR_INSERT)
-#undef EMBEDDED_KEYS_PARALLEL_FOR_INSERT
-#define EMBEDDED_KEYS_PARALLEL_FOR_INSERT
-#endif
-
 // UA_PARALLEL_128, i.e. unaligned parallel 128, was designed to save memory
 // by eliminating the requirement that lists be padded to an integral number
 // of 16-byte bucket lengths while preserving our ability to use 128-bit
@@ -1703,6 +1687,9 @@ wr_nPopCnt(Word_t wRoot, int nBL)
     } \
 }
   #else // EK_XV
+    #ifdef B_JUDYL
+#define     wr_nPopCnt(_wr, _nBL)  1
+    #else // B_JUDYL
 // wr_nPopCnt(_wr, _nBL) gets the pop count for a list of embedded keys.
 // For embedded keys the pop cnt bits are just above the type field.
 // A value of zero means a pop cnt of one.
@@ -1710,6 +1697,7 @@ wr_nPopCnt(Word_t wRoot, int nBL)
   ((int)((((_wr) >> nBL_to_nBitsType(_nBL)) \
           & MSK(nBL_to_nBitsPopCntSz(_nBL))) \
       + 1))
+    #endif // B_JUDYL else
 
 #define set_wr_nPopCnt(_wr, _nBL, _nPopCnt) \
     SetBits(&(_wr), nBL_to_nBitsPopCntSz(_nBL), nBL_to_nBitsType(_nBL), \
@@ -5506,6 +5494,8 @@ printf("*pw " OWx" wKey " Owx" nBL %d wMagic "OWx"\n", *pw, wKey, nBL, wMagic);
     #define MM_SET1_EPW(_ww)  _mm_set1_epi32((_ww))
 #endif // cnBitsPerWord == 64
 
+#ifdef PARALLEL_128 // {
+
 #define HAS_KEY_128_SETUP(_wKey, _nBL, _xLsbs, _xMsbs, _xKeys) \
 { \
     /* Could use faster MSK instead of NZ_MSK for NO_PARALLEL_HK_128_64 */ \
@@ -5626,6 +5616,8 @@ HasKey128Tail(__m128i *pxBucket,
 #endif
 }
 
+#endif // } PARALLEL_128
+
 // v_t is a vector of 16 chars. __m128i is a vector of 2 long longs.
 // We need the char variant so we can compare with a char using '==' or '>='.
 
@@ -5711,6 +5703,8 @@ typedef unsigned short __attribute__((vector_size(8))) v31_t;
 typedef unsigned int   __attribute__((vector_size(8))) v32_t;
   #endif // __clang__
 
+#ifdef PARALLEL_256
+
 // my_mm256_movemask_epi8 is a wrapper to
 // emulate _mm256_movemask_epi8 if no -mavx2/__AVX2__.
 static inline int
@@ -5732,6 +5726,8 @@ my_mm256_movemask_epi8(__m256i a)
     return (_mm_movemask_epi8(m1) << 16) | _mm_movemask_epi8(m0);
   #endif // __AVX2__ else
 }
+
+#endif // PARALLEL_256
 
 #if (cnBitsPerWord < 64)
   #undef  HK_MOVEMASK
@@ -5788,6 +5784,8 @@ LocateKey256(__m256i *pxBucket, Word_t wKey, int nBL)
 }
 
 #endif // PARALLEL_256
+
+#ifdef PARALLEL_128 // {
 
 // A key observation about the OLD_HK_128 variant of HasKey is that it creates
 // a magic number with the high bit set in the key slots that match the target
@@ -5968,6 +5966,8 @@ HasKey96(__m128i *pxBucket, Word_t wKey, int nBL)
     return HasKey128Tail(pxBucket, xLsbs, xMsbs, xKeys);
 }
 
+#endif // } PARALLEL_128
+
 #endif // !LIST_END_MARKERS
 #endif // PSPLIT_PARALLEL || PARALLEL_SEARCH_WORD
 
@@ -6065,6 +6065,7 @@ HasKey128Magic(__m128i *pxBucket, Word_t wKey, int nBL)
 #ifdef FILL_W_BIG_KEY
 #if cnBitsPerWord > 32
 
+#ifdef PARALLEL_LOCATE_GE_KEY_8_IN_EK
 #ifdef PARALLEL_LOCATE_GE_KEY_8_USING_UNPACK
 
 static int // nPos
@@ -6093,6 +6094,7 @@ LocateGeKey8InEk64(Word_t wRoot, Word_t wKey)
 }
 
 #endif // PARALLEL_LOCATE_GE_KEY_8_USING_UNPACK else
+#endif // PARALLEL_LOCATE_GE_KEY_8_IN_EK
 
 #ifdef PARALLEL_LOCATE_GE_KEY_16_IN_EK
 #ifdef PARALLEL_LOCATE_GE_KEY_16_USING_UNPACK
@@ -6973,8 +6975,11 @@ SearchList(qpa, int nBLR, Word_t wKey)
   #endif // SEARCH_USING_LOCATE_GE
 }
 
-#ifdef EK_XV
 #if cnBitsPerWord > 32
+#ifdef EK_XV
+#ifdef PARALLEL_EK_FOR_NEXT
+#ifdef NEXT
+#if defined(AUG_TYPE_8_NEXT_EK_XV) || defined(_PARALLEL_EK)
 // Return nPos >= 0 if key >= wKey exists in wWord.
 // Otherwise return -1.
 static inline int
@@ -6984,6 +6989,9 @@ LocateGeKeyInWord8(Word_t wWord, Word_t wKey)
     uint64_t u64GE = (uint64_t)_mm_cmpge_pu8((__m64)wWord, m64Key);
     return (u64GE != 0) ? __builtin_ctzll(u64GE) / 8 : -1;
 }
+#endif // defined(AUG_TYPE_8_NEXT_EK_XV) || defined(_PARALLEL_EK)
+#endif // NEXT
+#endif // PARALLEL_EK_FOR_NEXT
 #endif // EK_XV
 
 #if 0
@@ -7000,6 +7008,8 @@ LocateGeKeyInWord16(Word_t wWord, Word_t wKey)
 #endif // cnBitsPerWord > 32
 
 #if defined(PSPLIT_PARALLEL) || defined(PARALLEL_SEARCH_WORD)
+
+#ifdef PARALLEL_128 // {
 
 // Locate the smallest key in the 128-bit bucket that is greater than or equal
 // to wKey. If one exists then return nPos.
@@ -7071,6 +7081,10 @@ LocateGeKey128(__m128i *pxBucket, Word_t wKey, int nBL)
   #endif // cnBitsPerWord > 32
 }
 
+#endif // } PARALLEL_128
+
+#ifdef PARALLEL_256 // {
+
 // Locate the smallest key in the 256-bit bucket that is greater than or equal
 // to wKey. If one exists then return nPos.
 // If none exists then return -1.
@@ -7124,6 +7138,8 @@ LocateGeKey256(__m256i *pxBucket, Word_t wKey, int nBL)
     return __builtin_ctzll(wHasGeKey) / 8;
   #endif // cnBitsPerWord > 32
 }
+
+#endif // } PARALLEL_256_
 
 #endif // PSPLIT_PARALLEL || PARALLEL_SEARCH_WORD
 
