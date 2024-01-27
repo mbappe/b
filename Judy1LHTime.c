@@ -1570,7 +1570,7 @@ oa2w(char *str, char **endptr, int base, int ch)
             }
         } else {
             printf(
-                "\nError --- Illegal optarg, \"%s\", for option \"-%c\".",
+                "\nError --- Illegal optarg, \"%s\", for option \"-%c\".\n",
                 str, ch);
             if (errno != 0) {
                 printf(" %s.\n", strerror(errno));
@@ -2174,18 +2174,22 @@ main(int argc, char *argv[])
 Eopt:
                 if ((optarg[0] >= '0') && (optarg[0] <= '9')) {
                     wSplayMask = oa2w(optarg, NULL, 0, c);
+                } else if (((optarg[0] == '-') || (optarg[0] == '~'))
+                    && ((optarg[1] >= '0') && (optarg[1] <= '9')))
+                {
+                    wSplayMask = oa2w(&optarg[1], NULL, 0, c);
+                    if (optarg[0] == '-') {
+                        wSplayMask = -wSplayMask;
+                    } else if (optarg[0] == '~') {
+                        wSplayMask = ~wSplayMask;
+                    }
                 } else if (optarg[0] == ':') {
                     wSplayBase = ~(Word_t)0;
                     if (*++optarg != '\0') {
                         goto Eopt;
                     }
                 } else {
-                    --optind; // rewind
-                    // skip over -E and put a '-' in place
-                    if (optarg != argv[optind]) {
-                        argv[optind] = optarg - 1;
-                        argv[optind][0] = '-';
-                    }
+                    FAILURE("Invalid argument for -E", 0);
                 }
             }
 #ifdef NO_SPLAY_KEY_BITS
@@ -2198,6 +2202,15 @@ eopt:
             if (optarg != NULL) {
                 if ((optarg[0] >= '0') && (optarg[0] <= '9')) {
                     wSplayMask = oa2w(optarg, NULL, 0, c);
+                } else if (((optarg[0] == '-') || (optarg[0] == '~'))
+                    && ((optarg[1] >= '0') && (optarg[1] <= '9')))
+                {
+                    wSplayMask = oa2w(&optarg[1], NULL, 0, c);
+                    if (optarg[0] == '-') {
+                        wSplayMask = -wSplayMask;
+                    } else if (optarg[0] == '~') {
+                        wSplayMask = ~wSplayMask;
+                    }
                 } else if (optarg[0] == ':') {
                     wSplayMask <<= 1;
                     wSplayBase = ~(Word_t)0;
@@ -2205,12 +2218,7 @@ eopt:
                         goto eopt;
                     }
                 } else {
-                    --optind; // rewind
-                    // skip over -e and put a '-' in place
-                    if (optarg != argv[optind]) {
-                        argv[optind] = optarg - 1;
-                        argv[optind][0] = '-';
-                    }
+                    FAILURE("Invalid argument for -e", 0);
                 }
             } else {
                 wSplayMask <<= 1;
@@ -2969,7 +2977,9 @@ eopt:
     }
 
     if (bSplayKeyBitsFlag) {
-        printf(" --splay-key-bits=0x%" PRIxPTR, wSplayMask);
+        printf(" --splay-key-bits=");
+        if (wSplayBase != 0) printf(":");
+        printf("0x%" PRIxPTR, wSplayMask);
     }
 
 //  print more options - default, adjusted or otherwise
